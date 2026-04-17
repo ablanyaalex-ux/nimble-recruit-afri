@@ -13,12 +13,19 @@ export default function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">(
     params.get("mode") === "signup" ? "signup" : "signin"
   );
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && user) return <Navigate to="/" replace />;
+  if (!loading && user) {
+    const pending = sessionStorage.getItem("tf.pendingInvite");
+    if (pending) {
+      sessionStorage.removeItem("tf.pendingInvite");
+      return <Navigate to={`/invite/${pending}`} replace />;
+    }
+    return <Navigate to="/" replace />;
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
