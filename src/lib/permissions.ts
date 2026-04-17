@@ -3,7 +3,8 @@ import type { WorkspaceRole } from "@/lib/workspace";
 export const canEditWorkspace = (role: WorkspaceRole | null) =>
   role === "owner" || role === "recruiter";
 
-export const isHiringManager = (role: WorkspaceRole | null) => role === "hiring_manager";
+export const isHiringManager = (role: WorkspaceRole | null) =>
+  (role as string) === "hiring_manager";
 
 export const canViewAllCandidates = (role: WorkspaceRole | null) =>
   role === "owner" || role === "recruiter" || role === "viewer";

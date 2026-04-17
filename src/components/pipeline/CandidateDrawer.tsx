@@ -177,7 +177,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged }: Props) {
 
   const moveStage = async (stage: string) => {
     if (!detail) return;
-    const { error } = await supabase.from("job_candidates").update({ stage }).eq("id", detail.id);
+    const { error } = await supabase.from("job_candidates").update({ stage: stage as any }).eq("id", detail.id);
     if (error) return toast.error(error.message);
     toast.success("Stage updated.");
     onChanged();
