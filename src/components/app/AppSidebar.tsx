@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Briefcase, Users, Building2, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, Building2, CalendarDays, UserPlus } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ export const navItems = [
   { title: "Candidates", url: "/candidates", icon: Users },
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Interviews", url: "/interviews", icon: CalendarDays },
+  { title: "Team", url: "/team", icon: UserPlus },
 ];
 
 export function AppSidebar() {

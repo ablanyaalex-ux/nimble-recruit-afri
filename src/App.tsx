@@ -9,6 +9,8 @@ import AppLayout from "@/components/app/AppLayout";
 import AuthPage from "./pages/Auth";
 import CreateWorkspace from "./pages/CreateWorkspace";
 import Dashboard from "./pages/Dashboard";
+import Team from "./pages/Team";
+import AcceptInvite from "./pages/AcceptInvite";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -25,12 +27,14 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
+              <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/jobs" element={<Placeholder eyebrow="Pipeline" title="Jobs" />} />
                 <Route path="/candidates" element={<Placeholder eyebrow="People" title="Candidates" />} />
                 <Route path="/clients" element={<Placeholder eyebrow="Accounts" title="Clients" />} />
                 <Route path="/interviews" element={<Placeholder eyebrow="Schedule" title="Interviews" />} />
+                <Route path="/team" element={<Team />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
