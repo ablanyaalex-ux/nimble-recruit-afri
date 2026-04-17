@@ -165,7 +165,7 @@ export default function JobDetail() {
     const entry = entries.find((x) => x.id === e.active.id);
     if (!entry || entry.stage === newStage) return;
     setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, stage: newStage } : x)));
-    const { error } = await supabase.from("job_candidates").update({ stage: newStage }).eq("id", entry.id);
+    const { error } = await supabase.from("job_candidates").update({ stage: newStage as any }).eq("id", entry.id);
     if (error) {
       toast.error(error.message);
       refresh();

@@ -11,6 +11,11 @@ import CreateWorkspace from "./pages/CreateWorkspace";
 import Dashboard from "./pages/Dashboard";
 import Team from "./pages/Team";
 import AcceptInvite from "./pages/AcceptInvite";
+import Clients from "./pages/Clients";
+import ClientDetail from "./pages/ClientDetail";
+import Jobs from "./pages/Jobs";
+import JobDetail from "./pages/JobDetail";
+import Candidates from "./pages/Candidates";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -30,9 +35,11 @@ const App = () => (
               <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/jobs" element={<Placeholder eyebrow="Pipeline" title="Jobs" />} />
-                <Route path="/candidates" element={<Placeholder eyebrow="People" title="Candidates" />} />
-                <Route path="/clients" element={<Placeholder eyebrow="Accounts" title="Clients" />} />
+                <Route path="/jobs" element={<Jobs />} />
+                <Route path="/jobs/:id" element={<JobDetail />} />
+                <Route path="/candidates" element={<Candidates />} />
+                <Route path="/clients" element={<Clients />} />
+                <Route path="/clients/:id" element={<ClientDetail />} />
                 <Route path="/interviews" element={<Placeholder eyebrow="Schedule" title="Interviews" />} />
                 <Route path="/team" element={<Team />} />
               </Route>
