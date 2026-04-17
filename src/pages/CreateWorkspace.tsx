@@ -20,17 +20,8 @@ export default function CreateWorkspace() {
     if (!user) return;
     setSubmitting(true);
     try {
-      const { data: ws, error: wsErr } = await supabase
-        .from("workspaces")
-        .insert({ name: name.trim(), created_by: user.id })
-        .select()
-        .single();
-      if (wsErr) throw wsErr;
-
-      const { error: memErr } = await supabase
-        .from("workspace_members")
-        .insert({ workspace_id: ws.id, user_id: user.id, role: "owner" });
-      if (memErr) throw memErr;
+      const { error } = await supabase.rpc("create_workspace", { _name: name.trim() });
+      if (error) throw error;
 
       await refresh();
       toast.success("Workspace created");

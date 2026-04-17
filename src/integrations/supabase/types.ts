@@ -99,6 +99,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_workspace: { Args: { _name: string }; Returns: string }
       has_workspace_role: {
         Args: {
           _role: Database["public"]["Enums"]["workspace_role"]
