@@ -40,14 +40,14 @@ type MemberRow = {
 
 const inviteSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
-  role: z.enum(["recruiter", "viewer"]),
+  role: z.enum(["recruiter", "viewer", "hiring_manager"]),
 });
 
 export default function Team() {
   const { user } = useAuth();
   const { currentWorkspaceId, currentRole, loading } = useWorkspace();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"recruiter" | "viewer">("recruiter");
+  const [role, setRole] = useState<"recruiter" | "viewer" | "hiring_manager">("recruiter");
   const [submitting, setSubmitting] = useState(false);
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -194,13 +194,14 @@ export default function Team() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="invite-role">Role</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as "recruiter" | "viewer")}>
+                <Select value={role} onValueChange={(v) => setRole(v as "recruiter" | "viewer" | "hiring_manager")}>
                   <SelectTrigger id="invite-role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="recruiter">Recruiter</SelectItem>
                     <SelectItem value="viewer">Viewer</SelectItem>
+                    <SelectItem value="hiring_manager">Hiring manager</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
