@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
-export type WorkspaceRole = "owner" | "recruiter" | "viewer";
+export type WorkspaceRole = "owner" | "recruiter" | "viewer" | "hiring_manager";
 
 export type WorkspaceMembership = {
   workspace_id: string;

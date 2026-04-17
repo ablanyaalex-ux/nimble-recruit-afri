@@ -15,14 +15,20 @@ import {
 import { useWorkspace } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 
-export const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
-  { title: "Jobs", url: "/jobs", icon: Briefcase },
-  { title: "Candidates", url: "/candidates", icon: Users },
-  { title: "Clients", url: "/clients", icon: Building2 },
-  { title: "Interviews", url: "/interviews", icon: CalendarDays },
-  { title: "Team", url: "/team", icon: UserPlus },
+const allNavItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true, hideForHM: false },
+  { title: "Jobs", url: "/jobs", icon: Briefcase, hideForHM: false },
+  { title: "Candidates", url: "/candidates", icon: Users, hideForHM: true },
+  { title: "Clients", url: "/clients", icon: Building2, hideForHM: false },
+  { title: "Interviews", url: "/interviews", icon: CalendarDays, hideForHM: false },
+  { title: "Team", url: "/team", icon: UserPlus, hideForHM: true },
 ];
+
+export function useNavItems() {
+  const { currentRole } = useWorkspace();
+  const isHM = (currentRole as string) === "hiring_manager";
+  return allNavItems.filter((i) => !(isHM && i.hideForHM));
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -30,6 +36,7 @@ export function AppSidebar() {
   const { memberships, currentWorkspaceId } = useWorkspace();
   const ws = memberships.find((m) => m.workspace_id === currentWorkspaceId)?.workspaces;
   const location = useLocation();
+  const navItems = useNavItems();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
