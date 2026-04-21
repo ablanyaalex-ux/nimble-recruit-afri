@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, MoreVertical, Trash2, Megaphone } from "lucide-react";
+import { ArrowLeft, MoreVertical, Trash2, Megaphone, Settings2 } from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
@@ -15,22 +15,15 @@ import { useWorkspace } from "@/lib/workspace";
 import {
   canEditWorkspace,
   canMoveStages,
-  STAGE_LABELS,
   visibleStagesForRole,
   isHiringManager,
-  type Stage,
+  type PipelineStage,
 } from "@/lib/permissions";
+import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer, PageHeader } from "@/components/app/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,9 +42,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
-import { HiringManagersCard } from "@/components/pipeline/HiringManagersCard";
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
+import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
 import { toast } from "sonner";
 
 type Job = {
@@ -67,7 +60,7 @@ type Job = {
 
 type PipelineEntry = {
   id: string;
-  stage: Stage;
+  stage: string;
   candidate_id: string;
   candidates: { full_name: string; headline: string | null };
 };
@@ -112,8 +105,8 @@ function DraggableCard({
   );
 }
 
-function DroppableColumn({ stage, children }: { stage: Stage; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage });
+function DroppableColumn({ stageKey, children }: { stageKey: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageKey });
   return (
     <div
       ref={setNodeRef}
@@ -133,7 +126,6 @@ export default function JobDetail() {
   const { currentRole } = useWorkspace();
   const canEdit = canEditWorkspace(currentRole);
   const canDrag = canMoveStages(currentRole);
-  const stages = visibleStagesForRole(currentRole);
   const isHM = isHiringManager(currentRole);
 
   const [job, setJob] = useState<Job | null>(null);
@@ -141,6 +133,10 @@ export default function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [stagesOpen, setStagesOpen] = useState(false);
+
+  const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
+  const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -181,7 +177,8 @@ export default function JobDetail() {
   }, []);
 
   const grouped = useMemo(() => {
-    const g = Object.fromEntries(stages.map((s) => [s, [] as PipelineEntry[]])) as Record<Stage, PipelineEntry[]>;
+    const g: Record<string, PipelineEntry[]> = {};
+    for (const s of stages) g[s.key] = [];
     for (const e of entries) {
       if (g[e.stage]) g[e.stage].push(e);
     }
@@ -190,7 +187,7 @@ export default function JobDetail() {
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
-    const newStage = e.over.id as Stage;
+    const newStage = String(e.over.id);
     const entry = entries.find((x) => x.id === e.active.id);
     if (!entry || entry.stage === newStage) return;
     setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, stage: newStage } : x)));
@@ -231,20 +228,7 @@ export default function JobDetail() {
         description={job.location ?? undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            {canEdit ? (
-              <Select value={job.status} onValueChange={(v) => updateStatus(v as Job["status"])}>
-                <SelectTrigger className="h-9 w-32 capitalize">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(STATUS_LABELS) as Job["status"][]).map((s) => (
-                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Badge variant="outline" className="capitalize">{STATUS_LABELS[job.status]}</Badge>
-            )}
+            <Badge variant="outline" className="capitalize">{STATUS_LABELS[job.status]}</Badge>
             {canEdit && (
               <PostJobDialog
                 job={job}
@@ -260,8 +244,22 @@ export default function JobDetail() {
                   <Button size="icon" variant="ghost" className="h-9 w-9"><MoreVertical className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => updateStatus("on_hold")}>Pause job</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateStatus("closed")}>Close job</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
+                    Open
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateStatus("on_hold")} disabled={job.status === "on_hold"}>
+                    Pause
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateStatus("closed")} disabled={job.status === "closed"}>
+                    Close
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateStatus("filled")} disabled={job.status === "filled"}>
+                    Mark filled
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setStagesOpen(true)}>
+                    <Settings2 className="h-4 w-4" /> Customise stages
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDelete(true)}>
                     <Trash2 className="h-4 w-4" /> Delete job
@@ -273,29 +271,24 @@ export default function JobDetail() {
         }
       />
 
-      <div className="grid lg:grid-cols-[1fr_280px] gap-4 mb-4">
-        <div />
-        <HiringManagersCard jobId={job.id} clientId={job.client_id} canEdit={canEdit} />
-      </div>
-
       {isHM && (
         <p className="text-xs text-muted-foreground mb-3">
-          Showing candidates from screened stage onward.
+          Showing candidates from interview stages onward.
         </p>
       )}
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
           {stages.map((stage) => (
-            <DroppableColumn key={stage} stage={stage}>
+            <DroppableColumn key={stage.key} stageKey={stage.key}>
               <div className="flex items-center justify-between mb-3 px-1">
                 <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
-                  {STAGE_LABELS[stage]}
+                  {stage.label}
                 </div>
-                <span className="text-xs text-muted-foreground">{grouped[stage]?.length ?? 0}</span>
+                <span className="text-xs text-muted-foreground">{grouped[stage.key]?.length ?? 0}</span>
               </div>
               <div className="space-y-2 min-h-[80px]">
-                {grouped[stage]?.map((entry) => (
+                {grouped[stage.key]?.map((entry) => (
                   <DraggableCard
                     key={entry.id}
                     entry={entry}
@@ -313,7 +306,18 @@ export default function JobDetail() {
         jobCandidateId={activeDrawer}
         onClose={() => setActiveDrawer(null)}
         onChanged={refresh}
+        stages={allStages}
       />
+
+      {canEdit && (
+        <PipelineStagesDialog
+          open={stagesOpen}
+          onOpenChange={setStagesOpen}
+          workspaceId={job.workspace_id}
+          stages={allStages}
+          onChanged={refreshStages}
+        />
+      )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
