@@ -12,32 +12,34 @@ export const canViewAllCandidates = (role: WorkspaceRole | null) =>
 export const canMoveStages = (role: WorkspaceRole | null) =>
   role === "owner" || role === "recruiter";
 
-export const STAGE_LABELS: Record<string, string> = {
-  application: "Application",
-  sourced: "Sourced",
-  contacted: "Contacted",
-  screened: "Screened",
-  interview: "Interview",
-  offer: "Offer",
-  hired: "Hired",
-  rejected: "Rejected",
-};
+// Stage keys that hiring managers may NOT see (they only see from First Interview onward)
+export const HM_HIDDEN_STAGE_KEYS = new Set<string>(["application", "reviewed", "sourced", "contacted", "screened"]);
 
-export const STAGES = [
-  "application",
-  "sourced",
-  "contacted",
-  "screened",
-  "interview",
-  "offer",
-  "hired",
-  "rejected",
+export type PipelineStage = { key: string; label: string; position: number };
+
+export const DEFAULT_STAGES: PipelineStage[] = [
+  { key: "application", label: "Application", position: 1 },
+  { key: "reviewed", label: "Reviewed", position: 2 },
+  { key: "first_interview", label: "First Interview", position: 3 },
+  { key: "second_interview", label: "Second Interview", position: 4 },
+  { key: "offer", label: "Offer", position: 5 },
+  { key: "offer_accepted", label: "Offer Accepted", position: 6 },
+  { key: "rejected", label: "Rejected", position: 7 },
+];
+
+export const visibleStagesForRole = (
+  role: WorkspaceRole | null,
+  stages: PipelineStage[]
+): PipelineStage[] =>
+  isHiringManager(role) ? stages.filter((s) => !HM_HIDDEN_STAGE_KEYS.has(s.key)) : stages;
+
+export const CANDIDATE_SOURCES = [
+  "LinkedIn Recruiter",
+  "Referral",
+  "Applied",
+  "Job Board",
+  "Careers Page",
+  "Headhunting",
+  "Event / Networking",
+  "Other",
 ] as const;
-
-export type Stage = (typeof STAGES)[number];
-
-// Hiring managers see only candidates from Screened onward
-export const HM_VISIBLE_STAGES: Stage[] = ["screened", "interview", "offer", "hired", "rejected"];
-
-export const visibleStagesForRole = (role: WorkspaceRole | null): readonly Stage[] =>
-  isHiringManager(role) ? HM_VISIBLE_STAGES : STAGES;
