@@ -17,6 +17,8 @@ import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import Candidates from "./pages/Candidates";
 import Placeholder from "./pages/Placeholder";
+import CareersPublic from "./pages/CareersPublic";
+import CareersJobPublic from "./pages/CareersJobPublic";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
               <Route path="/invite/:token" element={<AcceptInvite />} />
+              <Route path="/careers/:workspaceId" element={<CareersPublic />} />
+              <Route path="/careers/:workspaceId/:jobId" element={<CareersJobPublic />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/jobs" element={<Jobs />} />

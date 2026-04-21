@@ -252,7 +252,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged }: Props) {
                 <Select value={detail.stage} onValueChange={moveStage}>
                   <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["sourced", "contacted", "screened", "interview", "offer", "hired", "rejected"].map((s) => (
+                    {["application", "sourced", "contacted", "screened", "interview", "offer", "hired", "rejected"].map((s) => (
                       <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
                     ))}
                   </SelectContent>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Plus } from "lucide-react";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, MoreVertical, Trash2, Megaphone } from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
@@ -11,21 +11,19 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { canEditWorkspace, canMoveStages, STAGE_LABELS, STAGES, type Stage } from "@/lib/permissions";
+import {
+  canEditWorkspace,
+  canMoveStages,
+  STAGE_LABELS,
+  visibleStagesForRole,
+  isHiringManager,
+  type Stage,
+} from "@/lib/permissions";
 import { PageContainer, PageHeader } from "@/components/app/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -33,13 +31,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
+import { HiringManagersCard } from "@/components/pipeline/HiringManagersCard";
+import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
+import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { toast } from "sonner";
 
 type Job = {
   id: string;
   title: string;
-  status: string;
+  status: "open" | "on_hold" | "closed" | "filled";
   client_id: string;
   workspace_id: string;
   location: string | null;
@@ -54,9 +72,22 @@ type PipelineEntry = {
   candidates: { full_name: string; headline: string | null };
 };
 
-type CandidateOpt = { id: string; full_name: string };
+const STATUS_LABELS: Record<Job["status"], string> = {
+  open: "Open",
+  on_hold: "On hold",
+  closed: "Closed",
+  filled: "Filled",
+};
 
-function DraggableCard({ entry, canDrag, onClick }: { entry: PipelineEntry; canDrag: boolean; onClick: () => void }) {
+function DraggableCard({
+  entry,
+  canDrag,
+  onClick,
+}: {
+  entry: PipelineEntry;
+  canDrag: boolean;
+  onClick: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
     disabled: !canDrag,
@@ -97,17 +128,19 @@ function DroppableColumn({ stage, children }: { stage: Stage; children: React.Re
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentRole } = useWorkspace();
   const canEdit = canEditWorkspace(currentRole);
   const canDrag = canMoveStages(currentRole);
+  const stages = visibleStagesForRole(currentRole);
+  const isHM = isHiringManager(currentRole);
+
   const [job, setJob] = useState<Job | null>(null);
   const [entries, setEntries] = useState<PipelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
-  const [candidateOpts, setCandidateOpts] = useState<CandidateOpt[]>([]);
-  const [chosenCandidate, setChosenCandidate] = useState<string>("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -136,28 +169,24 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Load candidates not already in pipeline
+  // Open candidate drawer from notification deep link
   useEffect(() => {
-    const load = async () => {
-      if (!job || !canEdit) return;
-      const { data } = await supabase
-        .from("candidates")
-        .select("id, full_name")
-        .eq("workspace_id", job.workspace_id)
-        .order("full_name");
-      const inPipeline = new Set(entries.map((e) => e.candidate_id));
-      setCandidateOpts((data ?? []).filter((c) => !inPipeline.has(c.id)));
-    };
-    if (addOpen) load();
-  }, [addOpen, job, entries, canEdit]);
+    const jc = searchParams.get("jc");
+    if (jc) {
+      setActiveDrawer(jc);
+      searchParams.delete("jc");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const grouped = useMemo(() => {
-    const g: Record<Stage, PipelineEntry[]> = {
-      sourced: [], contacted: [], screened: [], interview: [], offer: [], hired: [], rejected: [],
-    };
-    for (const e of entries) g[e.stage].push(e);
+    const g = Object.fromEntries(stages.map((s) => [s, [] as PipelineEntry[]])) as Record<Stage, PipelineEntry[]>;
+    for (const e of entries) {
+      if (g[e.stage]) g[e.stage].push(e);
+    }
     return g;
-  }, [entries]);
+  }, [entries, stages]);
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
@@ -172,19 +201,20 @@ export default function JobDetail() {
     }
   };
 
-  const addToPipeline = async () => {
-    if (!job || !user || !chosenCandidate) return;
-    const { error } = await supabase.from("job_candidates").insert({
-      job_id: job.id,
-      candidate_id: chosenCandidate,
-      added_by: user.id,
-      stage: "sourced",
-    });
+  const updateStatus = async (status: Job["status"]) => {
+    if (!job) return;
+    const { error } = await supabase.from("jobs").update({ status }).eq("id", job.id);
     if (error) return toast.error(error.message);
-    toast.success("Added to pipeline.");
-    setChosenCandidate("");
-    setAddOpen(false);
-    refresh();
+    toast.success(`Job ${STATUS_LABELS[status].toLowerCase()}.`);
+    setJob({ ...job, status });
+  };
+
+  const deleteJob = async () => {
+    if (!job) return;
+    const { error } = await supabase.from("jobs").delete().eq("id", job.id);
+    if (error) return toast.error(error.message);
+    toast.success("Job deleted.");
+    navigate("/jobs");
   };
 
   if (loading) return <PageContainer><p className="text-sm text-muted-foreground">Loading…</p></PageContainer>;
@@ -200,77 +230,107 @@ export default function JobDetail() {
         title={job.title}
         description={job.location ?? undefined}
         actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="capitalize">{job.status.replace("_", " ")}</Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            {canEdit ? (
+              <Select value={job.status} onValueChange={(v) => updateStatus(v as Job["status"])}>
+                <SelectTrigger className="h-9 w-32 capitalize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(STATUS_LABELS) as Job["status"][]).map((s) => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Badge variant="outline" className="capitalize">{STATUS_LABELS[job.status]}</Badge>
+            )}
             {canEdit && (
-              <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="h-4 w-4" /> Add candidate</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Add candidate to pipeline</DialogTitle></DialogHeader>
-                  {candidateOpts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No candidates available. Create one from the Candidates page.</p>
-                  ) : (
-                    <>
-                      <Select value={chosenCandidate} onValueChange={setChosenCandidate}>
-                        <SelectTrigger><SelectValue placeholder="Choose candidate" /></SelectTrigger>
-                        <SelectContent>
-                          {candidateOpts.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <DialogFooter><Button onClick={addToPipeline} disabled={!chosenCandidate}>Add</Button></DialogFooter>
-                    </>
-                  )}
-                </DialogContent>
-              </Dialog>
+              <PostJobDialog
+                job={job}
+                trigger={<Button size="sm" variant="outline"><Megaphone className="h-4 w-4" /> Post job</Button>}
+              />
+            )}
+            {canEdit && (
+              <AddCandidateDialog jobId={job.id} workspaceId={job.workspace_id} onAdded={refresh} />
+            )}
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-9 w-9"><MoreVertical className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => updateStatus("on_hold")}>Pause job</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateStatus("closed")}>Close job</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDelete(true)}>
+                    <Trash2 className="h-4 w-4" /> Delete job
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         }
       />
 
+      <div className="grid lg:grid-cols-[1fr_280px] gap-4 mb-4">
+        <div />
+        <HiringManagersCard jobId={job.id} clientId={job.client_id} canEdit={canEdit} />
+      </div>
+
+      {isHM && (
+        <p className="text-xs text-muted-foreground mb-3">
+          Showing candidates from screened stage onward.
+        </p>
+      )}
+
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
-          {STAGES.map((stage) => (
+          {stages.map((stage) => (
             <DroppableColumn key={stage} stage={stage}>
               <div className="flex items-center justify-between mb-3 px-1">
                 <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
                   {STAGE_LABELS[stage]}
                 </div>
-                <span className="text-xs text-muted-foreground">{grouped[stage].length}</span>
+                <span className="text-xs text-muted-foreground">{grouped[stage]?.length ?? 0}</span>
               </div>
               <div className="space-y-2 min-h-[80px]">
-                {grouped[stage].map((entry) => (
+                {grouped[stage]?.map((entry) => (
                   <DraggableCard
                     key={entry.id}
                     entry={entry}
                     canDrag={canDrag}
-                    onClick={() => !canDrag && setActiveDrawer(entry.id)}
+                    onClick={() => setActiveDrawer(entry.id)}
                   />
                 ))}
               </div>
-              {canDrag && grouped[stage].length > 0 && (
-                <div className="mt-2 text-[10px] text-muted-foreground px-1">Tap a card to open</div>
-              )}
             </DroppableColumn>
           ))}
         </div>
       </DndContext>
-
-      {/* Click handler for draggable cards too — we open drawer on tap when not dragging */}
-      <ClickableOverlay entries={entries} setActiveDrawer={setActiveDrawer} canDrag={canDrag} />
 
       <CandidateDrawer
         jobCandidateId={activeDrawer}
         onClose={() => setActiveDrawer(null)}
         onChanged={refresh}
       />
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the job and its pipeline, comments, and feedback. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
-}
-
-// Helper: when drag is enabled the card swallows the click; expose a small "open" button via re-render.
-// Simpler approach: also allow clicking the candidate name area separately.
-function ClickableOverlay(_: { entries: PipelineEntry[]; setActiveDrawer: (id: string) => void; canDrag: boolean }) {
-  return null;
 }
