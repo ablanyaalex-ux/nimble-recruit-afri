@@ -13,6 +13,7 @@ export const canMoveStages = (role: WorkspaceRole | null) =>
   role === "owner" || role === "recruiter";
 
 export const STAGE_LABELS: Record<string, string> = {
+  application: "Application",
   sourced: "Sourced",
   contacted: "Contacted",
   screened: "Screened",
@@ -23,6 +24,7 @@ export const STAGE_LABELS: Record<string, string> = {
 };
 
 export const STAGES = [
+  "application",
   "sourced",
   "contacted",
   "screened",
@@ -33,3 +35,9 @@ export const STAGES = [
 ] as const;
 
 export type Stage = (typeof STAGES)[number];
+
+// Hiring managers see only candidates from Screened onward
+export const HM_VISIBLE_STAGES: Stage[] = ["screened", "interview", "offer", "hired", "rejected"];
+
+export const visibleStagesForRole = (role: WorkspaceRole | null): readonly Stage[] =>
+  isHiringManager(role) ? HM_VISIBLE_STAGES : STAGES;
