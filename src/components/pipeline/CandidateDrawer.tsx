@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { canMoveStages } from "@/lib/permissions";
+import { canMoveStages, DEFAULT_STAGES, type PipelineStage } from "@/lib/permissions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,7 @@ type Props = {
   jobCandidateId: string | null;
   onClose: () => void;
   onChanged: () => void;
+  stages?: PipelineStage[];
 };
 
 type Detail = {
@@ -64,7 +65,7 @@ type Feedback = {
 
 type MentionableUser = { id: string; display_name: string | null };
 
-export function CandidateDrawer({ jobCandidateId, onClose, onChanged }: Props) {
+export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = DEFAULT_STAGES }: Props) {
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
@@ -247,13 +248,13 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged }: Props) {
             </SheetHeader>
 
             <div className="mt-4 flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="capitalize">{detail.stage}</Badge>
+              <Badge variant="secondary">{stages.find((s) => s.key === detail.stage)?.label ?? detail.stage}</Badge>
               {canMove && (
                 <Select value={detail.stage} onValueChange={moveStage}>
                   <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["application", "sourced", "contacted", "screened", "interview", "offer", "hired", "rejected"].map((s) => (
-                      <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                    {stages.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Briefcase, MapPin } from "lucide-react";
+import { Plus, Briefcase, MapPin, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
@@ -40,6 +40,7 @@ type Job = {
 };
 
 type ClientOpt = { id: string; name: string };
+type ContactOpt = { id: string; name: string; title: string | null };
 
 export default function Jobs() {
   const { user } = useAuth();
@@ -48,6 +49,7 @@ export default function Jobs() {
   const hm = isHiringManager(currentRole);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [clients, setClients] = useState<ClientOpt[]>([]);
+  const [contacts, setContacts] = useState<ContactOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -57,6 +59,7 @@ export default function Jobs() {
     employment_type: "full_time",
     description: "",
   });
+  const [selectedHmIds, setSelectedHmIds] = useState<string[]>([]);
 
   const refresh = async () => {
     if (!currentWorkspaceId && !hm) return;
@@ -85,23 +88,57 @@ export default function Jobs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWorkspaceId]);
 
+  // Load contacts whenever client changes
+  useEffect(() => {
+    setSelectedHmIds([]);
+    if (!form.client_id) {
+      setContacts([]);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("client_contacts")
+        .select("id, name, title")
+        .eq("client_id", form.client_id)
+        .order("name");
+      setContacts((data as ContactOpt[]) ?? []);
+    })();
+  }, [form.client_id]);
+
+  const toggleHm = (id: string) => {
+    setSelectedHmIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !currentWorkspaceId) return;
     if (!form.title.trim() || !form.client_id) return toast.error("Title and client are required");
-    const { error } = await supabase.from("jobs").insert({
-      workspace_id: currentWorkspaceId,
-      client_id: form.client_id,
-      title: form.title.trim(),
-      location: form.location.trim() || null,
-      employment_type: form.employment_type || null,
-      description: form.description.trim() || null,
-      created_by: user.id,
-    });
-    if (error) return toast.error(error.message);
+    const { data: created, error } = await supabase
+      .from("jobs")
+      .insert({
+        workspace_id: currentWorkspaceId,
+        client_id: form.client_id,
+        title: form.title.trim(),
+        location: form.location.trim() || null,
+        employment_type: form.employment_type || null,
+        description: form.description.trim() || null,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (error || !created) return toast.error(error?.message ?? "Failed to create");
+
+    if (selectedHmIds.length > 0) {
+      const { error: hmErr } = await supabase
+        .from("job_hiring_managers")
+        .insert(selectedHmIds.map((cid) => ({ job_id: created.id, contact_id: cid })));
+      if (hmErr) toast.error(`Job created, but assigning HMs failed: ${hmErr.message}`);
+    }
+
     toast.success("Job created.");
     setOpen(false);
     setForm({ title: "", client_id: "", location: "", employment_type: "full_time", description: "" });
+    setSelectedHmIds([]);
     refresh();
   };
 
@@ -117,7 +154,7 @@ export default function Jobs() {
               <DialogTrigger asChild>
                 <Button><Plus className="h-4 w-4" /> New job</Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>New job</DialogTitle></DialogHeader>
                 {clients.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Add a client first to create a job.</p>
@@ -154,6 +191,47 @@ export default function Jobs() {
                         </Select>
                       </div>
                     </div>
+                    {form.client_id && (
+                      <div className="space-y-2">
+                        <Label>Hiring managers</Label>
+                        {contacts.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            No contacts on this client yet. Add them on the client page.
+                          </p>
+                        ) : (
+                          <>
+                            <Select value="" onValueChange={toggleHm}>
+                              <SelectTrigger><SelectValue placeholder="Add hiring manager…" /></SelectTrigger>
+                              <SelectContent>
+                                {contacts
+                                  .filter((c) => !selectedHmIds.includes(c.id))
+                                  .map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name}{c.title ? ` — ${c.title}` : ""}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            {selectedHmIds.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {selectedHmIds.map((id) => {
+                                  const c = contacts.find((x) => x.id === id);
+                                  if (!c) return null;
+                                  return (
+                                    <Badge key={id} variant="secondary" className="gap-1">
+                                      {c.name}
+                                      <button type="button" onClick={() => toggleHm(id)}>
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Description</Label>
                       <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
