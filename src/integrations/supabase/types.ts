@@ -58,6 +58,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           resume_path: string | null
+          source: string | null
           updated_at: string
           workspace_id: string
         }
@@ -72,6 +73,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           resume_path?: string | null
+          source?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -86,6 +88,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           resume_path?: string | null
+          source?: string | null
           updated_at?: string
           workspace_id?: string
         }
@@ -277,7 +280,7 @@ export type Database = {
           id: string
           job_id: string
           position: number
-          stage: Database["public"]["Enums"]["pipeline_stage"]
+          stage: string
           updated_at: string
         }
         Insert: {
@@ -287,7 +290,7 @@ export type Database = {
           id?: string
           job_id: string
           position?: number
-          stage?: Database["public"]["Enums"]["pipeline_stage"]
+          stage?: string
           updated_at?: string
         }
         Update: {
@@ -297,7 +300,7 @@ export type Database = {
           id?: string
           job_id?: string
           position?: number
-          stage?: Database["public"]["Enums"]["pipeline_stage"]
+          stage?: string
           updated_at?: string
         }
         Relationships: [
@@ -539,6 +542,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_pipeline_stages: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          key: string
+          label: string
+          position: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          key: string
+          label: string
+          position?: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          key?: string
+          label?: string
+          position?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_pipeline_stages_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
