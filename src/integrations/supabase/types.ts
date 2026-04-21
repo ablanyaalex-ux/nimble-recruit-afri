@@ -622,6 +622,7 @@ export type Database = {
       feedback_recommendation: "strong_yes" | "yes" | "no" | "strong_no"
       job_status: "open" | "on_hold" | "closed" | "filled"
       pipeline_stage:
+        | "application"
         | "sourced"
         | "contacted"
         | "screened"
@@ -760,6 +761,7 @@ export const Constants = {
       feedback_recommendation: ["strong_yes", "yes", "no", "strong_no"],
       job_status: ["open", "on_hold", "closed", "filled"],
       pipeline_stage: [
+        "application",
         "sourced",
         "contacted",
         "screened",
