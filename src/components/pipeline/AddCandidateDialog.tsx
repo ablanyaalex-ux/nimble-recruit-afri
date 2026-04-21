@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { CANDIDATE_SOURCES } from "@/lib/permissions";
 
 type Props = {
   jobId: string;
@@ -44,6 +45,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
     email: "",
     phone: "",
     headline: "",
+    source: "",
     notes: "",
   });
   const [resume, setResume] = useState<File | null>(null);
@@ -63,7 +65,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
 
   const reset = () => {
     setPick("");
-    setForm({ full_name: "", email: "", phone: "", headline: "", notes: "" });
+    setForm({ full_name: "", email: "", phone: "", headline: "", source: "", notes: "" });
     setResume(null);
   };
 
@@ -95,8 +97,9 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
           email: form.email.trim() || null,
           phone: form.phone.trim() || null,
           headline: form.headline.trim() || null,
+          source: form.source || null,
           notes: form.notes.trim() || null,
-        })
+        } as any)
         .select("id")
         .single();
       if (cErr || !cand) throw cErr ?? new Error("Failed to create candidate");
@@ -165,6 +168,17 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 value={form.headline}
                 onChange={(e) => setForm({ ...form, headline: e.target.value })}
               />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Source</Label>
+              <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
+                <SelectTrigger><SelectValue placeholder="Where did they come from?" /></SelectTrigger>
+                <SelectContent>
+                  {CANDIDATE_SOURCES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Resume (PDF)</Label>
