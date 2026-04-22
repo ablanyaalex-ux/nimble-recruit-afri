@@ -24,6 +24,7 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { CANDIDATE_SOURCES } from "@/lib/permissions";
+import { usePipelineStages } from "@/hooks/usePipelineStages";
 
 type Props = {
   jobId: string;
@@ -35,9 +36,18 @@ type CandidateOpt = { id: string; full_name: string };
 
 export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
   const { user } = useAuth();
+  const { stages } = usePipelineStages(workspaceId);
   const [open, setOpen] = useState(false);
   const [opts, setOpts] = useState<CandidateOpt[]>([]);
   const [pick, setPick] = useState("");
+  const [stage, setStage] = useState<string>("application");
+
+  // Default to first stage when stages load
+  useEffect(() => {
+    if (stages.length > 0 && !stages.some((s) => s.key === stage)) {
+      setStage(stages[0].key);
+    }
+  }, [stages]);
 
   // New candidate form
   const [form, setForm] = useState({
