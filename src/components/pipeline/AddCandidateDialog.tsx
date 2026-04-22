@@ -24,6 +24,7 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { CANDIDATE_SOURCES } from "@/lib/permissions";
+import { usePipelineStages } from "@/hooks/usePipelineStages";
 
 type Props = {
   jobId: string;
@@ -35,9 +36,18 @@ type CandidateOpt = { id: string; full_name: string };
 
 export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
   const { user } = useAuth();
+  const { stages } = usePipelineStages(workspaceId);
   const [open, setOpen] = useState(false);
   const [opts, setOpts] = useState<CandidateOpt[]>([]);
   const [pick, setPick] = useState("");
+  const [stage, setStage] = useState<string>("application");
+
+  // Default to first stage when stages load
+  useEffect(() => {
+    if (stages.length > 0 && !stages.some((s) => s.key === stage)) {
+      setStage(stages[0].key);
+    }
+  }, [stages]);
 
   // New candidate form
   const [form, setForm] = useState({
@@ -75,7 +85,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
       job_id: jobId,
       candidate_id: pick,
       added_by: user.id,
-      stage: "application",
+      stage,
     });
     if (error) return toast.error(error.message);
     toast.success("Added to pipeline.");
@@ -118,7 +128,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
         job_id: jobId,
         candidate_id: cand.id,
         added_by: user.id,
-        stage: "application",
+        stage,
       });
       if (jcErr) throw jcErr;
 
@@ -180,9 +190,22 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Resume (PDF)</Label>
-              <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Stage</Label>
+                <Select value={stage} onValueChange={setStage}>
+                  <SelectTrigger><SelectValue placeholder="Pipeline stage" /></SelectTrigger>
+                  <SelectContent>
+                    {stages.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Resume (PDF)</Label>
+                <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} />
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Notes</Label>
@@ -200,12 +223,26 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
               <p className="text-sm text-muted-foreground">No more candidates available in this workspace.</p>
             ) : (
               <>
-                <Select value={pick} onValueChange={setPick}>
-                  <SelectTrigger><SelectValue placeholder="Choose candidate" /></SelectTrigger>
-                  <SelectContent>
-                    {opts.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Label className="text-xs">Candidate</Label>
+                  <Select value={pick} onValueChange={setPick}>
+                    <SelectTrigger><SelectValue placeholder="Choose candidate" /></SelectTrigger>
+                    <SelectContent>
+                      {opts.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Stage</Label>
+                  <Select value={stage} onValueChange={setStage}>
+                    <SelectTrigger><SelectValue placeholder="Pipeline stage" /></SelectTrigger>
+                    <SelectContent>
+                      {stages.map((s) => (
+                        <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <DialogFooter><Button onClick={addExisting} disabled={!pick}>Add</Button></DialogFooter>
               </>
             )}

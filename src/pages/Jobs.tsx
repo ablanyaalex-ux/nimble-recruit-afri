@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
 import { canEditWorkspace, isHiringManager } from "@/lib/permissions";
+import { jobStatusBadgeClass, jobStatusLabel } from "@/lib/jobStatus";
 import { PageContainer, PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -265,7 +266,7 @@ export default function Jobs() {
                     {j.employment_type && <span className="capitalize">{j.employment_type.replace("_", " ")}</span>}
                   </div>
                 </div>
-                <Badge variant="outline" className="capitalize shrink-0">{j.status.replace("_", " ")}</Badge>
+                <Badge className={`shrink-0 ${jobStatusBadgeClass(j.status)}`}>{jobStatusLabel(j.status)}</Badge>
               </Card>
             </Link>
           ))}
