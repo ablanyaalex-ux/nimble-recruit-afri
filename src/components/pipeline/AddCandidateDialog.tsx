@@ -128,7 +128,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
         job_id: jobId,
         candidate_id: cand.id,
         added_by: user.id,
-        stage: "application",
+        stage,
       });
       if (jcErr) throw jcErr;
 
