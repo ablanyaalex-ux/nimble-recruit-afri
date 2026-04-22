@@ -45,6 +45,8 @@ import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
+import { JOB_STATUS_LABELS, jobStatusBadgeClass } from "@/lib/jobStatus";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 type Job = {
