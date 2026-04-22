@@ -67,12 +67,7 @@ type PipelineEntry = {
   candidates: { full_name: string; headline: string | null };
 };
 
-const STATUS_LABELS: Record<Job["status"], string> = {
-  open: "Open",
-  on_hold: "On hold",
-  closed: "Closed",
-  filled: "Filled",
-};
+// Job status labels and colors live in @/lib/jobStatus
 
 function DraggableCard({
   entry,
