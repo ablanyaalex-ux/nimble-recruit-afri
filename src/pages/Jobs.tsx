@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
 import { canEditWorkspace, isHiringManager } from "@/lib/permissions";
+import { jobStatusBadgeClass, jobStatusLabel } from "@/lib/jobStatus";
 import { PageContainer, PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
