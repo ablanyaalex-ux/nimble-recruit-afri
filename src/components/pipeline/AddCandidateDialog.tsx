@@ -223,12 +223,26 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
               <p className="text-sm text-muted-foreground">No more candidates available in this workspace.</p>
             ) : (
               <>
-                <Select value={pick} onValueChange={setPick}>
-                  <SelectTrigger><SelectValue placeholder="Choose candidate" /></SelectTrigger>
-                  <SelectContent>
-                    {opts.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Label className="text-xs">Candidate</Label>
+                  <Select value={pick} onValueChange={setPick}>
+                    <SelectTrigger><SelectValue placeholder="Choose candidate" /></SelectTrigger>
+                    <SelectContent>
+                      {opts.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Stage</Label>
+                  <Select value={stage} onValueChange={setStage}>
+                    <SelectTrigger><SelectValue placeholder="Pipeline stage" /></SelectTrigger>
+                    <SelectContent>
+                      {stages.map((s) => (
+                        <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <DialogFooter><Button onClick={addExisting} disabled={!pick}>Add</Button></DialogFooter>
               </>
             )}
