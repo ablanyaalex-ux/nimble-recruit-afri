@@ -45,8 +45,6 @@ import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
-import { JOB_STATUS_LABELS, jobStatusBadgeClass } from "@/lib/jobStatus";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 type Job = {
@@ -67,7 +65,12 @@ type PipelineEntry = {
   candidates: { full_name: string; headline: string | null };
 };
 
-// Job status labels and colors live in @/lib/jobStatus
+const STATUS_LABELS: Record<Job["status"], string> = {
+  open: "Open",
+  on_hold: "On hold",
+  closed: "Closed",
+  filled: "Filled",
+};
 
 function DraggableCard({
   entry,
@@ -102,26 +105,14 @@ function DraggableCard({
   );
 }
 
-function DroppableColumn({
-  stageKey,
-  onAddClick,
-  children,
-}: {
-  stageKey: string;
-  onAddClick?: () => void;
-  children: React.ReactNode;
-}) {
+function DroppableColumn({ stageKey, children }: { stageKey: string; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageKey });
   return (
     <div
       ref={setNodeRef}
-      onClick={(e) => {
-        // Only trigger when clicking the column itself (not a child like a card)
-        if (onAddClick && e.target === e.currentTarget) onAddClick();
-      }}
       className={`flex-1 min-w-[260px] rounded-lg border border-border bg-secondary/40 p-3 transition-colors ${
         isOver ? "bg-accent" : ""
-      } ${onAddClick ? "cursor-pointer hover:border-primary/40" : ""}`}
+      }`}
     >
       {children}
     </div>
@@ -143,8 +134,6 @@ export default function JobDetail() {
   const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [stagesOpen, setStagesOpen] = useState(false);
-  const [addCandidateStage, setAddCandidateStage] = useState<string | null>(null);
-  const [addCandidateOpen, setAddCandidateOpen] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -213,7 +202,7 @@ export default function JobDetail() {
     if (!job) return;
     const { error } = await supabase.from("jobs").update({ status }).eq("id", job.id);
     if (error) return toast.error(error.message);
-    toast.success(`Job ${JOB_STATUS_LABELS[status].toLowerCase()}.`);
+    toast.success(`Job ${STATUS_LABELS[status].toLowerCase()}.`);
     setJob({ ...job, status });
   };
 
@@ -239,9 +228,7 @@ export default function JobDetail() {
         description={job.location ?? undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={`capitalize ${jobStatusBadgeClass(job.status)}`}>
-              {JOB_STATUS_LABELS[job.status]}
-            </Badge>
+            <Badge variant="outline" className="capitalize">{STATUS_LABELS[job.status]}</Badge>
             {canEdit && (
               <PostJobDialog
                 job={job}
@@ -249,15 +236,7 @@ export default function JobDetail() {
               />
             )}
             {canEdit && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setAddCandidateStage(null);
-                  setAddCandidateOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4" /> Add candidate
-              </Button>
+              <AddCandidateDialog jobId={job.id} workspaceId={job.workspace_id} onAdded={refresh} />
             )}
             {canEdit && (
               <DropdownMenu>
@@ -301,30 +280,8 @@ export default function JobDetail() {
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
           {stages.map((stage) => (
-            <DroppableColumn
-              key={stage.key}
-              stageKey={stage.key}
-              onAddClick={
-                canEdit
-                  ? () => {
-                      setAddCandidateStage(stage.key);
-                      setAddCandidateOpen(true);
-                    }
-                  : undefined
-              }
-            >
-              <div
-                className={`flex items-center justify-between mb-3 px-1 ${canEdit ? "cursor-pointer" : ""}`}
-                onClick={
-                  canEdit
-                    ? () => {
-                        setAddCandidateStage(stage.key);
-                        setAddCandidateOpen(true);
-                      }
-                    : undefined
-                }
-                title={canEdit ? `Add candidate to ${stage.label}` : undefined}
-              >
+            <DroppableColumn key={stage.key} stageKey={stage.key}>
+              <div className="flex items-center justify-between mb-3 px-1">
                 <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
                   {stage.label}
                 </div>
@@ -344,19 +301,6 @@ export default function JobDetail() {
           ))}
         </div>
       </DndContext>
-
-      {canEdit && (
-        <AddCandidateDialog
-          jobId={job.id}
-          workspaceId={job.workspace_id}
-          onAdded={refresh}
-          stages={allStages}
-          defaultStage={addCandidateStage ?? undefined}
-          open={addCandidateOpen}
-          onOpenChange={setAddCandidateOpen}
-          hideTrigger
-        />
-      )}
 
       <CandidateDrawer
         jobCandidateId={activeDrawer}
