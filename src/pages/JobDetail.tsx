@@ -102,14 +102,26 @@ function DraggableCard({
   );
 }
 
-function DroppableColumn({ stageKey, children }: { stageKey: string; children: React.ReactNode }) {
+function DroppableColumn({
+  stageKey,
+  onAddClick,
+  children,
+}: {
+  stageKey: string;
+  onAddClick?: () => void;
+  children: React.ReactNode;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: stageKey });
   return (
     <div
       ref={setNodeRef}
+      onClick={(e) => {
+        // Only trigger when clicking the column itself (not a child like a card)
+        if (onAddClick && e.target === e.currentTarget) onAddClick();
+      }}
       className={`flex-1 min-w-[260px] rounded-lg border border-border bg-secondary/40 p-3 transition-colors ${
         isOver ? "bg-accent" : ""
-      }`}
+      } ${onAddClick ? "cursor-pointer hover:border-primary/40" : ""}`}
     >
       {children}
     </div>
