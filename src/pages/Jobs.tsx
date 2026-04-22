@@ -266,7 +266,7 @@ export default function Jobs() {
                     {j.employment_type && <span className="capitalize">{j.employment_type.replace("_", " ")}</span>}
                   </div>
                 </div>
-                <Badge variant="outline" className="capitalize shrink-0">{j.status.replace("_", " ")}</Badge>
+                <Badge className={`shrink-0 ${jobStatusBadgeClass(j.status)}`}>{jobStatusLabel(j.status)}</Badge>
               </Card>
             </Link>
           ))}
