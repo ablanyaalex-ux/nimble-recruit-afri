@@ -85,7 +85,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
       job_id: jobId,
       candidate_id: pick,
       added_by: user.id,
-      stage: "application",
+      stage,
     });
     if (error) return toast.error(error.message);
     toast.success("Added to pipeline.");
