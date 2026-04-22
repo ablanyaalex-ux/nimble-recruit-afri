@@ -23,21 +23,44 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { CANDIDATE_SOURCES } from "@/lib/permissions";
+import { CANDIDATE_SOURCES, type PipelineStage } from "@/lib/permissions";
 
 type Props = {
   jobId: string;
   workspaceId: string;
   onAdded: () => void;
+  stages: PipelineStage[];
+  defaultStage?: string;
+  // Controlled mode (no internal trigger button)
+  open?: boolean;
+  onOpenChange?: (o: boolean) => void;
+  hideTrigger?: boolean;
 };
 
 type CandidateOpt = { id: string; full_name: string };
 
-export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
+export function AddCandidateDialog({
+  jobId,
+  workspaceId,
+  onAdded,
+  stages,
+  defaultStage,
+  open: openProp,
+  onOpenChange,
+  hideTrigger,
+}: Props) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp! : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v);
+    else setInternalOpen(v);
+  };
+
   const [opts, setOpts] = useState<CandidateOpt[]>([]);
   const [pick, setPick] = useState("");
+  const [stage, setStage] = useState<string>(defaultStage ?? stages[0]?.key ?? "application");
 
   // New candidate form
   const [form, setForm] = useState({
@@ -50,6 +73,13 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
   });
   const [resume, setResume] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Sync stage when defaultStage changes / dialog opens
+  useEffect(() => {
+    if (open) {
+      setStage(defaultStage ?? stages[0]?.key ?? "application");
+    }
+  }, [open, defaultStage, stages]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +105,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
       job_id: jobId,
       candidate_id: pick,
       added_by: user.id,
-      stage: "application",
+      stage: stage as any,
     });
     if (error) return toast.error(error.message);
     toast.success("Added to pipeline.");
@@ -118,7 +148,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
         job_id: jobId,
         candidate_id: cand.id,
         added_by: user.id,
-        stage: "application",
+        stage: stage as any,
       });
       if (jcErr) throw jcErr;
 
@@ -133,11 +163,27 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
     }
   };
 
+  const stageSelect = (
+    <div className="space-y-1">
+      <Label className="text-xs">Pipeline stage</Label>
+      <Select value={stage} onValueChange={setStage}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {stages.map((s) => (
+            <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm"><Plus className="h-4 w-4" /> Add candidate</Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button size="sm"><Plus className="h-4 w-4" /> Add candidate</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Add candidate to pipeline</DialogTitle></DialogHeader>
         <Tabs defaultValue="new">
@@ -169,16 +215,19 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 onChange={(e) => setForm({ ...form, headline: e.target.value })}
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Source</Label>
-              <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
-                <SelectTrigger><SelectValue placeholder="Where did they come from?" /></SelectTrigger>
-                <SelectContent>
-                  {CANDIDATE_SOURCES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Source</Label>
+                <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
+                  <SelectTrigger><SelectValue placeholder="Where did they come from?" /></SelectTrigger>
+                  <SelectContent>
+                    {CANDIDATE_SOURCES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {stageSelect}
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Resume (PDF)</Label>
@@ -206,6 +255,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                     {opts.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {stageSelect}
                 <DialogFooter><Button onClick={addExisting} disabled={!pick}>Add</Button></DialogFooter>
               </>
             )}

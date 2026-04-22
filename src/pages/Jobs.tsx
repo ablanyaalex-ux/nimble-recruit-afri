@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import {
   Select,
   SelectContent,
@@ -265,7 +266,7 @@ export default function Jobs() {
                     {j.employment_type && <span className="capitalize">{j.employment_type.replace("_", " ")}</span>}
                   </div>
                 </div>
-                <Badge variant="outline" className="capitalize shrink-0">{j.status.replace("_", " ")}</Badge>
+                <Badge className={`capitalize shrink-0 ${jobStatusBadgeClass(j.status as any)}`}>{j.status.replace("_", " ")}</Badge>
               </Card>
             </Link>
           ))}
