@@ -228,7 +228,7 @@ export default function JobDetail() {
         description={job.location ?? undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="capitalize">{STATUS_LABELS[job.status]}</Badge>
+            <Badge className={jobStatusBadgeClass(job.status)}>{STATUS_LABELS[job.status]}</Badge>
             {canEdit && (
               <PostJobDialog
                 job={job}
