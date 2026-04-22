@@ -190,9 +190,22 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Resume (PDF)</Label>
-              <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Stage</Label>
+                <Select value={stage} onValueChange={setStage}>
+                  <SelectTrigger><SelectValue placeholder="Pipeline stage" /></SelectTrigger>
+                  <SelectContent>
+                    {stages.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Resume (PDF)</Label>
+                <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} />
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Notes</Label>
