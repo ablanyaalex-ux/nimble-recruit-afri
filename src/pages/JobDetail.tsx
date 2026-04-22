@@ -45,6 +45,7 @@ import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
+import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { toast } from "sonner";
 
 type Job = {
