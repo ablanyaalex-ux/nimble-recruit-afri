@@ -221,14 +221,24 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const visibleEntries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter((e) => {
+      const n = e.candidates.full_name?.toLowerCase() ?? "";
+      const h = e.candidates.headline?.toLowerCase() ?? "";
+      return n.includes(q) || h.includes(q);
+    });
+  }, [entries, search]);
+
   const grouped = useMemo(() => {
     const g: Record<string, PipelineEntry[]> = {};
     for (const s of stages) g[s.key] = [];
-    for (const e of entries) {
+    for (const e of visibleEntries) {
       if (g[e.stage]) g[e.stage].push(e);
     }
     return g;
-  }, [entries, stages]);
+  }, [visibleEntries, stages]);
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
@@ -262,68 +272,138 @@ export default function JobDetail() {
   if (loading) return <PageContainer><p className="text-sm text-muted-foreground">Loading…</p></PageContainer>;
   if (!job) return <PageContainer><p>Job not found.</p></PageContainer>;
 
+  const days = daysSince(job.created_at);
+  const totalCandidates = entries.length;
+
   return (
     <PageContainer>
       <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> Jobs
       </Link>
-      <PageHeader
-        eyebrow={
-          <span className="inline-flex items-center gap-2">
-            {job.clients?.name ?? "Pipeline"}
+
+      {/* Title row */}
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
+            <span>{job.clients?.name ?? "Pipeline"}</span>
             {job.reference && (
-              <span className="font-mono text-xs bg-secondary text-foreground/80 px-1.5 py-0.5 rounded">
+              <span className="font-mono normal-case tracking-normal bg-secondary text-foreground/80 px-1.5 py-0.5 rounded">
                 {job.reference}
               </span>
             )}
-          </span>
-        }
-        title={job.title}
-        description={job.location ?? undefined}
-        actions={
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={jobStatusBadgeClass(job.status)}>{STATUS_LABELS[job.status]}</Badge>
-            {canEdit && (
-              <PostJobDialog
-                job={job}
-                trigger={<Button size="sm" variant="outline"><Megaphone className="h-4 w-4" /> Post job</Button>}
-              />
-            )}
-            {canEdit && (
-              <AddCandidateDialog jobId={job.id} workspaceId={job.workspace_id} onAdded={refresh} />
-            )}
-            {canEdit && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-9 w-9"><MoreVertical className="h-4 w-4" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
-                    Open
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateStatus("on_hold")} disabled={job.status === "on_hold"}>
-                    Pause
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateStatus("closed")} disabled={job.status === "closed"}>
-                    Close
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateStatus("filled")} disabled={job.status === "filled"}>
-                    Mark filled
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setStagesOpen(true)}>
-                    <Settings2 className="h-4 w-4" /> Customise stages
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDelete(true)}>
-                    <Trash2 className="h-4 w-4" /> Delete job
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
-        }
-      />
+          <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{job.title}</h1>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge className={jobStatusBadgeClass(job.status)}>{STATUS_LABELS[job.status]}</Badge>
+          {canEdit && (
+            <PostJobDialog
+              job={job}
+              trigger={<Button size="sm" variant="outline"><Megaphone className="h-4 w-4" /> Post job</Button>}
+            />
+          )}
+          {canEdit && (
+            <AddCandidateDialog jobId={job.id} workspaceId={job.workspace_id} onAdded={refresh} />
+          )}
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Settings className="h-4 w-4" /> Settings
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" /> Edit job details
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStagesOpen(true)}>
+                  <Settings2 className="h-4 w-4" /> Customise stages
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
+                  Mark as open
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateStatus("on_hold")} disabled={job.status === "on_hold"}>
+                  Pause
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateStatus("closed")} disabled={job.status === "closed"}>
+                  Close
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateStatus("filled")} disabled={job.status === "filled"}>
+                  Mark filled
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 className="h-4 w-4" /> Delete job
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
+
+      {/* At-a-glance summary */}
+      <Card className="p-4 mb-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <SummaryItem
+            icon={<Building2 className="h-4 w-4" />}
+            label="Client"
+            value={
+              <Link to={`/clients/${job.client_id}`} className="hover:text-foreground hover:underline">
+                {job.clients?.name ?? "—"}
+              </Link>
+            }
+          />
+          <SummaryItem
+            icon={<UserCircle2 className="h-4 w-4" />}
+            label="Recruiter"
+            value={recruiter?.display_name ?? "—"}
+          />
+          <SummaryItem
+            icon={<Users className="h-4 w-4" />}
+            label="Hiring managers"
+            value={
+              hiringMgrs.length === 0 ? (
+                <span className="text-muted-foreground">None assigned</span>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {hiringMgrs.map((m) => (
+                    <Badge key={m.id} variant="secondary" className="font-normal">
+                      {m.name}
+                    </Badge>
+                  ))}
+                </div>
+              )
+            }
+          />
+          <SummaryItem
+            icon={<Clock className="h-4 w-4" />}
+            label="Days open"
+            value={`${days} ${days === 1 ? "day" : "days"}`}
+          />
+          <SummaryItem
+            icon={<MapPin className="h-4 w-4" />}
+            label="Location"
+            value={job.location ?? <span className="text-muted-foreground">—</span>}
+          />
+        </div>
+      </Card>
+
+      {/* Search + meta */}
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search candidates in this job…"
+            className="pl-9"
+          />
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {search ? `${visibleEntries.length} of ${totalCandidates}` : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
+        </div>
+      </div>
 
       {isHM && (
         <p className="text-xs text-muted-foreground mb-3">
