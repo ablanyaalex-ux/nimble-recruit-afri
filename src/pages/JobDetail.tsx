@@ -159,6 +159,10 @@ export default function JobDetail() {
   const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [stagesOpen, setStagesOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [recruiter, setRecruiter] = useState<Recruiter | null>(null);
+  const [hiringMgrs, setHiringMgrs] = useState<HiringMgr[]>([]);
+  const [search, setSearch] = useState("");
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -171,7 +175,7 @@ export default function JobDetail() {
     const [jobRes, entRes] = await Promise.all([
       supabase
         .from("jobs")
-        .select("id, title, status, client_id, workspace_id, location, description, reference, clients(name)")
+        .select("id, title, status, client_id, workspace_id, location, description, reference, employment_type, created_at, created_by, clients(name)")
         .eq("id", id)
         .single(),
       supabase
@@ -180,7 +184,23 @@ export default function JobDetail() {
         .eq("job_id", id)
         .order("position"),
     ]);
-    if (jobRes.data) setJob(jobRes.data as unknown as Job);
+    if (jobRes.data) {
+      const j = jobRes.data as unknown as Job;
+      setJob(j);
+      // Recruiter in charge (job creator) and assigned hiring managers
+      const [profRes, hmRes] = await Promise.all([
+        supabase.from("profiles").select("id, display_name").eq("id", j.created_by).maybeSingle(),
+        supabase
+          .from("job_hiring_managers")
+          .select("contact_id, client_contacts(id, name, title)")
+          .eq("job_id", j.id),
+      ]);
+      setRecruiter((profRes.data as Recruiter) ?? null);
+      const mgrs = ((hmRes.data ?? []) as Array<{ client_contacts: HiringMgr | null }>)
+        .map((r) => r.client_contacts)
+        .filter((c): c is HiringMgr => !!c);
+      setHiringMgrs(mgrs);
+    }
     if (entRes.data) setEntries(entRes.data as unknown as PipelineEntry[]);
     setLoading(false);
   };
