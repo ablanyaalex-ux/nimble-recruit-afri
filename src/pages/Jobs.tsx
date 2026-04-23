@@ -64,7 +64,12 @@ export default function Jobs() {
     location: "",
     employment_type: "full_time",
     description: "",
+    reference: "",
   });
+  const [referenceTouched, setReferenceTouched] = useState(false);
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
   const [selectedHmIds, setSelectedHmIds] = useState<string[]>([]);
 
   const refresh = async () => {
