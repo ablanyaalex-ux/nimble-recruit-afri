@@ -89,7 +89,7 @@ type PipelineEntry = {
   id: string;
   stage: string;
   candidate_id: string;
-  candidates: { full_name: string; headline: string | null };
+  candidates: { full_name: string; headline: string | null; source: string | null };
 };
 
 type Recruiter = { id: string; display_name: string | null };
