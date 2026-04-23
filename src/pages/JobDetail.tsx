@@ -56,6 +56,7 @@ type Job = {
   workspace_id: string;
   location: string | null;
   description: string | null;
+  reference: string | null;
   clients: { name: string } | null;
 };
 
