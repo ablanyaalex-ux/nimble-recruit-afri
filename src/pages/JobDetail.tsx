@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, MoreVertical, Trash2, Megaphone, Settings2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Trash2,
+  Megaphone,
+  Settings2,
+  Search,
+  MapPin,
+  Building2,
+  Users,
+  UserCircle2,
+  Clock,
+  Pencil,
+  Settings,
+} from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
