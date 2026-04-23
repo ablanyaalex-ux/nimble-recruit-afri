@@ -472,6 +472,15 @@ export default function JobDetail() {
         />
       )}
 
+      {canEdit && (
+        <EditJobDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          job={job}
+          onSaved={refresh}
+        />
+      )}
+
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
