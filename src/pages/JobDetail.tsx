@@ -30,7 +30,6 @@ import {
   canMoveStages,
   visibleStagesForRole,
   isHiringManager,
-  type PipelineStage,
 } from "@/lib/permissions";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer, PageHeader } from "@/components/app/PageHeader";
