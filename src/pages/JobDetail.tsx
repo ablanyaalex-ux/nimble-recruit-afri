@@ -207,7 +207,7 @@ export default function JobDetail() {
         .single(),
       supabase
         .from("job_candidates")
-        .select("id, stage, candidate_id, candidates(full_name, headline)")
+        .select("id, stage, candidate_id, candidates(full_name, headline, source)")
         .eq("job_id", id)
         .order("position"),
     ]);
