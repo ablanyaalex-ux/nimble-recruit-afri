@@ -14,6 +14,14 @@ import {
   Pencil,
   Settings,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DndContext,
   DragEndEvent,
@@ -81,7 +89,7 @@ type PipelineEntry = {
   id: string;
   stage: string;
   candidate_id: string;
-  candidates: { full_name: string; headline: string | null };
+  candidates: { full_name: string; headline: string | null; source: string | null };
 };
 
 type Recruiter = { id: string; display_name: string | null };
@@ -99,15 +107,22 @@ const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date
 function DraggableCard({
   entry,
   canDrag,
+  selected,
+  selectMode,
+  onToggleSelect,
   onClick,
 }: {
   entry: PipelineEntry;
   canDrag: boolean;
+  selected: boolean;
+  selectMode: boolean;
+  onToggleSelect: () => void;
   onClick: () => void;
 }) {
+  const dragDisabled = !canDrag || selectMode;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
-    disabled: !canDrag,
+    disabled: dragDisabled,
   });
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, opacity: isDragging ? 0.5 : 1 }
@@ -116,15 +131,38 @@ function DraggableCard({
     <Card
       ref={setNodeRef}
       style={style}
-      {...listeners}
+      {...(dragDisabled ? {} : listeners)}
       {...attributes}
-      onClick={onClick}
-      className={`p-3 ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} hover:border-primary/40 transition-colors`}
+      onClick={(e) => {
+        if (selectMode) {
+          e.stopPropagation();
+          onToggleSelect();
+        } else {
+          onClick();
+        }
+      }}
+      className={`p-3 ${dragDisabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} hover:border-primary/40 transition-colors ${selected ? "border-primary ring-1 ring-primary/40" : ""}`}
     >
-      <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
-      {entry.candidates.headline && (
-        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.candidates.headline}</div>
-      )}
+      <div className="flex items-start gap-2">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-0.5"
+          aria-label={`Select ${entry.candidates.full_name}`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
+          {entry.candidates.headline && (
+            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.candidates.headline}</div>
+          )}
+          {entry.candidates.source && (
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1.5">
+              {entry.candidates.source.replace(/_/g, " ")}
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -182,6 +220,10 @@ export default function JobDetail() {
   const [recruiter, setRecruiter] = useState<Recruiter | null>(null);
   const [hiringMgrs, setHiringMgrs] = useState<HiringMgr[]>([]);
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -199,7 +241,7 @@ export default function JobDetail() {
         .single(),
       supabase
         .from("job_candidates")
-        .select("id, stage, candidate_id, candidates(full_name, headline)")
+        .select("id, stage, candidate_id, candidates(full_name, headline, source)")
         .eq("job_id", id)
         .order("position"),
     ]);
@@ -240,15 +282,22 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) if (e.candidates.source) set.add(e.candidates.source);
+    return Array.from(set).sort();
+  }, [entries]);
+
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return entries;
     return entries.filter((e) => {
+      if (sourceFilter !== "all" && (e.candidates.source ?? "") !== sourceFilter) return false;
+      if (!q) return true;
       const n = e.candidates.full_name?.toLowerCase() ?? "";
       const h = e.candidates.headline?.toLowerCase() ?? "";
       return n.includes(q) || h.includes(q);
     });
-  }, [entries, search]);
+  }, [entries, search, sourceFilter]);
 
   const grouped = useMemo(() => {
     const g: Record<string, PipelineEntry[]> = {};
@@ -258,6 +307,55 @@ export default function JobDetail() {
     }
     return g;
   }, [visibleEntries, stages]);
+
+  const selectMode = selected.size > 0;
+
+  const toggleSelect = (entryId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  };
+
+  const toggleSelectStage = (stageKey: string) => {
+    const ids = grouped[stageKey]?.map((e) => e.id) ?? [];
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.length > 0 && ids.every((id) => next.has(id));
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkMoveTo = async (stageKey: string) => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("job_candidates").update({ stage: stageKey }).in("id", ids);
+    setBulkBusy(false);
+    if (error) return toast.error(error.message);
+    setEntries((prev) => prev.map((x) => (selected.has(x.id) ? { ...x, stage: stageKey } : x)));
+    toast.success(`Moved ${ids.length} candidate${ids.length === 1 ? "" : "s"}.`);
+    clearSelection();
+  };
+
+  const bulkRemove = async () => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("job_candidates").delete().in("id", ids);
+    setBulkBusy(false);
+    setConfirmBulkRemove(false);
+    if (error) return toast.error(error.message);
+    setEntries((prev) => prev.filter((x) => !selected.has(x.id)));
+    toast.success(`Removed ${ids.length} candidate${ids.length === 1 ? "" : "s"} from this job.`);
+    clearSelection();
+  };
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
@@ -408,21 +506,73 @@ export default function JobDetail() {
         </div>
       </Card>
 
-      {/* Search + meta */}
-      <div className="flex items-center gap-3 flex-wrap mb-4">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+      {/* Search + filter + meta */}
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidates in this job…"
-            className="pl-9"
+            placeholder="Search candidates…"
+            className="pl-9 h-9"
           />
         </div>
-        <div className="text-xs text-muted-foreground">
-          {search ? `${visibleEntries.length} of ${totalCandidates}` : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
+        {sources.length > 0 && (
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[140px]">
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">
+                  {s.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <div className="text-xs text-muted-foreground ml-auto">
+          {(search || sourceFilter !== "all")
+            ? `${visibleEntries.length} of ${totalCandidates}`
+            : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
         </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selectMode && canEdit && (
+        <div className="flex items-center gap-2 flex-wrap mb-4 p-2.5 rounded-md border border-primary/30 bg-primary/5">
+          <span className="text-sm font-medium px-1">
+            {selected.size} selected
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" disabled={bulkBusy}>
+                Move to stage…
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {stages.map((s) => (
+                <DropdownMenuItem key={s.key} onClick={() => bulkMoveTo(s.key)}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            disabled={bulkBusy}
+            onClick={() => setConfirmBulkRemove(true)}
+          >
+            <Trash2 className="h-4 w-4" /> Remove from job
+          </Button>
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={clearSelection}>
+            Clear
+          </Button>
+        </div>
+      )}
 
       {isHM && (
         <p className="text-xs text-muted-foreground mb-3">
@@ -432,26 +582,43 @@ export default function JobDetail() {
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
-          {stages.map((stage) => (
-            <DroppableColumn key={stage.key} stageKey={stage.key}>
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
-                  {stage.label}
+          {stages.map((stage) => {
+            const stageEntries = grouped[stage.key] ?? [];
+            const allSelected = stageEntries.length > 0 && stageEntries.every((e) => selected.has(e.id));
+            const someSelected = !allSelected && stageEntries.some((e) => selected.has(e.id));
+            return (
+              <DroppableColumn key={stage.key} stageKey={stage.key}>
+                <div className="flex items-center justify-between mb-3 px-1 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {canEdit && stageEntries.length > 0 && (
+                      <Checkbox
+                        checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                        onCheckedChange={() => toggleSelectStage(stage.key)}
+                        aria-label={`Select all in ${stage.label}`}
+                      />
+                    )}
+                    <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate">
+                      {stage.label}
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{grouped[stage.key]?.length ?? 0}</span>
-              </div>
-              <div className="space-y-2 min-h-[80px]">
-                {grouped[stage.key]?.map((entry) => (
-                  <DraggableCard
-                    key={entry.id}
-                    entry={entry}
-                    canDrag={canDrag}
-                    onClick={() => setActiveDrawer(entry.id)}
-                  />
-                ))}
-              </div>
-            </DroppableColumn>
-          ))}
+                <div className="space-y-2 min-h-[80px]">
+                  {stageEntries.map((entry) => (
+                    <DraggableCard
+                      key={entry.id}
+                      entry={entry}
+                      canDrag={canDrag}
+                      selected={selected.has(entry.id)}
+                      selectMode={selectMode}
+                      onToggleSelect={() => toggleSelect(entry.id)}
+                      onClick={() => setActiveDrawer(entry.id)}
+                    />
+                  ))}
+                </div>
+              </DroppableColumn>
+            );
+          })}
         </div>
       </DndContext>
 
@@ -493,6 +660,27 @@ export default function JobDetail() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={deleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmBulkRemove} onOpenChange={setConfirmBulkRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {selected.size} candidate{selected.size === 1 ? "" : "s"} from this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes them from the pipeline along with their comments and feedback for this job. The candidate profiles themselves are not deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); bulkRemove(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkBusy}
+            >
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
