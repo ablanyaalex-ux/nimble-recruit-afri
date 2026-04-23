@@ -107,15 +107,22 @@ const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date
 function DraggableCard({
   entry,
   canDrag,
+  selected,
+  selectMode,
+  onToggleSelect,
   onClick,
 }: {
   entry: PipelineEntry;
   canDrag: boolean;
+  selected: boolean;
+  selectMode: boolean;
+  onToggleSelect: () => void;
   onClick: () => void;
 }) {
+  const dragDisabled = !canDrag || selectMode;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
-    disabled: !canDrag,
+    disabled: dragDisabled,
   });
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, opacity: isDragging ? 0.5 : 1 }
@@ -124,15 +131,38 @@ function DraggableCard({
     <Card
       ref={setNodeRef}
       style={style}
-      {...listeners}
+      {...(dragDisabled ? {} : listeners)}
       {...attributes}
-      onClick={onClick}
-      className={`p-3 ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} hover:border-primary/40 transition-colors`}
+      onClick={(e) => {
+        if (selectMode) {
+          e.stopPropagation();
+          onToggleSelect();
+        } else {
+          onClick();
+        }
+      }}
+      className={`p-3 ${dragDisabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} hover:border-primary/40 transition-colors ${selected ? "border-primary ring-1 ring-primary/40" : ""}`}
     >
-      <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
-      {entry.candidates.headline && (
-        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.candidates.headline}</div>
-      )}
+      <div className="flex items-start gap-2">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-0.5"
+          aria-label={`Select ${entry.candidates.full_name}`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
+          {entry.candidates.headline && (
+            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.candidates.headline}</div>
+          )}
+          {entry.candidates.source && (
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1.5">
+              {entry.candidates.source.replace(/_/g, " ")}
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
