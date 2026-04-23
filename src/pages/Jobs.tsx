@@ -77,7 +77,7 @@ export default function Jobs() {
     setLoading(true);
     let q = supabase
       .from("jobs")
-      .select("id, title, status, location, employment_type, client_id, clients(name)")
+      .select("id, title, status, location, employment_type, reference, client_id, clients(name)")
       .order("created_at", { ascending: false });
     if (currentWorkspaceId) q = q.eq("workspace_id", currentWorkspaceId);
     const { data } = await q;
@@ -99,12 +99,20 @@ export default function Jobs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWorkspaceId]);
 
-  // Load contacts whenever client changes
+  // Suggest a reference & load contacts whenever client changes
   useEffect(() => {
     setSelectedHmIds([]);
     if (!form.client_id) {
       setContacts([]);
+      if (!referenceTouched) setForm((f) => ({ ...f, reference: "" }));
       return;
+    }
+    const client = clients.find((c) => c.id === form.client_id);
+    if (client && !referenceTouched) {
+      const prefix = referencePrefix(client.name);
+      // Count existing jobs for this client to suggest the next number
+      const used = jobs.filter((j) => j.client_id === form.client_id).length + 1;
+      setForm((f) => ({ ...f, reference: `${prefix}-${String(used).padStart(3, "0")}` }));
     }
     (async () => {
       const { data } = await supabase
@@ -114,10 +122,38 @@ export default function Jobs() {
         .order("name");
       setContacts((data as ContactOpt[]) ?? []);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.client_id]);
 
   const toggleHm = (id: string) => {
     setSelectedHmIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const resetForm = () => {
+    setForm({ title: "", client_id: "", location: "", employment_type: "full_time", description: "", reference: "" });
+    setReferenceTouched(false);
+    setSelectedHmIds([]);
+    setNewClientOpen(false);
+    setNewClientName("");
+  };
+
+  const createClientInline = async () => {
+    if (!user || !currentWorkspaceId) return;
+    const name = newClientName.trim();
+    if (!name) return toast.error("Client name is required");
+    setCreatingClient(true);
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({ workspace_id: currentWorkspaceId, name, created_by: user.id })
+      .select("id, name")
+      .single();
+    setCreatingClient(false);
+    if (error || !data) return toast.error(error?.message ?? "Failed to create client");
+    setClients((prev) => [...prev, { id: data.id, name: data.name }].sort((a, b) => a.name.localeCompare(b.name)));
+    setForm((f) => ({ ...f, client_id: data.id }));
+    setNewClientName("");
+    setNewClientOpen(false);
+    toast.success("Client created.");
   };
 
   const onCreate = async (e: React.FormEvent) => {
@@ -133,6 +169,7 @@ export default function Jobs() {
         location: form.location.trim() || null,
         employment_type: form.employment_type || null,
         description: form.description.trim() || null,
+        reference: form.reference.trim() || null,
         created_by: user.id,
       })
       .select("id")
@@ -148,8 +185,7 @@ export default function Jobs() {
 
     toast.success("Job created.");
     setOpen(false);
-    setForm({ title: "", client_id: "", location: "", employment_type: "full_time", description: "" });
-    setSelectedHmIds([]);
+    resetForm();
     refresh();
   };
 
