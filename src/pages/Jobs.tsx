@@ -197,95 +197,152 @@ export default function Jobs() {
         description={hm ? "Roles you've been assigned as hiring manager." : "Open and active roles across your clients."}
         actions={
           canEdit && (
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button><Plus className="h-4 w-4" /> New job</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>New job</DialogTitle></DialogHeader>
-                {clients.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Add a client first to create a job.</p>
-                ) : (
-                  <form onSubmit={onCreate} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Title</Label>
-                      <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-                    </div>
-                    <div className="space-y-2">
+                <form onSubmit={onCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <Label>Client</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setNewClientOpen((v) => !v)}
+                      >
+                        <Plus className="h-3 w-3" /> {newClientOpen ? "Cancel" : "New client"}
+                      </Button>
+                    </div>
+                    {newClientOpen ? (
+                      <div className="flex gap-2">
+                        <Input
+                          autoFocus
+                          placeholder="Client name"
+                          value={newClientName}
+                          onChange={(e) => setNewClientName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); createClientInline(); }
+                          }}
+                        />
+                        <Button type="button" onClick={createClientInline} disabled={creatingClient}>
+                          {creatingClient ? "Adding…" : "Add"}
+                        </Button>
+                      </div>
+                    ) : clients.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        No clients yet — use “New client” above to add one.
+                      </p>
+                    ) : (
                       <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
                         <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
                         <SelectContent>
                           {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Location</Label>
-                        <Input placeholder="Remote / London" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Type</Label>
-                        <Select value={form.employment_type} onValueChange={(v) => setForm({ ...form, employment_type: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="full_time">Full-time</SelectItem>
-                            <SelectItem value="contract">Contract</SelectItem>
-                            <SelectItem value="part_time">Part-time</SelectItem>
-                            <SelectItem value="temp">Temp</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    {form.client_id && (
-                      <div className="space-y-2">
-                        <Label>Hiring managers</Label>
-                        {contacts.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">
-                            No contacts on this client yet. Add them on the client page.
-                          </p>
-                        ) : (
-                          <>
-                            <Select value="" onValueChange={toggleHm}>
-                              <SelectTrigger><SelectValue placeholder="Add hiring manager…" /></SelectTrigger>
-                              <SelectContent>
-                                {contacts
-                                  .filter((c) => !selectedHmIds.includes(c.id))
-                                  .map((c) => (
-                                    <SelectItem key={c.id} value={c.id}>
-                                      {c.name}{c.title ? ` — ${c.title}` : ""}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                            {selectedHmIds.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5">
-                                {selectedHmIds.map((id) => {
-                                  const c = contacts.find((x) => x.id === id);
-                                  if (!c) return null;
-                                  return (
-                                    <Badge key={id} variant="secondary" className="gap-1">
-                                      {c.name}
-                                      <button type="button" onClick={() => toggleHm(id)}>
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    </Badge>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
                     )}
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Job ID</Label>
+                      {referenceTouched && form.client_id && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            const client = clients.find((c) => c.id === form.client_id);
+                            if (client) {
+                              const used = jobs.filter((j) => j.client_id === form.client_id).length + 1;
+                              setForm((f) => ({ ...f, reference: `${referencePrefix(client.name)}-${String(used).padStart(3, "0")}` }));
+                              setReferenceTouched(false);
+                            }
+                          }}
+                        >
+                          Reset to auto
+                        </button>
+                      )}
                     </div>
-                    <DialogFooter><Button type="submit">Create</Button></DialogFooter>
-                  </form>
-                )}
+                    <Input
+                      placeholder={form.client_id ? "Auto-generated" : "Pick a client to auto-generate"}
+                      value={form.reference}
+                      onChange={(e) => { setForm({ ...form, reference: e.target.value }); setReferenceTouched(true); }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Auto-suggested from client name. Leave blank to let the system assign one.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Input placeholder="Remote / London" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Type</Label>
+                      <Select value={form.employment_type} onValueChange={(v) => setForm({ ...form, employment_type: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full_time">Full-time</SelectItem>
+                          <SelectItem value="contract">Contract</SelectItem>
+                          <SelectItem value="part_time">Part-time</SelectItem>
+                          <SelectItem value="temp">Temp</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {form.client_id && (
+                    <div className="space-y-2">
+                      <Label>Hiring managers</Label>
+                      {contacts.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          No contacts on this client yet. Add them on the client page.
+                        </p>
+                      ) : (
+                        <>
+                          <Select value="" onValueChange={toggleHm}>
+                            <SelectTrigger><SelectValue placeholder="Add hiring manager…" /></SelectTrigger>
+                            <SelectContent>
+                              {contacts
+                                .filter((c) => !selectedHmIds.includes(c.id))
+                                .map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.name}{c.title ? ` — ${c.title}` : ""}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          {selectedHmIds.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedHmIds.map((id) => {
+                                const c = contacts.find((x) => x.id === id);
+                                if (!c) return null;
+                                return (
+                                  <Badge key={id} variant="secondary" className="gap-1">
+                                    {c.name}
+                                    <button type="button" onClick={() => toggleHm(id)}>
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                  <DialogFooter><Button type="submit">Create</Button></DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
           )
