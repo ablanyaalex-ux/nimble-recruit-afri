@@ -220,6 +220,10 @@ export default function JobDetail() {
   const [recruiter, setRecruiter] = useState<Recruiter | null>(null);
   const [hiringMgrs, setHiringMgrs] = useState<HiringMgr[]>([]);
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
