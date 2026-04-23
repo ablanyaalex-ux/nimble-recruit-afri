@@ -225,7 +225,16 @@ export default function JobDetail() {
         <ArrowLeft className="h-4 w-4" /> Jobs
       </Link>
       <PageHeader
-        eyebrow={job.clients?.name ?? "Pipeline"}
+        eyebrow={
+          <span className="inline-flex items-center gap-2">
+            {job.clients?.name ?? "Pipeline"}
+            {job.reference && (
+              <span className="font-mono text-xs bg-secondary text-foreground/80 px-1.5 py-0.5 rounded">
+                {job.reference}
+              </span>
+            )}
+          </span>
+        }
         title={job.title}
         description={job.location ?? undefined}
         actions={
