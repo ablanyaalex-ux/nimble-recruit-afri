@@ -664,6 +664,27 @@ export default function JobDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmBulkRemove} onOpenChange={setConfirmBulkRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {selected.size} candidate{selected.size === 1 ? "" : "s"} from this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes them from the pipeline along with their comments and feedback for this job. The candidate profiles themselves are not deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); bulkRemove(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkBusy}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
