@@ -282,15 +282,22 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) if (e.candidates.source) set.add(e.candidates.source);
+    return Array.from(set).sort();
+  }, [entries]);
+
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return entries;
     return entries.filter((e) => {
+      if (sourceFilter !== "all" && (e.candidates.source ?? "") !== sourceFilter) return false;
+      if (!q) return true;
       const n = e.candidates.full_name?.toLowerCase() ?? "";
       const h = e.candidates.headline?.toLowerCase() ?? "";
       return n.includes(q) || h.includes(q);
     });
-  }, [entries, search]);
+  }, [entries, search, sourceFilter]);
 
   const grouped = useMemo(() => {
     const g: Record<string, PipelineEntry[]> = {};
@@ -300,6 +307,55 @@ export default function JobDetail() {
     }
     return g;
   }, [visibleEntries, stages]);
+
+  const selectMode = selected.size > 0;
+
+  const toggleSelect = (entryId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  };
+
+  const toggleSelectStage = (stageKey: string) => {
+    const ids = grouped[stageKey]?.map((e) => e.id) ?? [];
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.length > 0 && ids.every((id) => next.has(id));
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkMoveTo = async (stageKey: string) => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("job_candidates").update({ stage: stageKey }).in("id", ids);
+    setBulkBusy(false);
+    if (error) return toast.error(error.message);
+    setEntries((prev) => prev.map((x) => (selected.has(x.id) ? { ...x, stage: stageKey } : x)));
+    toast.success(`Moved ${ids.length} candidate${ids.length === 1 ? "" : "s"}.`);
+    clearSelection();
+  };
+
+  const bulkRemove = async () => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("job_candidates").delete().in("id", ids);
+    setBulkBusy(false);
+    setConfirmBulkRemove(false);
+    if (error) return toast.error(error.message);
+    setEntries((prev) => prev.filter((x) => !selected.has(x.id)));
+    toast.success(`Removed ${ids.length} candidate${ids.length === 1 ? "" : "s"} from this job.`);
+    clearSelection();
+  };
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
