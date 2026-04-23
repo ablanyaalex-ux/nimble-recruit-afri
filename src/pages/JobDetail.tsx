@@ -506,21 +506,73 @@ export default function JobDetail() {
         </div>
       </Card>
 
-      {/* Search + meta */}
-      <div className="flex items-center gap-3 flex-wrap mb-4">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+      {/* Search + filter + meta */}
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidates in this job…"
-            className="pl-9"
+            placeholder="Search candidates…"
+            className="pl-9 h-9"
           />
         </div>
-        <div className="text-xs text-muted-foreground">
-          {search ? `${visibleEntries.length} of ${totalCandidates}` : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
+        {sources.length > 0 && (
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[140px]">
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">
+                  {s.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <div className="text-xs text-muted-foreground ml-auto">
+          {(search || sourceFilter !== "all")
+            ? `${visibleEntries.length} of ${totalCandidates}`
+            : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
         </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selectMode && canEdit && (
+        <div className="flex items-center gap-2 flex-wrap mb-4 p-2.5 rounded-md border border-primary/30 bg-primary/5">
+          <span className="text-sm font-medium px-1">
+            {selected.size} selected
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" disabled={bulkBusy}>
+                Move to stage…
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {stages.map((s) => (
+                <DropdownMenuItem key={s.key} onClick={() => bulkMoveTo(s.key)}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            disabled={bulkBusy}
+            onClick={() => setConfirmBulkRemove(true)}
+          >
+            <Trash2 className="h-4 w-4" /> Remove from job
+          </Button>
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={clearSelection}>
+            Clear
+          </Button>
+        </div>
+      )}
 
       {isHM && (
         <p className="text-xs text-muted-foreground mb-3">
@@ -530,26 +582,43 @@ export default function JobDetail() {
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
-          {stages.map((stage) => (
-            <DroppableColumn key={stage.key} stageKey={stage.key}>
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
-                  {stage.label}
+          {stages.map((stage) => {
+            const stageEntries = grouped[stage.key] ?? [];
+            const allSelected = stageEntries.length > 0 && stageEntries.every((e) => selected.has(e.id));
+            const someSelected = !allSelected && stageEntries.some((e) => selected.has(e.id));
+            return (
+              <DroppableColumn key={stage.key} stageKey={stage.key}>
+                <div className="flex items-center justify-between mb-3 px-1 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {canEdit && stageEntries.length > 0 && (
+                      <Checkbox
+                        checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                        onCheckedChange={() => toggleSelectStage(stage.key)}
+                        aria-label={`Select all in ${stage.label}`}
+                      />
+                    )}
+                    <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate">
+                      {stage.label}
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{grouped[stage.key]?.length ?? 0}</span>
-              </div>
-              <div className="space-y-2 min-h-[80px]">
-                {grouped[stage.key]?.map((entry) => (
-                  <DraggableCard
-                    key={entry.id}
-                    entry={entry}
-                    canDrag={canDrag}
-                    onClick={() => setActiveDrawer(entry.id)}
-                  />
-                ))}
-              </div>
-            </DroppableColumn>
-          ))}
+                <div className="space-y-2 min-h-[80px]">
+                  {stageEntries.map((entry) => (
+                    <DraggableCard
+                      key={entry.id}
+                      entry={entry}
+                      canDrag={canDrag}
+                      selected={selected.has(entry.id)}
+                      selectMode={selectMode}
+                      onToggleSelect={() => toggleSelect(entry.id)}
+                      onClick={() => setActiveDrawer(entry.id)}
+                    />
+                  ))}
+                </div>
+              </DroppableColumn>
+            );
+          })}
         </div>
       </DndContext>
 
