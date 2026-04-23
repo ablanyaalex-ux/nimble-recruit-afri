@@ -143,6 +143,26 @@ function DroppableColumn({ stageKey, children }: { stageKey: string; children: R
   );
 }
 
+function SummaryItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-1">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="text-sm font-medium truncate">{value}</div>
+    </div>
+  );
+}
+
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
