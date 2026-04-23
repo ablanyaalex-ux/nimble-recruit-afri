@@ -36,9 +36,14 @@ type Job = {
   status: string;
   location: string | null;
   employment_type: string | null;
+  reference: string | null;
   client_id: string;
   clients: { name: string } | null;
 };
+
+// Mirror of public.job_reference_prefix() — uppercase alphanumerics, max 6 chars.
+const referencePrefix = (name: string) =>
+  (name.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 6) || "JOB");
 
 type ClientOpt = { id: string; name: string };
 type ContactOpt = { id: string; name: string; title: string | null };
