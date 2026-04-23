@@ -362,7 +362,14 @@ export default function Jobs() {
             <Link key={j.id} to={`/jobs/${j.id}`}>
               <Card className="p-5 hover:border-primary/40 transition-colors flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="font-display text-lg leading-tight">{j.title}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-display text-lg leading-tight">{j.title}</div>
+                    {j.reference && (
+                      <span className="text-xs font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                        {j.reference}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground mt-1">{j.clients?.name ?? "—"}</div>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
                     {j.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {j.location}</span>}
