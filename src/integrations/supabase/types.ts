@@ -362,6 +362,7 @@ export type Database = {
           employment_type: string | null
           id: string
           location: string | null
+          reference: string | null
           salary_max: number | null
           salary_min: number | null
           status: Database["public"]["Enums"]["job_status"]
@@ -377,6 +378,7 @@ export type Database = {
           employment_type?: string | null
           id?: string
           location?: string | null
+          reference?: string | null
           salary_max?: number | null
           salary_min?: number | null
           status?: Database["public"]["Enums"]["job_status"]
@@ -392,6 +394,7 @@ export type Database = {
           employment_type?: string | null
           id?: string
           location?: string | null
+          reference?: string | null
           salary_max?: number | null
           salary_min?: number | null
           status?: Database["public"]["Enums"]["job_status"]
@@ -626,6 +629,10 @@ export type Database = {
         Returns: boolean
       }
       create_workspace: { Args: { _name: string }; Returns: string }
+      generate_job_reference: {
+        Args: { _client_id: string; _workspace_id: string }
+        Returns: string
+      }
       get_invite_by_token: {
         Args: { _token: string }
         Returns: {
@@ -654,6 +661,7 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      job_reference_prefix: { Args: { _client_name: string }; Returns: string }
       user_workspace_role: {
         Args: { _uid: string; _workspace_id: string }
         Returns: Database["public"]["Enums"]["workspace_role"]

@@ -56,6 +56,7 @@ type Job = {
   workspace_id: string;
   location: string | null;
   description: string | null;
+  reference: string | null;
   clients: { name: string } | null;
 };
 
@@ -147,7 +148,7 @@ export default function JobDetail() {
     const [jobRes, entRes] = await Promise.all([
       supabase
         .from("jobs")
-        .select("id, title, status, client_id, workspace_id, location, description, clients(name)")
+        .select("id, title, status, client_id, workspace_id, location, description, reference, clients(name)")
         .eq("id", id)
         .single(),
       supabase
@@ -224,7 +225,16 @@ export default function JobDetail() {
         <ArrowLeft className="h-4 w-4" /> Jobs
       </Link>
       <PageHeader
-        eyebrow={job.clients?.name ?? "Pipeline"}
+        eyebrow={
+          <span className="inline-flex items-center gap-2">
+            {job.clients?.name ?? "Pipeline"}
+            {job.reference && (
+              <span className="font-mono text-xs bg-secondary text-foreground/80 px-1.5 py-0.5 rounded">
+                {job.reference}
+              </span>
+            )}
+          </span>
+        }
         title={job.title}
         description={job.location ?? undefined}
         actions={
