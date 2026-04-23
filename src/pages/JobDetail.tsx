@@ -58,6 +58,8 @@ import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
+import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
+import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { toast } from "sonner";
 
@@ -70,6 +72,9 @@ type Job = {
   location: string | null;
   description: string | null;
   reference: string | null;
+  employment_type: string | null;
+  created_at: string;
+  created_by: string;
   clients: { name: string } | null;
 };
 
@@ -80,12 +85,17 @@ type PipelineEntry = {
   candidates: { full_name: string; headline: string | null };
 };
 
+type Recruiter = { id: string; display_name: string | null };
+type HiringMgr = { id: string; name: string; title: string | null };
+
 const STATUS_LABELS: Record<Job["status"], string> = {
   open: "Open",
   on_hold: "On hold",
   closed: "Closed",
   filled: "Filled",
 };
+
+const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 
 function DraggableCard({
   entry,
