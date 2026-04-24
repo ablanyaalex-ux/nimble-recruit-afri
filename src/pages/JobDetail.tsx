@@ -323,13 +323,17 @@ export default function JobDetail() {
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
     return entries.filter((e) => {
+      if (view === "active" && e.rejected) return false;
+      if (view === "rejected" && !e.rejected) return false;
       if (sourceFilter !== "all" && (e.candidates.source ?? "") !== sourceFilter) return false;
       if (!q) return true;
       const n = e.candidates.full_name?.toLowerCase() ?? "";
       const h = e.candidates.headline?.toLowerCase() ?? "";
       return n.includes(q) || h.includes(q);
     });
-  }, [entries, search, sourceFilter]);
+  }, [entries, search, sourceFilter, view]);
+
+  const rejectedCount = useMemo(() => entries.filter((e) => e.rejected).length, [entries]);
 
   const grouped = useMemo(() => {
     const g: Record<string, PipelineEntry[]> = {};
