@@ -81,7 +81,7 @@ export function NotificationBell() {
     }
     setOpen(false);
     if (n.payload?.job_id) {
-      navigate(`/jobs/${n.payload.job_id}?jc=${n.payload.job_candidate_id ?? ""}`);
+      navigate(`/jobs/${n.payload.job_id}/candidates/${n.payload.job_candidate_id ?? ""}`);
     }
   };
 

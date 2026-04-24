@@ -15,6 +15,7 @@ import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
+import JobCandidate from "./pages/JobCandidate";
 import Candidates from "./pages/Candidates";
 import Placeholder from "./pages/Placeholder";
 import CareersPublic from "./pages/CareersPublic";
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetail />} />
+                <Route path="/jobs/:jobId/candidates/:jobCandidateId" element={<JobCandidate />} />
                 <Route path="/candidates" element={<Candidates />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />
