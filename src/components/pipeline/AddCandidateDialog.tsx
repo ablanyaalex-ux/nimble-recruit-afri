@@ -108,6 +108,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
           email: form.email.trim() || null,
           phone: form.phone.trim() || null,
           headline: form.headline.trim() || null,
+          location: form.location.trim() || null,
           source: form.source || null,
           notes: form.notes.trim() || null,
         } as any)
