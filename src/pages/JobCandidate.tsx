@@ -19,6 +19,8 @@ import { toast } from "sonner";
 type Detail = {
   id: string;
   stage: string;
+  rejected: boolean;
+  rejection_reason: string | null;
   candidate_id: string;
   job_id: string;
   jobs: { workspace_id: string; client_id: string; title: string } | null;
@@ -31,6 +33,8 @@ type Detail = {
     resume_path: string | null;
     notes: string | null;
     source: string | null;
+    location: string | null;
+    resume_summary: string | null;
   };
 };
 
