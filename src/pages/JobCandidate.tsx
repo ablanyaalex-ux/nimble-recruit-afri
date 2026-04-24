@@ -341,7 +341,36 @@ export default function JobCandidate() {
         </TabsList>
 
 
-        <TabsContent value="resume" className="mt-4">
+        <TabsContent value="resume" className="mt-4 space-y-4">
+          {c.resume_path && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <div className="font-display text-base">AI summary</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {summary && (
+                    <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
+                      <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
+                    </Button>
+                  )}
+                  {!summary && (
+                    <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
+                      <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {summaryLoading && !summary ? (
+                <p className="text-sm text-muted-foreground">Reading the resume and writing a brief… this can take ~10–20s.</p>
+              ) : summary ? (
+                <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{summary}</div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Click <em>Generate summary</em> to get an AI-written brief of this resume.</p>
+              )}
+            </Card>
+          )}
           <Card className="p-4">
             {resumeUrl && c.resume_path ? (
               (() => {
