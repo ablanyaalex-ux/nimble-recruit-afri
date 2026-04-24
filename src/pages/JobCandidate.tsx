@@ -87,6 +87,9 @@ export default function JobCandidate() {
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [progressing, setProgressing] = useState(false);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
@@ -96,7 +99,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, job_id, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
