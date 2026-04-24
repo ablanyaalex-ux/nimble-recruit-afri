@@ -575,6 +575,26 @@ export default function JobDetail() {
         </div>
       </Card>
 
+      {/* View toggle: Active vs Rejected */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="inline-flex rounded-md border border-border p-0.5 bg-secondary/40">
+          <button
+            type="button"
+            onClick={() => setView("active")}
+            className={`px-3 h-8 text-xs rounded-[5px] transition-colors ${view === "active" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Active ({entries.length - rejectedCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("rejected")}
+            className={`px-3 h-8 text-xs rounded-[5px] transition-colors ${view === "rejected" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Rejected ({rejectedCount})
+          </button>
+        </div>
+      </div>
+
       {/* Search + filter + meta */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <div className="relative w-full sm:w-64">
@@ -602,9 +622,7 @@ export default function JobDetail() {
           </Select>
         )}
         <div className="text-xs text-muted-foreground ml-auto">
-          {(search || sourceFilter !== "all")
-            ? `${visibleEntries.length} of ${totalCandidates}`
-            : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
+          {visibleEntries.length} {view === "rejected" ? "rejected" : "active"} candidate{visibleEntries.length === 1 ? "" : "s"}
         </div>
       </div>
 
