@@ -61,7 +61,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CandidateDrawer } from "@/components/pipeline/CandidateDrawer";
+
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
@@ -213,7 +213,7 @@ export default function JobDetail() {
   const [job, setJob] = useState<Job | null>(null);
   const [entries, setEntries] = useState<PipelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
+  // candidate cards now navigate to a dedicated page
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [stagesOpen, setStagesOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -271,13 +271,11 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Open candidate drawer from notification deep link
+  // Open candidate page from notification deep link (legacy ?jc= support)
   useEffect(() => {
     const jc = searchParams.get("jc");
-    if (jc) {
-      setActiveDrawer(jc);
-      searchParams.delete("jc");
-      setSearchParams(searchParams, { replace: true });
+    if (jc && id) {
+      navigate(`/jobs/${id}/candidates/${jc}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -612,7 +610,7 @@ export default function JobDetail() {
                       selected={selected.has(entry.id)}
                       selectMode={selectMode}
                       onToggleSelect={() => toggleSelect(entry.id)}
-                      onClick={() => setActiveDrawer(entry.id)}
+                      onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
                     />
                   ))}
                 </div>
@@ -622,12 +620,6 @@ export default function JobDetail() {
         </div>
       </DndContext>
 
-      <CandidateDrawer
-        jobCandidateId={activeDrawer}
-        onClose={() => setActiveDrawer(null)}
-        onChanged={refresh}
-        stages={allStages}
-      />
 
       {canEdit && (
         <PipelineStagesDialog
