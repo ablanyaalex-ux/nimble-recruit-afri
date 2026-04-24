@@ -111,19 +111,27 @@ const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date
 function DraggableCard({
   entry,
   canDrag,
+  canEdit,
   selected,
   selectMode,
   onToggleSelect,
   onClick,
+  onProgress,
+  onReject,
+  onReinstate,
 }: {
   entry: PipelineEntry;
   canDrag: boolean;
+  canEdit: boolean;
   selected: boolean;
   selectMode: boolean;
   onToggleSelect: () => void;
   onClick: () => void;
+  onProgress: (e: React.MouseEvent) => void;
+  onReject: (e: React.MouseEvent) => void;
+  onReinstate: (e: React.MouseEvent) => void;
 }) {
-  const dragDisabled = !canDrag || selectMode;
+  const dragDisabled = !canDrag || selectMode || entry.rejected;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
     disabled: dragDisabled,
@@ -145,7 +153,7 @@ function DraggableCard({
           onClick();
         }
       }}
-      className={`p-3 ${dragDisabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} hover:border-primary/40 transition-colors ${selected ? "border-primary ring-1 ring-primary/40" : ""}`}
+      className={`p-3 ${dragDisabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} hover:border-primary/40 transition-colors ${selected ? "border-primary ring-1 ring-primary/40" : ""} ${entry.rejected ? "opacity-80" : ""}`}
     >
       <div className="flex items-start gap-2">
         <Checkbox
@@ -156,13 +164,34 @@ function DraggableCard({
           aria-label={`Select ${entry.candidates.full_name}`}
         />
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
+            {entry.rejected && <Badge variant="destructive" className="h-4 text-[9px] px-1.5">Rejected</Badge>}
+          </div>
           {entry.candidates.headline && (
             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.candidates.headline}</div>
           )}
           {entry.candidates.source && (
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1.5">
               {entry.candidates.source.replace(/_/g, " ")}
+            </div>
+          )}
+          {canEdit && !selectMode && (
+            <div className="flex items-center gap-1 mt-2 -mb-1">
+              {!entry.rejected ? (
+                <>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onProgress}>
+                    <ChevronRight className="h-3 w-3" /> Progress
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-destructive hover:text-destructive" onClick={onReject}>
+                    <X className="h-3 w-3" /> Reject
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onReinstate}>
+                  <Undo2 className="h-3 w-3" /> Reinstate
+                </Button>
+              )}
             </div>
           )}
         </div>
