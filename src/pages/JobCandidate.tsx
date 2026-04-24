@@ -104,6 +104,7 @@ export default function JobCandidate() {
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
+      setSummary((data.candidates as any)?.resume_summary ?? null);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
