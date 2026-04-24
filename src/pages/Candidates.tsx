@@ -138,9 +138,15 @@ export default function Candidates() {
                       <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Headline</Label>
-                    <Input placeholder="Senior Backend Engineer" value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Headline</Label>
+                      <Input placeholder="Senior Backend Engineer" value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Input placeholder="London, UK" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>LinkedIn URL</Label>
