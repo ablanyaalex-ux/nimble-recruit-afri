@@ -41,6 +41,7 @@ export default function Candidates() {
     email: "",
     phone: "",
     headline: "",
+    location: "",
     linkedin_url: "",
     notes: "",
   });
