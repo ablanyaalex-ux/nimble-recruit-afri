@@ -55,6 +55,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
     email: "",
     phone: "",
     headline: "",
+    location: "",
     source: "",
     notes: "",
   });
