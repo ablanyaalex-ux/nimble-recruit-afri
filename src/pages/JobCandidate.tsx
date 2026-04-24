@@ -164,6 +164,67 @@ export default function JobCandidate() {
     setDetail({ ...detail, stage });
   };
 
+  const progressCandidate = async () => {
+    if (!detail) return;
+    const idx = stages.findIndex((s) => s.key === detail.stage);
+    const next = stages[idx + 1];
+    if (!next) return toast.info("Already at the final stage.");
+    setProgressing(true);
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ stage: next.key as any, rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", detail.id);
+    setProgressing(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Progressed to ${next.label}.`);
+    setDetail({ ...detail, stage: next.key, rejected: false });
+  };
+
+  const rejectCandidate = async () => {
+    if (!detail || !user) return;
+    setProgressing(true);
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: true, rejected_at: new Date().toISOString(), rejected_by: user.id })
+      .eq("id", detail.id);
+    setProgressing(false);
+    if (error) return toast.error(error.message);
+    toast.success("Candidate rejected.");
+    setDetail({ ...detail, rejected: true });
+  };
+
+  const unrejectCandidate = async () => {
+    if (!detail) return;
+    setProgressing(true);
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", detail.id);
+    setProgressing(false);
+    if (error) return toast.error(error.message);
+    toast.success("Rejection reversed.");
+    setDetail({ ...detail, rejected: false });
+  };
+
+  const generateSummary = async (force = false) => {
+    if (!detail) return;
+    setSummaryLoading(true);
+    const { data, error } = await supabase.functions.invoke("summarize-resume", {
+      body: { candidateId: detail.candidate_id, force },
+    });
+    setSummaryLoading(false);
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to generate summary";
+      return toast.error(msg);
+    }
+    if ((data as any)?.summary) {
+      setSummary((data as any).summary);
+      if (!(data as any).cached) toast.success("Summary generated.");
+    } else if ((data as any)?.error) {
+      toast.error((data as any).error);
+    }
+  };
+
   const postComment = async () => {
     if (!detail || !user || !newComment.trim()) return;
     setPosting(true);
