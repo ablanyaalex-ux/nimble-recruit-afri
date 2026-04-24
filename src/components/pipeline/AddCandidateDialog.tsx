@@ -173,13 +173,23 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Headline</Label>
-              <Input
-                placeholder="Senior backend engineer at…"
-                value={form.headline}
-                onChange={(e) => setForm({ ...form, headline: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Headline</Label>
+                <Input
+                  placeholder="Senior backend engineer at…"
+                  value={form.headline}
+                  onChange={(e) => setForm({ ...form, headline: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Location</Label>
+                <Input
+                  placeholder="London, UK"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Source</Label>
