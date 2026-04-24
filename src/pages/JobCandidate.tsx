@@ -282,13 +282,14 @@ export default function JobCandidate() {
       </Link>
 
       {/* Header card */}
-      <Card className="p-6 mb-6">
+      <Card className={`p-6 mb-6 ${detail.rejected ? "border-destructive/40" : ""}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div className="min-w-0">
             <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{c.full_name}</h1>
             {c.headline && <p className="text-sm text-muted-foreground mt-1">{c.headline}</p>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {detail.rejected && <Badge variant="destructive">Rejected</Badge>}
             <Badge variant="secondary">{currentStage}</Badge>
             {canMove && (
               <Select value={detail.stage} onValueChange={moveStage}>
@@ -298,6 +299,21 @@ export default function JobCandidate() {
                 </SelectContent>
               </Select>
             )}
+            {canMove && !detail.rejected && (
+              <>
+                <Button size="sm" onClick={progressCandidate} disabled={progressing}>
+                  <ChevronRight className="h-3.5 w-3.5" /> Progress
+                </Button>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={rejectCandidate} disabled={progressing}>
+                  <X className="h-3.5 w-3.5" /> Reject
+                </Button>
+              </>
+            )}
+            {canMove && detail.rejected && (
+              <Button size="sm" variant="outline" onClick={unrejectCandidate} disabled={progressing}>
+                <Undo2 className="h-3.5 w-3.5" /> Reinstate
+              </Button>
+            )}
             {resumeUrl && (
               <Button size="sm" variant="outline" asChild>
                 <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
@@ -306,9 +322,10 @@ export default function JobCandidate() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={c.phone ? <a className="hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="text-muted-foreground">—</span>} />
+          <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={c.location ? c.location : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
         </div>
