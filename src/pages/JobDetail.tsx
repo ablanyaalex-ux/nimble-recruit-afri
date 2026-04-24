@@ -254,6 +254,7 @@ export default function JobDetail() {
   const [hiringMgrs, setHiringMgrs] = useState<HiringMgr[]>([]);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [view, setView] = useState<"active" | "rejected">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
