@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -250,23 +250,40 @@ export default function JobCandidate() {
           <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
           <TabsTrigger value="cover">Cover letter</TabsTrigger>
           <TabsTrigger value="interviews"><ClipboardList className="h-3.5 w-3.5" /> Interviews ({feedback.length})</TabsTrigger>
+          <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
           <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
-          <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
-          <TabsTrigger value="profile"><UserIcon className="h-3.5 w-3.5" /> Profile</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="resume" className="mt-4">
           <Card className="p-4">
-            {resumeUrl ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="text-sm font-medium">Candidate resume</div>
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Download</a>
-                  </Button>
-                </div>
-                <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
-              </div>
+            {resumeUrl && c.resume_path ? (
+              (() => {
+                const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
+                const fileName = c.resume_path.split("/").pop() ?? "resume";
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="text-sm font-medium truncate">{fileName}</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={resumeUrl} download={fileName}><Download className="h-3 w-3" /> Download</a>
+                        </Button>
+                      </div>
+                    </div>
+                    {isPdf ? (
+                      <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
+                    ) : (
+                      <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                        Inline preview isn't available for this file type. Use “Open” or “Download” above to view it.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
             ) : (
               <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
             )}
@@ -280,7 +297,7 @@ export default function JobCandidate() {
         </TabsContent>
 
         <TabsContent value="interviews" className="mt-4 space-y-3">
-          {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet.</p>}
+          {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it from the Scorecard tab.</p>}
           {feedback.map((f) => (
             <Card key={f.id} className="p-4">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
@@ -299,6 +316,41 @@ export default function JobCandidate() {
               {f.notes && <p className="text-sm mt-1 whitespace-pre-wrap">{f.notes}</p>}
             </Card>
           ))}
+        </TabsContent>
+
+        <TabsContent value="scorecard" className="mt-4 space-y-3">
+          {feedback.length > 0 && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Average rating</div>
+                  <div className="font-display text-3xl mt-1">
+                    {(feedback.filter(f => f.rating).reduce((a, f) => a + (f.rating ?? 0), 0) / Math.max(1, feedback.filter(f => f.rating).length)).toFixed(1)}
+                    <span className="text-base text-muted-foreground"> / 5</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Reviews</div>
+                  <div className="font-display text-3xl mt-1">{feedback.length}</div>
+                </div>
+              </div>
+              <div className="space-y-2 pt-3 mt-3 border-t">
+                {feedback.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{f.author?.display_name ?? "Someone"}</span>
+                    <div className="flex items-center gap-2">
+                      {f.rating && (
+                        <span className="inline-flex items-center gap-0.5">
+                          {Array.from({ length: f.rating }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current text-primary" />)}
+                        </span>
+                      )}
+                      {f.recommendation && <Badge variant="outline" className="capitalize text-[10px]">{f.recommendation.replace("_", " ")}</Badge>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
           <Card className="p-4">
             <div className="font-display text-base mb-3">Add interview feedback</div>
             <form onSubmit={submitFeedback} className="space-y-3">
@@ -368,55 +420,6 @@ export default function JobCandidate() {
               <Send className="h-3 w-3" /> Post
             </Button>
           </div>
-        </TabsContent>
-
-        <TabsContent value="scorecard" className="mt-4">
-          <Card className="p-4 space-y-3">
-            {feedback.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No scores yet. Add interview feedback to build a scorecard.</p>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Average rating</div>
-                    <div className="font-display text-3xl mt-1">
-                      {(feedback.filter(f => f.rating).reduce((a, f) => a + (f.rating ?? 0), 0) / Math.max(1, feedback.filter(f => f.rating).length)).toFixed(1)}
-                      <span className="text-base text-muted-foreground"> / 5</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Reviews</div>
-                    <div className="font-display text-3xl mt-1">{feedback.length}</div>
-                  </div>
-                </div>
-                <div className="space-y-2 pt-3 border-t">
-                  {feedback.map((f) => (
-                    <div key={f.id} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{f.author?.display_name ?? "Someone"}</span>
-                      <div className="flex items-center gap-2">
-                        {f.rating && (
-                          <span className="inline-flex items-center gap-0.5">
-                            {Array.from({ length: f.rating }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current text-primary" />)}
-                          </span>
-                        )}
-                        {f.recommendation && <Badge variant="outline" className="capitalize text-[10px]">{f.recommendation.replace("_", " ")}</Badge>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="profile" className="mt-4">
-          <Card className="p-4 space-y-3 text-sm">
-            <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{c.email ?? "—"}</p></div>
-            <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{c.phone ?? "—"}</p></div>
-            <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{c.linkedin_url ?? "—"}</p></div>
-            <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Source</Label><p className="capitalize">{c.source?.replace(/_/g, " ") ?? "—"}</p></div>
-            <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{c.notes ?? "—"}</p></div>
-          </Card>
         </TabsContent>
       </Tabs>
     </PageContainer>
