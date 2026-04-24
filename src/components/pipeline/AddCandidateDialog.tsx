@@ -55,6 +55,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
     email: "",
     phone: "",
     headline: "",
+    location: "",
     source: "",
     notes: "",
   });
@@ -75,7 +76,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
 
   const reset = () => {
     setPick("");
-    setForm({ full_name: "", email: "", phone: "", headline: "", source: "", notes: "" });
+    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", source: "", notes: "" });
     setResume(null);
   };
 
@@ -107,6 +108,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
           email: form.email.trim() || null,
           phone: form.phone.trim() || null,
           headline: form.headline.trim() || null,
+          location: form.location.trim() || null,
           source: form.source || null,
           notes: form.notes.trim() || null,
         } as any)
@@ -171,13 +173,23 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Headline</Label>
-              <Input
-                placeholder="Senior backend engineer at…"
-                value={form.headline}
-                onChange={(e) => setForm({ ...form, headline: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Headline</Label>
+                <Input
+                  placeholder="Senior backend engineer at…"
+                  value={form.headline}
+                  onChange={(e) => setForm({ ...form, headline: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Location</Label>
+                <Input
+                  placeholder="London, UK"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Source</Label>

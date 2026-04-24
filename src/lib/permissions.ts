@@ -24,7 +24,6 @@ export const DEFAULT_STAGES: PipelineStage[] = [
   { key: "second_interview", label: "Second Interview", position: 4 },
   { key: "offer", label: "Offer", position: 5 },
   { key: "offer_accepted", label: "Offer Accepted", position: 6 },
-  { key: "rejected", label: "Rejected", position: 7 },
 ];
 
 export const visibleStagesForRole = (

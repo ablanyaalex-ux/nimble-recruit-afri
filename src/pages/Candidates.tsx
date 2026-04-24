@@ -41,6 +41,7 @@ export default function Candidates() {
     email: "",
     phone: "",
     headline: "",
+    location: "",
     linkedin_url: "",
     notes: "",
   });
@@ -77,6 +78,7 @@ export default function Candidates() {
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         headline: form.headline.trim() || null,
+        location: form.location.trim() || null,
         linkedin_url: form.linkedin_url.trim() || null,
         notes: form.notes.trim() || null,
         created_by: user.id,
@@ -102,7 +104,7 @@ export default function Candidates() {
     setSubmitting(false);
     toast.success("Candidate added.");
     setOpen(false);
-    setForm({ full_name: "", email: "", phone: "", headline: "", linkedin_url: "", notes: "" });
+    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", linkedin_url: "", notes: "" });
     setResume(null);
     refresh();
   };
@@ -136,9 +138,15 @@ export default function Candidates() {
                       <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Headline</Label>
-                    <Input placeholder="Senior Backend Engineer" value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Headline</Label>
+                      <Input placeholder="Senior Backend Engineer" value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Input placeholder="London, UK" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>LinkedIn URL</Label>

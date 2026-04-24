@@ -13,6 +13,9 @@ import {
   Clock,
   Pencil,
   Settings,
+  ChevronRight,
+  X,
+  Undo2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -88,6 +91,7 @@ type Job = {
 type PipelineEntry = {
   id: string;
   stage: string;
+  rejected: boolean;
   candidate_id: string;
   candidates: { full_name: string; headline: string | null; source: string | null };
 };
@@ -107,19 +111,27 @@ const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date
 function DraggableCard({
   entry,
   canDrag,
+  canEdit,
   selected,
   selectMode,
   onToggleSelect,
   onClick,
+  onProgress,
+  onReject,
+  onReinstate,
 }: {
   entry: PipelineEntry;
   canDrag: boolean;
+  canEdit: boolean;
   selected: boolean;
   selectMode: boolean;
   onToggleSelect: () => void;
   onClick: () => void;
+  onProgress: (e: React.MouseEvent) => void;
+  onReject: (e: React.MouseEvent) => void;
+  onReinstate: (e: React.MouseEvent) => void;
 }) {
-  const dragDisabled = !canDrag || selectMode;
+  const dragDisabled = !canDrag || selectMode || entry.rejected;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
     disabled: dragDisabled,
@@ -141,7 +153,7 @@ function DraggableCard({
           onClick();
         }
       }}
-      className={`p-3 ${dragDisabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} hover:border-primary/40 transition-colors ${selected ? "border-primary ring-1 ring-primary/40" : ""}`}
+      className={`p-3 ${dragDisabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} hover:border-primary/40 transition-colors ${selected ? "border-primary ring-1 ring-primary/40" : ""} ${entry.rejected ? "opacity-80" : ""}`}
     >
       <div className="flex items-start gap-2">
         <Checkbox
@@ -152,13 +164,34 @@ function DraggableCard({
           aria-label={`Select ${entry.candidates.full_name}`}
         />
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="font-medium text-sm leading-tight">{entry.candidates.full_name}</div>
+            {entry.rejected && <Badge variant="destructive" className="h-4 text-[9px] px-1.5">Rejected</Badge>}
+          </div>
           {entry.candidates.headline && (
             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.candidates.headline}</div>
           )}
           {entry.candidates.source && (
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1.5">
               {entry.candidates.source.replace(/_/g, " ")}
+            </div>
+          )}
+          {canEdit && !selectMode && (
+            <div className="flex items-center gap-1 mt-2 -mb-1">
+              {!entry.rejected ? (
+                <>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onProgress}>
+                    <ChevronRight className="h-3 w-3" /> Progress
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-destructive hover:text-destructive" onClick={onReject}>
+                    <X className="h-3 w-3" /> Reject
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onReinstate}>
+                  <Undo2 className="h-3 w-3" /> Reinstate
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -221,6 +254,7 @@ export default function JobDetail() {
   const [hiringMgrs, setHiringMgrs] = useState<HiringMgr[]>([]);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [view, setView] = useState<"active" | "rejected">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
@@ -241,7 +275,7 @@ export default function JobDetail() {
         .single(),
       supabase
         .from("job_candidates")
-        .select("id, stage, candidate_id, candidates(full_name, headline, source)")
+        .select("id, stage, rejected, candidate_id, candidates(full_name, headline, source)")
         .eq("job_id", id)
         .order("position"),
     ]);
@@ -289,13 +323,17 @@ export default function JobDetail() {
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
     return entries.filter((e) => {
+      if (view === "active" && e.rejected) return false;
+      if (view === "rejected" && !e.rejected) return false;
       if (sourceFilter !== "all" && (e.candidates.source ?? "") !== sourceFilter) return false;
       if (!q) return true;
       const n = e.candidates.full_name?.toLowerCase() ?? "";
       const h = e.candidates.headline?.toLowerCase() ?? "";
       return n.includes(q) || h.includes(q);
     });
-  }, [entries, search, sourceFilter]);
+  }, [entries, search, sourceFilter, view]);
+
+  const rejectedCount = useMemo(() => entries.filter((e) => e.rejected).length, [entries]);
 
   const grouped = useMemo(() => {
     const g: Record<string, PipelineEntry[]> = {};
@@ -366,6 +404,39 @@ export default function JobDetail() {
       toast.error(error.message);
       refresh();
     }
+  };
+
+  const progressEntry = async (entry: PipelineEntry) => {
+    const idx = stages.findIndex((s) => s.key === entry.stage);
+    const next = stages[idx + 1];
+    if (!next) return toast.info("Already at the final stage.");
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, stage: next.key, rejected: false } : x)));
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ stage: next.key as any, rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", entry.id);
+    if (error) { toast.error(error.message); refresh(); return; }
+    toast.success(`Moved to ${next.label}.`);
+  };
+
+  const rejectEntry = async (entry: PipelineEntry) => {
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: true } : x)));
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: true, rejected_at: new Date().toISOString() })
+      .eq("id", entry.id);
+    if (error) { toast.error(error.message); refresh(); return; }
+    toast.success("Candidate rejected.");
+  };
+
+  const reinstateEntry = async (entry: PipelineEntry) => {
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: false } : x)));
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", entry.id);
+    if (error) { toast.error(error.message); refresh(); return; }
+    toast.success("Candidate reinstated.");
   };
 
   const updateStatus = async (status: Job["status"]) => {
@@ -504,6 +575,26 @@ export default function JobDetail() {
         </div>
       </Card>
 
+      {/* View toggle: Active vs Rejected */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="inline-flex rounded-md border border-border p-0.5 bg-secondary/40">
+          <button
+            type="button"
+            onClick={() => setView("active")}
+            className={`px-3 h-8 text-xs rounded-[5px] transition-colors ${view === "active" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Active ({entries.length - rejectedCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("rejected")}
+            className={`px-3 h-8 text-xs rounded-[5px] transition-colors ${view === "rejected" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Rejected ({rejectedCount})
+          </button>
+        </div>
+      </div>
+
       {/* Search + filter + meta */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <div className="relative w-full sm:w-64">
@@ -531,9 +622,7 @@ export default function JobDetail() {
           </Select>
         )}
         <div className="text-xs text-muted-foreground ml-auto">
-          {(search || sourceFilter !== "all")
-            ? `${visibleEntries.length} of ${totalCandidates}`
-            : `${totalCandidates}`} candidate{totalCandidates === 1 ? "" : "s"}
+          {visibleEntries.length} {view === "rejected" ? "rejected" : "active"} candidate{visibleEntries.length === 1 ? "" : "s"}
         </div>
       </div>
 
@@ -578,48 +667,87 @@ export default function JobDetail() {
         </p>
       )}
 
-      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
-          {stages.map((stage) => {
-            const stageEntries = grouped[stage.key] ?? [];
-            const allSelected = stageEntries.length > 0 && stageEntries.every((e) => selected.has(e.id));
-            const someSelected = !allSelected && stageEntries.some((e) => selected.has(e.id));
-            return (
-              <DroppableColumn key={stage.key} stageKey={stage.key}>
-                <div className="flex items-center justify-between mb-3 px-1 gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {canEdit && stageEntries.length > 0 && (
-                      <Checkbox
-                        checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                        onCheckedChange={() => toggleSelectStage(stage.key)}
-                        aria-label={`Select all in ${stage.label}`}
-                      />
-                    )}
-                    <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate">
-                      {stage.label}
+      {view === "active" ? (
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+          <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
+            {stages.map((stage) => {
+              const stageEntries = grouped[stage.key] ?? [];
+              const allSelected = stageEntries.length > 0 && stageEntries.every((e) => selected.has(e.id));
+              const someSelected = !allSelected && stageEntries.some((e) => selected.has(e.id));
+              return (
+                <DroppableColumn key={stage.key} stageKey={stage.key}>
+                  <div className="flex items-center justify-between mb-3 px-1 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {canEdit && stageEntries.length > 0 && (
+                        <Checkbox
+                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                          onCheckedChange={() => toggleSelectStage(stage.key)}
+                          aria-label={`Select all in ${stage.label}`}
+                        />
+                      )}
+                      <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate">
+                        {stage.label}
+                      </div>
                     </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
+                  <div className="space-y-2 min-h-[80px]">
+                    {stageEntries.map((entry) => (
+                      <DraggableCard
+                        key={entry.id}
+                        entry={entry}
+                        canDrag={canDrag}
+                        canEdit={canEdit}
+                        selected={selected.has(entry.id)}
+                        selectMode={selectMode}
+                        onToggleSelect={() => toggleSelect(entry.id)}
+                        onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
+                        onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
+                        onReject={(e) => { e.stopPropagation(); rejectEntry(entry); }}
+                        onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
+                      />
+                    ))}
+                  </div>
+                </DroppableColumn>
+              );
+            })}
+          </div>
+        </DndContext>
+      ) : (
+        <Card className="divide-y divide-border">
+          {visibleEntries.length === 0 ? (
+            <div className="p-10 text-center text-sm text-muted-foreground">No rejected candidates.</div>
+          ) : visibleEntries.map((entry) => {
+            const stageLabel = stages.find((s) => s.key === entry.stage)?.label ?? entry.stage;
+            return (
+              <div
+                key={entry.id}
+                className="p-3 flex items-center justify-between gap-3 hover:bg-accent/40 cursor-pointer"
+                onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-medium text-sm truncate">{entry.candidates.full_name}</div>
+                    <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+                  </div>
+                  {entry.candidates.headline && (
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">{entry.candidates.headline}</div>
+                  )}
                 </div>
-                <div className="space-y-2 min-h-[80px]">
-                  {stageEntries.map((entry) => (
-                    <DraggableCard
-                      key={entry.id}
-                      entry={entry}
-                      canDrag={canDrag}
-                      selected={selected.has(entry.id)}
-                      selectMode={selectMode}
-                      onToggleSelect={() => toggleSelect(entry.id)}
-                      onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
-                    />
-                  ))}
-                </div>
-              </DroppableColumn>
+                {canEdit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
+                  >
+                    <Undo2 className="h-3.5 w-3.5" /> Reinstate
+                  </Button>
+                )}
+              </div>
             );
           })}
-        </div>
-      </DndContext>
-
+        </Card>
+      )}
 
       {canEdit && (
         <PipelineStagesDialog

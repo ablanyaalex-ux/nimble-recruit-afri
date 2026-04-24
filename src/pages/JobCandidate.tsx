@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -19,6 +19,8 @@ import { toast } from "sonner";
 type Detail = {
   id: string;
   stage: string;
+  rejected: boolean;
+  rejection_reason: string | null;
   candidate_id: string;
   job_id: string;
   jobs: { workspace_id: string; client_id: string; title: string } | null;
@@ -31,6 +33,8 @@ type Detail = {
     resume_path: string | null;
     notes: string | null;
     source: string | null;
+    location: string | null;
+    resume_summary: string | null;
   };
 };
 
@@ -83,6 +87,9 @@ export default function JobCandidate() {
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [progressing, setProgressing] = useState(false);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
@@ -92,11 +99,12 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, job_id, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
+      setSummary((data.candidates as any)?.resume_summary ?? null);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
@@ -156,6 +164,67 @@ export default function JobCandidate() {
     setDetail({ ...detail, stage });
   };
 
+  const progressCandidate = async () => {
+    if (!detail) return;
+    const idx = stages.findIndex((s) => s.key === detail.stage);
+    const next = stages[idx + 1];
+    if (!next) return toast.info("Already at the final stage.");
+    setProgressing(true);
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ stage: next.key as any, rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", detail.id);
+    setProgressing(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Progressed to ${next.label}.`);
+    setDetail({ ...detail, stage: next.key, rejected: false });
+  };
+
+  const rejectCandidate = async () => {
+    if (!detail || !user) return;
+    setProgressing(true);
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: true, rejected_at: new Date().toISOString(), rejected_by: user.id })
+      .eq("id", detail.id);
+    setProgressing(false);
+    if (error) return toast.error(error.message);
+    toast.success("Candidate rejected.");
+    setDetail({ ...detail, rejected: true });
+  };
+
+  const unrejectCandidate = async () => {
+    if (!detail) return;
+    setProgressing(true);
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", detail.id);
+    setProgressing(false);
+    if (error) return toast.error(error.message);
+    toast.success("Rejection reversed.");
+    setDetail({ ...detail, rejected: false });
+  };
+
+  const generateSummary = async (force = false) => {
+    if (!detail) return;
+    setSummaryLoading(true);
+    const { data, error } = await supabase.functions.invoke("summarize-resume", {
+      body: { candidateId: detail.candidate_id, force },
+    });
+    setSummaryLoading(false);
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to generate summary";
+      return toast.error(msg);
+    }
+    if ((data as any)?.summary) {
+      setSummary((data as any).summary);
+      if (!(data as any).cached) toast.success("Summary generated.");
+    } else if ((data as any)?.error) {
+      toast.error((data as any).error);
+    }
+  };
+
   const postComment = async () => {
     if (!detail || !user || !newComment.trim()) return;
     setPosting(true);
@@ -213,13 +282,14 @@ export default function JobCandidate() {
       </Link>
 
       {/* Header card */}
-      <Card className="p-6 mb-6">
+      <Card className={`p-6 mb-6 ${detail.rejected ? "border-destructive/40" : ""}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div className="min-w-0">
             <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{c.full_name}</h1>
             {c.headline && <p className="text-sm text-muted-foreground mt-1">{c.headline}</p>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {detail.rejected && <Badge variant="destructive">Rejected</Badge>}
             <Badge variant="secondary">{currentStage}</Badge>
             {canMove && (
               <Select value={detail.stage} onValueChange={moveStage}>
@@ -229,6 +299,21 @@ export default function JobCandidate() {
                 </SelectContent>
               </Select>
             )}
+            {canMove && !detail.rejected && (
+              <>
+                <Button size="sm" onClick={progressCandidate} disabled={progressing}>
+                  <ChevronRight className="h-3.5 w-3.5" /> Progress
+                </Button>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={rejectCandidate} disabled={progressing}>
+                  <X className="h-3.5 w-3.5" /> Reject
+                </Button>
+              </>
+            )}
+            {canMove && detail.rejected && (
+              <Button size="sm" variant="outline" onClick={unrejectCandidate} disabled={progressing}>
+                <Undo2 className="h-3.5 w-3.5" /> Reinstate
+              </Button>
+            )}
             {resumeUrl && (
               <Button size="sm" variant="outline" asChild>
                 <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
@@ -237,9 +322,10 @@ export default function JobCandidate() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={c.phone ? <a className="hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="text-muted-foreground">—</span>} />
+          <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={c.location ? c.location : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
         </div>
@@ -255,7 +341,36 @@ export default function JobCandidate() {
         </TabsList>
 
 
-        <TabsContent value="resume" className="mt-4">
+        <TabsContent value="resume" className="mt-4 space-y-4">
+          {c.resume_path && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <div className="font-display text-base">AI summary</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {summary && (
+                    <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
+                      <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
+                    </Button>
+                  )}
+                  {!summary && (
+                    <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
+                      <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {summaryLoading && !summary ? (
+                <p className="text-sm text-muted-foreground">Reading the resume and writing a brief… this can take ~10–20s.</p>
+              ) : summary ? (
+                <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{summary}</div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Click <em>Generate summary</em> to get an AI-written brief of this resume.</p>
+              )}
+            </Card>
+          )}
           <Card className="p-4">
             {resumeUrl && c.resume_path ? (
               (() => {

@@ -55,9 +55,12 @@ export type Database = {
           headline: string | null
           id: string
           linkedin_url: string | null
+          location: string | null
           notes: string | null
           phone: string | null
           resume_path: string | null
+          resume_summary: string | null
+          resume_summary_generated_at: string | null
           source: string | null
           updated_at: string
           workspace_id: string
@@ -70,9 +73,12 @@ export type Database = {
           headline?: string | null
           id?: string
           linkedin_url?: string | null
+          location?: string | null
           notes?: string | null
           phone?: string | null
           resume_path?: string | null
+          resume_summary?: string | null
+          resume_summary_generated_at?: string | null
           source?: string | null
           updated_at?: string
           workspace_id: string
@@ -85,9 +91,12 @@ export type Database = {
           headline?: string | null
           id?: string
           linkedin_url?: string | null
+          location?: string | null
           notes?: string | null
           phone?: string | null
           resume_path?: string | null
+          resume_summary?: string | null
+          resume_summary_generated_at?: string | null
           source?: string | null
           updated_at?: string
           workspace_id?: string
@@ -280,6 +289,10 @@ export type Database = {
           id: string
           job_id: string
           position: number
+          rejected: boolean
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           stage: string
           updated_at: string
         }
@@ -290,6 +303,10 @@ export type Database = {
           id?: string
           job_id: string
           position?: number
+          rejected?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           stage?: string
           updated_at?: string
         }
@@ -300,6 +317,10 @@ export type Database = {
           id?: string
           job_id?: string
           position?: number
+          rejected?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           stage?: string
           updated_at?: string
         }
