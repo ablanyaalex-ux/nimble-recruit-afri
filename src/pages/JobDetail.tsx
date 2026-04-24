@@ -406,7 +406,38 @@ export default function JobDetail() {
     }
   };
 
-  const updateStatus = async (status: Job["status"]) => {
+  const progressEntry = async (entry: PipelineEntry) => {
+    const idx = stages.findIndex((s) => s.key === entry.stage);
+    const next = stages[idx + 1];
+    if (!next) return toast.info("Already at the final stage.");
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, stage: next.key, rejected: false } : x)));
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ stage: next.key as any, rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", entry.id);
+    if (error) { toast.error(error.message); refresh(); return; }
+    toast.success(`Moved to ${next.label}.`);
+  };
+
+  const rejectEntry = async (entry: PipelineEntry) => {
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: true } : x)));
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: true, rejected_at: new Date().toISOString() })
+      .eq("id", entry.id);
+    if (error) { toast.error(error.message); refresh(); return; }
+    toast.success("Candidate rejected.");
+  };
+
+  const reinstateEntry = async (entry: PipelineEntry) => {
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: false } : x)));
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .eq("id", entry.id);
+    if (error) { toast.error(error.message); refresh(); return; }
+    toast.success("Candidate reinstated.");
+  };
     if (!job) return;
     const { error } = await supabase.from("jobs").update({ status }).eq("id", job.id);
     if (error) return toast.error(error.message);
