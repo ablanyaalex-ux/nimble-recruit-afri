@@ -88,6 +88,7 @@ type Job = {
 type PipelineEntry = {
   id: string;
   stage: string;
+  rejected: boolean;
   candidate_id: string;
   candidates: { full_name: string; headline: string | null; source: string | null };
 };
