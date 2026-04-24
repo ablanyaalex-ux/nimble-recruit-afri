@@ -254,18 +254,36 @@ export default function JobCandidate() {
           <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
         </TabsList>
 
+
         <TabsContent value="resume" className="mt-4">
           <Card className="p-4">
-            {resumeUrl ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="text-sm font-medium">Candidate resume</div>
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Download</a>
-                  </Button>
-                </div>
-                <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
-              </div>
+            {resumeUrl && c.resume_path ? (
+              (() => {
+                const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
+                const fileName = c.resume_path.split("/").pop() ?? "resume";
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="text-sm font-medium truncate">{fileName}</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={resumeUrl} download={fileName}><Download className="h-3 w-3" /> Download</a>
+                        </Button>
+                      </div>
+                    </div>
+                    {isPdf ? (
+                      <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
+                    ) : (
+                      <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                        Inline preview isn't available for this file type. Use “Open” or “Download” above to view it.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
             ) : (
               <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
             )}
