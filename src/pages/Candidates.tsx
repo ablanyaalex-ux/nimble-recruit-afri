@@ -78,6 +78,7 @@ export default function Candidates() {
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         headline: form.headline.trim() || null,
+        location: form.location.trim() || null,
         linkedin_url: form.linkedin_url.trim() || null,
         notes: form.notes.trim() || null,
         created_by: user.id,
