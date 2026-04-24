@@ -104,7 +104,7 @@ export default function Candidates() {
     setSubmitting(false);
     toast.success("Candidate added.");
     setOpen(false);
-    setForm({ full_name: "", email: "", phone: "", headline: "", linkedin_url: "", notes: "" });
+    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", linkedin_url: "", notes: "" });
     setResume(null);
     refresh();
   };
