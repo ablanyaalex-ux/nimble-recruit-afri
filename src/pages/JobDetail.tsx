@@ -438,6 +438,8 @@ export default function JobDetail() {
     if (error) { toast.error(error.message); refresh(); return; }
     toast.success("Candidate reinstated.");
   };
+
+  const updateStatus = async (status: Job["status"]) => {
     if (!job) return;
     const { error } = await supabase.from("jobs").update({ status }).eq("id", job.id);
     if (error) return toast.error(error.message);
