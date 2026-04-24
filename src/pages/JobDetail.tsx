@@ -678,10 +678,14 @@ export default function JobDetail() {
                       key={entry.id}
                       entry={entry}
                       canDrag={canDrag}
+                      canEdit={canEdit}
                       selected={selected.has(entry.id)}
                       selectMode={selectMode}
                       onToggleSelect={() => toggleSelect(entry.id)}
                       onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
+                      onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
+                      onReject={(e) => { e.stopPropagation(); rejectEntry(entry); }}
+                      onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
                     />
                   ))}
                 </div>
