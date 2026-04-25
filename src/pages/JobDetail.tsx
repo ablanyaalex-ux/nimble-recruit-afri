@@ -262,6 +262,15 @@ export default function JobDetail() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
+  const [rejectedStageFilter, setRejectedStageFilter] = useState<string>("all");
+  const [rejectedLocationFilter, setRejectedLocationFilter] = useState<string>("all");
+  // Reject dialog state (used for both single and bulk reject)
+  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; ids: string[]; reason: string; busy: boolean }>({
+    open: false,
+    ids: [],
+    reason: "",
+    busy: false,
+  });
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
