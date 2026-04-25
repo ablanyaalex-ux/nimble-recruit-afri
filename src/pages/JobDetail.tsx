@@ -64,6 +64,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
@@ -92,8 +95,9 @@ type PipelineEntry = {
   id: string;
   stage: string;
   rejected: boolean;
+  rejection_reason: string | null;
   candidate_id: string;
-  candidates: { full_name: string; headline: string | null; source: string | null };
+  candidates: { full_name: string; headline: string | null; source: string | null; location: string | null };
 };
 
 type Recruiter = { id: string; display_name: string | null };
@@ -258,6 +262,15 @@ export default function JobDetail() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
+  const [rejectedStageFilter, setRejectedStageFilter] = useState<string>("all");
+  const [rejectedLocationFilter, setRejectedLocationFilter] = useState<string>("all");
+  // Reject dialog state (used for both single and bulk reject)
+  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; ids: string[]; reason: string; busy: boolean }>({
+    open: false,
+    ids: [],
+    reason: "",
+    busy: false,
+  });
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -275,7 +288,7 @@ export default function JobDetail() {
         .single(),
       supabase
         .from("job_candidates")
-        .select("id, stage, rejected, candidate_id, candidates(full_name, headline, source)")
+        .select("id, stage, rejected, rejection_reason, candidate_id, candidates(full_name, headline, source, location)")
         .eq("job_id", id)
         .order("position"),
     ]);
@@ -320,18 +333,35 @@ export default function JobDetail() {
     return Array.from(set).sort();
   }, [entries]);
 
+  const rejectedLocations = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) if (e.rejected && e.candidates.location) set.add(e.candidates.location);
+    return Array.from(set).sort();
+  }, [entries]);
+
+  const rejectedStages = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) if (e.rejected) set.add(e.stage);
+    return stages.filter((s) => set.has(s.key));
+  }, [entries, stages]);
+
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
     return entries.filter((e) => {
       if (view === "active" && e.rejected) return false;
       if (view === "rejected" && !e.rejected) return false;
       if (sourceFilter !== "all" && (e.candidates.source ?? "") !== sourceFilter) return false;
+      if (view === "rejected") {
+        if (rejectedStageFilter !== "all" && e.stage !== rejectedStageFilter) return false;
+        if (rejectedLocationFilter !== "all" && (e.candidates.location ?? "") !== rejectedLocationFilter) return false;
+      }
       if (!q) return true;
       const n = e.candidates.full_name?.toLowerCase() ?? "";
       const h = e.candidates.headline?.toLowerCase() ?? "";
-      return n.includes(q) || h.includes(q);
+      const r = e.rejection_reason?.toLowerCase() ?? "";
+      return n.includes(q) || h.includes(q) || r.includes(q);
     });
-  }, [entries, search, sourceFilter, view]);
+  }, [entries, search, sourceFilter, view, rejectedStageFilter, rejectedLocationFilter]);
 
   const rejectedCount = useMemo(() => entries.filter((e) => e.rejected).length, [entries]);
 
@@ -419,24 +449,42 @@ export default function JobDetail() {
     toast.success(`Moved to ${next.label}.`);
   };
 
-  const rejectEntry = async (entry: PipelineEntry) => {
-    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: true } : x)));
+  const openRejectDialog = (ids: string[]) => {
+    if (ids.length === 0) return;
+    setRejectDialog({ open: true, ids, reason: "", busy: false });
+  };
+
+  const confirmReject = async () => {
+    const reason = rejectDialog.reason.trim();
+    if (!reason) { toast.error("Please provide a rejection reason."); return; }
+    setRejectDialog((d) => ({ ...d, busy: true }));
+    const ids = rejectDialog.ids;
     const { error } = await supabase
       .from("job_candidates")
-      .update({ rejected: true, rejected_at: new Date().toISOString() })
-      .eq("id", entry.id);
-    if (error) { toast.error(error.message); refresh(); return; }
-    toast.success("Candidate rejected.");
+      .update({
+        rejected: true,
+        rejected_at: new Date().toISOString(),
+        rejection_reason: reason,
+      })
+      .in("id", ids);
+    if (error) {
+      setRejectDialog((d) => ({ ...d, busy: false }));
+      return toast.error(error.message);
+    }
+    setEntries((prev) => prev.map((x) => (ids.includes(x.id) ? { ...x, rejected: true, rejection_reason: reason } : x)));
+    toast.success(ids.length === 1 ? "Candidate rejected." : `Rejected ${ids.length} candidates.`);
+    setRejectDialog({ open: false, ids: [], reason: "", busy: false });
+    if (ids.length > 1) clearSelection();
   };
 
   const reinstateEntry = async (entry: PipelineEntry) => {
-    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: false } : x)));
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: false, rejection_reason: null } : x)));
     const { error } = await supabase
       .from("job_candidates")
-      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .update({ rejected: false, rejected_at: null, rejected_by: null, rejection_reason: null })
       .eq("id", entry.id);
     if (error) { toast.error(error.message); refresh(); return; }
-    toast.success("Candidate reinstated.");
+    toast.success("Candidate un-rejected.");
   };
 
   const updateStatus = async (status: Job["status"]) => {
@@ -621,6 +669,32 @@ export default function JobDetail() {
             </SelectContent>
           </Select>
         )}
+        {view === "rejected" && rejectedStages.length > 0 && (
+          <Select value={rejectedStageFilter} onValueChange={setRejectedStageFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[180px]">
+              <SelectValue placeholder="Stage before rejection" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All stages</SelectItem>
+              {rejectedStages.map((s) => (
+                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {view === "rejected" && rejectedLocations.length > 0 && (
+          <Select value={rejectedLocationFilter} onValueChange={setRejectedLocationFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[140px]">
+              <SelectValue placeholder="All locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All locations</SelectItem>
+              {rejectedLocations.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="text-xs text-muted-foreground ml-auto">
           {visibleEntries.length} {view === "rejected" ? "rejected" : "active"} candidate{visibleEntries.length === 1 ? "" : "s"}
         </div>
@@ -646,6 +720,15 @@ export default function JobDetail() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            disabled={bulkBusy}
+            onClick={() => openRejectDialog(Array.from(selected))}
+          >
+            <X className="h-4 w-4" /> Reject
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -703,7 +786,7 @@ export default function JobDetail() {
                         onToggleSelect={() => toggleSelect(entry.id)}
                         onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
                         onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
-                        onReject={(e) => { e.stopPropagation(); rejectEntry(entry); }}
+                        onReject={(e) => { e.stopPropagation(); openRejectDialog([entry.id]); }}
                         onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
                       />
                     ))}
@@ -725,13 +808,28 @@ export default function JobDetail() {
                 className="p-3 flex items-center justify-between gap-3 hover:bg-accent/40 cursor-pointer"
                 onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-sm truncate">{entry.candidates.full_name}</div>
                     <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+                    {entry.candidates.location && (
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        <MapPin className="h-3 w-3" /> {entry.candidates.location}
+                      </Badge>
+                    )}
+                    {entry.candidates.source && (
+                      <Badge variant="secondary" className="text-[10px] font-normal capitalize">
+                        {entry.candidates.source.replace(/_/g, " ")}
+                      </Badge>
+                    )}
                   </div>
                   {entry.candidates.headline && (
                     <div className="text-xs text-muted-foreground truncate mt-0.5">{entry.candidates.headline}</div>
+                  )}
+                  {entry.rejection_reason && (
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      <span className="font-medium text-foreground/80">Reason:</span> {entry.rejection_reason}
+                    </div>
                   )}
                 </div>
                 {canEdit && (
@@ -740,7 +838,7 @@ export default function JobDetail() {
                     variant="outline"
                     onClick={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
                   >
-                    <Undo2 className="h-3.5 w-3.5" /> Reinstate
+                    <Undo2 className="h-3.5 w-3.5" /> Un-reject
                   </Button>
                 )}
               </div>
@@ -805,6 +903,52 @@ export default function JobDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={rejectDialog.open}
+        onOpenChange={(o) => setRejectDialog((d) => ({ ...d, open: o, reason: o ? d.reason : "" }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Reject {rejectDialog.ids.length > 1 ? `${rejectDialog.ids.length} candidates` : "candidate"}
+            </DialogTitle>
+            <DialogDescription>
+              Add a reason so the team has context and you can filter rejected candidates by it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="job-reject-reason" className="text-xs">
+              Reason <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="job-reject-reason"
+              rows={4}
+              placeholder="e.g. Not enough relevant experience, salary expectations too high, withdrew, etc."
+              value={rejectDialog.reason}
+              onChange={(e) => setRejectDialog((d) => ({ ...d, reason: e.target.value }))}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialog({ open: false, ids: [], reason: "", busy: false })}
+              disabled={rejectDialog.busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={rejectDialog.busy || !rejectDialog.reason.trim()}
+            >
+              <X className="h-3.5 w-3.5" />
+              {rejectDialog.ids.length > 1 ? `Reject ${rejectDialog.ids.length}` : "Reject candidate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
