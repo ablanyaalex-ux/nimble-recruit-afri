@@ -808,13 +808,28 @@ export default function JobDetail() {
                 className="p-3 flex items-center justify-between gap-3 hover:bg-accent/40 cursor-pointer"
                 onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-sm truncate">{entry.candidates.full_name}</div>
                     <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+                    {entry.candidates.location && (
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        <MapPin className="h-3 w-3" /> {entry.candidates.location}
+                      </Badge>
+                    )}
+                    {entry.candidates.source && (
+                      <Badge variant="secondary" className="text-[10px] font-normal capitalize">
+                        {entry.candidates.source.replace(/_/g, " ")}
+                      </Badge>
+                    )}
                   </div>
                   {entry.candidates.headline && (
                     <div className="text-xs text-muted-foreground truncate mt-0.5">{entry.candidates.headline}</div>
+                  )}
+                  {entry.rejection_reason && (
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      <span className="font-medium text-foreground/80">Reason:</span> {entry.rejection_reason}
+                    </div>
                   )}
                 </div>
                 {canEdit && (
@@ -823,7 +838,7 @@ export default function JobDetail() {
                     variant="outline"
                     onClick={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
                   >
-                    <Undo2 className="h-3.5 w-3.5" /> Reinstate
+                    <Undo2 className="h-3.5 w-3.5" /> Un-reject
                   </Button>
                 )}
               </div>
