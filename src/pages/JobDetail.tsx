@@ -751,7 +751,7 @@ export default function JobDetail() {
                         onToggleSelect={() => toggleSelect(entry.id)}
                         onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
                         onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
-                        onReject={(e) => { e.stopPropagation(); rejectEntry(entry); }}
+                        onReject={(e) => { e.stopPropagation(); openRejectDialog([entry.id]); }}
                         onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
                       />
                     ))}
