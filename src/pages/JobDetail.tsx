@@ -449,24 +449,42 @@ export default function JobDetail() {
     toast.success(`Moved to ${next.label}.`);
   };
 
-  const rejectEntry = async (entry: PipelineEntry) => {
-    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: true } : x)));
+  const openRejectDialog = (ids: string[]) => {
+    if (ids.length === 0) return;
+    setRejectDialog({ open: true, ids, reason: "", busy: false });
+  };
+
+  const confirmReject = async () => {
+    const reason = rejectDialog.reason.trim();
+    if (!reason) { toast.error("Please provide a rejection reason."); return; }
+    setRejectDialog((d) => ({ ...d, busy: true }));
+    const ids = rejectDialog.ids;
     const { error } = await supabase
       .from("job_candidates")
-      .update({ rejected: true, rejected_at: new Date().toISOString() })
-      .eq("id", entry.id);
-    if (error) { toast.error(error.message); refresh(); return; }
-    toast.success("Candidate rejected.");
+      .update({
+        rejected: true,
+        rejected_at: new Date().toISOString(),
+        rejection_reason: reason,
+      })
+      .in("id", ids);
+    if (error) {
+      setRejectDialog((d) => ({ ...d, busy: false }));
+      return toast.error(error.message);
+    }
+    setEntries((prev) => prev.map((x) => (ids.includes(x.id) ? { ...x, rejected: true, rejection_reason: reason } : x)));
+    toast.success(ids.length === 1 ? "Candidate rejected." : `Rejected ${ids.length} candidates.`);
+    setRejectDialog({ open: false, ids: [], reason: "", busy: false });
+    if (ids.length > 1) clearSelection();
   };
 
   const reinstateEntry = async (entry: PipelineEntry) => {
-    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: false } : x)));
+    setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, rejected: false, rejection_reason: null } : x)));
     const { error } = await supabase
       .from("job_candidates")
-      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .update({ rejected: false, rejected_at: null, rejected_by: null, rejection_reason: null })
       .eq("id", entry.id);
     if (error) { toast.error(error.message); refresh(); return; }
-    toast.success("Candidate reinstated.");
+    toast.success("Candidate un-rejected.");
   };
 
   const updateStatus = async (status: Job["status"]) => {
