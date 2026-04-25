@@ -669,6 +669,32 @@ export default function JobDetail() {
             </SelectContent>
           </Select>
         )}
+        {view === "rejected" && rejectedStages.length > 0 && (
+          <Select value={rejectedStageFilter} onValueChange={setRejectedStageFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[180px]">
+              <SelectValue placeholder="Stage before rejection" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All stages</SelectItem>
+              {rejectedStages.map((s) => (
+                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {view === "rejected" && rejectedLocations.length > 0 && (
+          <Select value={rejectedLocationFilter} onValueChange={setRejectedLocationFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[140px]">
+              <SelectValue placeholder="All locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All locations</SelectItem>
+              {rejectedLocations.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="text-xs text-muted-foreground ml-auto">
           {visibleEntries.length} {view === "rejected" ? "rejected" : "active"} candidate{visibleEntries.length === 1 ? "" : "s"}
         </div>
