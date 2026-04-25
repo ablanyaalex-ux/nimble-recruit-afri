@@ -346,6 +346,12 @@ export default function JobCandidate() {
           <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
           <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
         </div>
+        {detail.rejected && detail.rejection_reason && (
+          <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+            <div className="text-[11px] uppercase tracking-wider text-destructive font-medium mb-1">Rejection reason</div>
+            <div className="text-sm whitespace-pre-wrap">{detail.rejection_reason}</div>
+          </div>
+        )}
       </Card>
 
       <Tabs defaultValue="resume">
