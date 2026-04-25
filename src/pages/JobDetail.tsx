@@ -903,6 +903,52 @@ export default function JobDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={rejectDialog.open}
+        onOpenChange={(o) => setRejectDialog((d) => ({ ...d, open: o, reason: o ? d.reason : "" }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Reject {rejectDialog.ids.length > 1 ? `${rejectDialog.ids.length} candidates` : "candidate"}
+            </DialogTitle>
+            <DialogDescription>
+              Add a reason so the team has context and you can filter rejected candidates by it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="job-reject-reason" className="text-xs">
+              Reason <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="job-reject-reason"
+              rows={4}
+              placeholder="e.g. Not enough relevant experience, salary expectations too high, withdrew, etc."
+              value={rejectDialog.reason}
+              onChange={(e) => setRejectDialog((d) => ({ ...d, reason: e.target.value }))}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialog({ open: false, ids: [], reason: "", busy: false })}
+              disabled={rejectDialog.busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={rejectDialog.busy || !rejectDialog.reason.trim()}
+            >
+              <X className="h-3.5 w-3.5" />
+              {rejectDialog.ids.length > 1 ? `Reject ${rejectDialog.ids.length}` : "Reject candidate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
