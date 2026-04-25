@@ -725,6 +725,15 @@ export default function JobDetail() {
             variant="outline"
             className="text-destructive hover:text-destructive"
             disabled={bulkBusy}
+            onClick={() => openRejectDialog(Array.from(selected))}
+          >
+            <X className="h-4 w-4" /> Reject
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            disabled={bulkBusy}
             onClick={() => setConfirmBulkRemove(true)}
           >
             <Trash2 className="h-4 w-4" /> Remove from job
