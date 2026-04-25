@@ -183,17 +183,31 @@ export default function JobCandidate() {
     setDetail({ ...detail, stage: next.key, rejected: false });
   };
 
-  const rejectCandidate = async () => {
+  const openRejectDialog = () => {
+    setRejectReason(detail?.rejection_reason ?? "");
+    setRejectOpen(true);
+  };
+
+  const confirmReject = async () => {
     if (!detail || !user) return;
+    const reason = rejectReason.trim();
+    if (!reason) return toast.error("Please provide a rejection reason.");
     setProgressing(true);
     const { error } = await supabase
       .from("job_candidates")
-      .update({ rejected: true, rejected_at: new Date().toISOString(), rejected_by: user.id })
+      .update({
+        rejected: true,
+        rejected_at: new Date().toISOString(),
+        rejected_by: user.id,
+        rejection_reason: reason,
+      })
       .eq("id", detail.id);
     setProgressing(false);
     if (error) return toast.error(error.message);
     toast.success("Candidate rejected.");
-    setDetail({ ...detail, rejected: true });
+    setDetail({ ...detail, rejected: true, rejection_reason: reason });
+    setRejectOpen(false);
+    setRejectReason("");
   };
 
   const unrejectCandidate = async () => {
@@ -201,12 +215,12 @@ export default function JobCandidate() {
     setProgressing(true);
     const { error } = await supabase
       .from("job_candidates")
-      .update({ rejected: false, rejected_at: null, rejected_by: null })
+      .update({ rejected: false, rejected_at: null, rejected_by: null, rejection_reason: null })
       .eq("id", detail.id);
     setProgressing(false);
     if (error) return toast.error(error.message);
-    toast.success("Rejection reversed.");
-    setDetail({ ...detail, rejected: false });
+    toast.success("Candidate un-rejected.");
+    setDetail({ ...detail, rejected: false, rejection_reason: null });
   };
 
   const generateSummary = async (force = false) => {
