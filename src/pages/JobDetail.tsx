@@ -64,6 +64,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
