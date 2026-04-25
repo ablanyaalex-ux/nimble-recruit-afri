@@ -321,14 +321,14 @@ export default function JobCandidate() {
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
                   <ChevronRight className="h-3.5 w-3.5" /> Progress
                 </Button>
-                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={rejectCandidate} disabled={progressing}>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={openRejectDialog} disabled={progressing}>
                   <X className="h-3.5 w-3.5" /> Reject
                 </Button>
               </>
             )}
             {canMove && detail.rejected && (
               <Button size="sm" variant="outline" onClick={unrejectCandidate} disabled={progressing}>
-                <Undo2 className="h-3.5 w-3.5" /> Reinstate
+                <Undo2 className="h-3.5 w-3.5" /> Un-reject
               </Button>
             )}
             {resumeUrl && (
