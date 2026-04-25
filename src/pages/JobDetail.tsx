@@ -95,8 +95,9 @@ type PipelineEntry = {
   id: string;
   stage: string;
   rejected: boolean;
+  rejection_reason: string | null;
   candidate_id: string;
-  candidates: { full_name: string; headline: string | null; source: string | null };
+  candidates: { full_name: string; headline: string | null; source: string | null; location: string | null };
 };
 
 type Recruiter = { id: string; display_name: string | null };
