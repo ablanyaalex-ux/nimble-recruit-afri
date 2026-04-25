@@ -560,6 +560,38 @@ export default function JobCandidate() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={rejectOpen} onOpenChange={(o) => { setRejectOpen(o); if (!o) setRejectReason(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject candidate</DialogTitle>
+            <DialogDescription>
+              Add a reason so the team has context and you can filter rejected candidates by it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reject-reason" className="text-xs">Reason <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="reject-reason"
+              rows={4}
+              placeholder="e.g. Not enough relevant experience, salary expectations too high, withdrew, etc."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={progressing}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={progressing || !rejectReason.trim()}
+            >
+              <X className="h-3.5 w-3.5" /> Reject candidate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
