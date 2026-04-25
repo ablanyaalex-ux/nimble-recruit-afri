@@ -333,18 +333,35 @@ export default function JobDetail() {
     return Array.from(set).sort();
   }, [entries]);
 
+  const rejectedLocations = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) if (e.rejected && e.candidates.location) set.add(e.candidates.location);
+    return Array.from(set).sort();
+  }, [entries]);
+
+  const rejectedStages = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) if (e.rejected) set.add(e.stage);
+    return stages.filter((s) => set.has(s.key));
+  }, [entries, stages]);
+
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
     return entries.filter((e) => {
       if (view === "active" && e.rejected) return false;
       if (view === "rejected" && !e.rejected) return false;
       if (sourceFilter !== "all" && (e.candidates.source ?? "") !== sourceFilter) return false;
+      if (view === "rejected") {
+        if (rejectedStageFilter !== "all" && e.stage !== rejectedStageFilter) return false;
+        if (rejectedLocationFilter !== "all" && (e.candidates.location ?? "") !== rejectedLocationFilter) return false;
+      }
       if (!q) return true;
       const n = e.candidates.full_name?.toLowerCase() ?? "";
       const h = e.candidates.headline?.toLowerCase() ?? "";
-      return n.includes(q) || h.includes(q);
+      const r = e.rejection_reason?.toLowerCase() ?? "";
+      return n.includes(q) || h.includes(q) || r.includes(q);
     });
-  }, [entries, search, sourceFilter, view]);
+  }, [entries, search, sourceFilter, view, rejectedStageFilter, rejectedLocationFilter]);
 
   const rejectedCount = useMemo(() => entries.filter((e) => e.rejected).length, [entries]);
 
