@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
 import { toast } from "sonner";
 
 type Detail = {
@@ -91,8 +91,6 @@ export default function JobCandidate() {
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
@@ -183,15 +181,13 @@ export default function JobCandidate() {
     setDetail({ ...detail, stage: next.key, rejected: false });
   };
 
-  const openRejectDialog = () => {
-    setRejectReason(detail?.rejection_reason ?? "");
-    setRejectOpen(true);
-  };
-
-  const confirmReject = async () => {
+  const rejectCandidate = async (rawReason: string) => {
     if (!detail || !user) return;
-    const reason = rejectReason.trim();
-    if (!reason) return toast.error("Please provide a rejection reason.");
+    const reason = rawReason.trim();
+    if (!reason) {
+      toast.error("Please select a rejection reason.");
+      return false;
+    }
     setProgressing(true);
     const { error } = await supabase
       .from("job_candidates")
@@ -203,11 +199,13 @@ export default function JobCandidate() {
       })
       .eq("id", detail.id);
     setProgressing(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
     toast.success("Candidate rejected.");
     setDetail({ ...detail, rejected: true, rejection_reason: reason });
-    setRejectOpen(false);
-    setRejectReason("");
+    return true;
   };
 
   const unrejectCandidate = async () => {
@@ -321,9 +319,11 @@ export default function JobCandidate() {
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
                   <ChevronRight className="h-3.5 w-3.5" /> Progress
                 </Button>
-                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={openRejectDialog} disabled={progressing}>
-                  <X className="h-3.5 w-3.5" /> Reject
-                </Button>
+                <RejectionReasonPopover disabled={progressing} align="end" onReasonSelect={rejectCandidate}>
+                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={progressing}>
+                    <X className="h-3.5 w-3.5" /> Reject
+                  </Button>
+                </RejectionReasonPopover>
               </>
             )}
             {canMove && detail.rejected && (
@@ -561,37 +561,6 @@ export default function JobCandidate() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={rejectOpen} onOpenChange={(o) => { setRejectOpen(o); if (!o) setRejectReason(""); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject candidate</DialogTitle>
-            <DialogDescription>
-              Add a reason so the team has context and you can filter rejected candidates by it later.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="reject-reason" className="text-xs">Reason <span className="text-destructive">*</span></Label>
-            <Textarea
-              id="reject-reason"
-              rows={4}
-              placeholder="e.g. Not enough relevant experience, salary expectations too high, withdrew, etc."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={progressing}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={confirmReject}
-              disabled={progressing || !rejectReason.trim()}
-            >
-              <X className="h-3.5 w-3.5" /> Reject candidate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </PageContainer>
   );
 }

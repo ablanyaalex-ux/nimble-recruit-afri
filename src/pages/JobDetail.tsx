@@ -64,14 +64,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import { PostJobDialog } from "@/components/pipeline/PostJobDialog";
 import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
 import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
+import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { toast } from "sonner";
@@ -132,7 +130,7 @@ function DraggableCard({
   onToggleSelect: () => void;
   onClick: () => void;
   onProgress: (e: React.MouseEvent) => void;
-  onReject: (e: React.MouseEvent) => void;
+  onReject: (reason: string) => boolean | void | Promise<boolean | void>;
   onReinstate: (e: React.MouseEvent) => void;
 }) {
   const dragDisabled = !canDrag || selectMode || entry.rejected;
@@ -187,9 +185,16 @@ function DraggableCard({
                   <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onProgress}>
                     <ChevronRight className="h-3 w-3" /> Progress
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-destructive hover:text-destructive" onClick={onReject}>
-                    <X className="h-3 w-3" /> Reject
-                  </Button>
+                  <RejectionReasonPopover onReasonSelect={onReject}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[11px] text-destructive hover:text-destructive"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <X className="h-3 w-3" /> Reject
+                    </Button>
+                  </RejectionReasonPopover>
                 </>
               ) : (
                 <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onReinstate}>
@@ -264,13 +269,6 @@ export default function JobDetail() {
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
   const [rejectedStageFilter, setRejectedStageFilter] = useState<string>("all");
   const [rejectedLocationFilter, setRejectedLocationFilter] = useState<string>("all");
-  // Reject dialog state (used for both single and bulk reject)
-  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; ids: string[]; reason: string; busy: boolean }>({
-    open: false,
-    ids: [],
-    reason: "",
-    busy: false,
-  });
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -449,16 +447,13 @@ export default function JobDetail() {
     toast.success(`Moved to ${next.label}.`);
   };
 
-  const openRejectDialog = (ids: string[]) => {
-    if (ids.length === 0) return;
-    setRejectDialog({ open: true, ids, reason: "", busy: false });
-  };
-
-  const confirmReject = async () => {
-    const reason = rejectDialog.reason.trim();
-    if (!reason) { toast.error("Please provide a rejection reason."); return; }
-    setRejectDialog((d) => ({ ...d, busy: true }));
-    const ids = rejectDialog.ids;
+  const rejectCandidates = async (ids: string[], rawReason: string) => {
+    if (ids.length === 0) return false;
+    const reason = rawReason.trim();
+    if (!reason) {
+      toast.error("Please select a rejection reason.");
+      return false;
+    }
     const { error } = await supabase
       .from("job_candidates")
       .update({
@@ -468,13 +463,13 @@ export default function JobDetail() {
       })
       .in("id", ids);
     if (error) {
-      setRejectDialog((d) => ({ ...d, busy: false }));
-      return toast.error(error.message);
+      toast.error(error.message);
+      return false;
     }
     setEntries((prev) => prev.map((x) => (ids.includes(x.id) ? { ...x, rejected: true, rejection_reason: reason } : x)));
     toast.success(ids.length === 1 ? "Candidate rejected." : `Rejected ${ids.length} candidates.`);
-    setRejectDialog({ open: false, ids: [], reason: "", busy: false });
     if (ids.length > 1) clearSelection();
+    return true;
   };
 
   const reinstateEntry = async (entry: PipelineEntry) => {
@@ -720,15 +715,20 @@ export default function JobDetail() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
+          <RejectionReasonPopover
+            candidateCount={selected.size}
             disabled={bulkBusy}
-            onClick={() => openRejectDialog(Array.from(selected))}
+            onReasonSelect={(reason) => rejectCandidates(Array.from(selected), reason)}
           >
-            <X className="h-4 w-4" /> Reject
-          </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={bulkBusy}
+            >
+              <X className="h-4 w-4" /> Reject
+            </Button>
+          </RejectionReasonPopover>
           <Button
             size="sm"
             variant="outline"
@@ -786,7 +786,7 @@ export default function JobDetail() {
                         onToggleSelect={() => toggleSelect(entry.id)}
                         onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
                         onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
-                        onReject={(e) => { e.stopPropagation(); openRejectDialog([entry.id]); }}
+                        onReject={(reason) => rejectCandidates([entry.id], reason)}
                         onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
                       />
                     ))}
@@ -903,52 +903,6 @@ export default function JobDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog
-        open={rejectDialog.open}
-        onOpenChange={(o) => setRejectDialog((d) => ({ ...d, open: o, reason: o ? d.reason : "" }))}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Reject {rejectDialog.ids.length > 1 ? `${rejectDialog.ids.length} candidates` : "candidate"}
-            </DialogTitle>
-            <DialogDescription>
-              Add a reason so the team has context and you can filter rejected candidates by it later.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="job-reject-reason" className="text-xs">
-              Reason <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="job-reject-reason"
-              rows={4}
-              placeholder="e.g. Not enough relevant experience, salary expectations too high, withdrew, etc."
-              value={rejectDialog.reason}
-              onChange={(e) => setRejectDialog((d) => ({ ...d, reason: e.target.value }))}
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRejectDialog({ open: false, ids: [], reason: "", busy: false })}
-              disabled={rejectDialog.busy}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmReject}
-              disabled={rejectDialog.busy || !rejectDialog.reason.trim()}
-            >
-              <X className="h-3.5 w-3.5" />
-              {rejectDialog.ids.length > 1 ? `Reject ${rejectDialog.ids.length}` : "Reject candidate"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </PageContainer>
   );
 }
