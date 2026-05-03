@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2 } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { canMoveStages, visibleStagesForRole } from "@/lib/permissions";
+import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, visibleStagesForRole } from "@/lib/permissions";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer } from "@/components/app/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
+import { MentionPicker } from "@/components/pipeline/MentionPicker";
+import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { toast } from "sonner";
 
 type Detail = {
@@ -59,7 +63,12 @@ type Feedback = {
   author?: { display_name: string | null } | null;
 };
 
-type MentionableUser = { id: string; display_name: string | null };
+type JobOption = {
+  id: string;
+  title: string;
+  status: string;
+  clients: { name: string } | null;
+};
 
 function HeaderField({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
@@ -78,6 +87,7 @@ export default function JobCandidate() {
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
+  const canEdit = canEditWorkspace(currentRole);
 
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,9 +101,33 @@ export default function JobCandidate() {
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
+  const [editCandidateOpen, setEditCandidateOpen] = useState(false);
+  const [editCandidateForm, setEditCandidateForm] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    headline: "",
+    location: "",
+    linkedin_url: "",
+    source: "none",
+    notes: "",
+  });
+  const [savingCandidate, setSavingCandidate] = useState(false);
+  const [addToJobOpen, setAddToJobOpen] = useState(false);
+  const [jobOptions, setJobOptions] = useState<JobOption[]>([]);
+  const [loadingJobOptions, setLoadingJobOptions] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [targetStage, setTargetStage] = useState("application");
+  const [addingToJob, setAddingToJob] = useState(false);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
+
+  useEffect(() => {
+    if (stages.length > 0 && !stages.some((stage) => stage.key === targetStage)) {
+      setTargetStage(stages[0].key);
+    }
+  }, [stages, targetStage]);
 
   const refresh = async () => {
     if (!jobCandidateId) return;
@@ -143,19 +177,44 @@ export default function JobCandidate() {
       if (!detail?.jobs) return;
       const { workspace_id, client_id } = detail.jobs;
       const [memRes, hmRes] = await Promise.all([
-        supabase.from("workspace_members").select("user_id").eq("workspace_id", workspace_id),
-        supabase.from("client_contacts").select("user_id").eq("client_id", client_id).not("user_id", "is", null),
+        supabase.from("workspace_members").select("user_id, role").eq("workspace_id", workspace_id),
+        supabase.from("client_contacts").select("user_id, name, title").eq("client_id", client_id).not("user_id", "is", null),
       ]);
+      const memberRows = (memRes.data ?? []).filter((m) => ["owner", "recruiter"].includes(String(m.role)));
+      const hmRows = (hmRes.data ?? []).filter((c) => c.user_id);
       const ids = Array.from(new Set([
-        ...(memRes.data ?? []).map((m) => m.user_id),
-        ...(hmRes.data ?? []).map((c) => c.user_id as string),
-      ]));
+        ...memberRows.map((m) => m.user_id),
+        ...hmRows.map((c) => c.user_id as string),
+      ].filter((id) => id !== user?.id)));
       if (ids.length === 0) return setMentionables([]);
       const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", ids);
-      setMentionables(profiles ?? []);
+      const profilesById = new Map((profiles ?? []).map((p) => [p.id, p]));
+      const people = new Map<string, MentionableUser>();
+
+      for (const member of memberRows) {
+        if (member.user_id === user?.id) continue;
+        const profile = profilesById.get(member.user_id);
+        people.set(member.user_id, {
+          id: member.user_id,
+          display_name: profile?.display_name ?? null,
+          role_label: "Recruiter",
+        });
+      }
+      for (const contact of hmRows) {
+        const userId = contact.user_id as string;
+        if (userId === user?.id) continue;
+        const profile = profilesById.get(userId);
+        people.set(userId, {
+          id: userId,
+          display_name: contact.name || profile?.display_name || null,
+          role_label: "Hiring manager",
+          subtitle: contact.title,
+        });
+      }
+      setMentionables(Array.from(people.values()).sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? "")));
     };
     loadMentionables();
-  }, [detail]);
+  }, [detail, user?.id]);
 
   const moveStage = async (stage: string) => {
     if (!detail) return;
@@ -221,6 +280,93 @@ export default function JobCandidate() {
     setDetail({ ...detail, rejected: false, rejection_reason: null });
   };
 
+  const openEditCandidate = () => {
+    if (!detail) return;
+    setEditCandidateForm({
+      full_name: detail.candidates.full_name,
+      email: detail.candidates.email ?? "",
+      phone: detail.candidates.phone ?? "",
+      headline: detail.candidates.headline ?? "",
+      location: detail.candidates.location ?? "",
+      linkedin_url: detail.candidates.linkedin_url ?? "",
+      source: detail.candidates.source ?? "none",
+      notes: detail.candidates.notes ?? "",
+    });
+    setEditCandidateOpen(true);
+  };
+
+  const saveCandidateInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detail) return;
+    const fullName = editCandidateForm.full_name.trim();
+    if (!fullName) return toast.error("Full name is required.");
+
+    setSavingCandidate(true);
+    const { error } = await supabase
+      .from("candidates")
+      .update({
+        full_name: fullName,
+        email: editCandidateForm.email.trim() || null,
+        phone: editCandidateForm.phone.trim() || null,
+        headline: editCandidateForm.headline.trim() || null,
+        location: editCandidateForm.location.trim() || null,
+        linkedin_url: editCandidateForm.linkedin_url.trim() || null,
+        source: editCandidateForm.source === "none" ? null : editCandidateForm.source,
+        notes: editCandidateForm.notes.trim() || null,
+      })
+      .eq("id", detail.candidate_id);
+    setSavingCandidate(false);
+    if (error) return toast.error(error.message);
+    toast.success("Candidate updated.");
+    setEditCandidateOpen(false);
+    refresh();
+  };
+
+  const loadJobOptions = async () => {
+    if (!detail?.jobs) return;
+    setLoadingJobOptions(true);
+    setJobOptions([]);
+    const [jobsRes, existingRes] = await Promise.all([
+      supabase
+        .from("jobs")
+        .select("id, title, status, clients(name)")
+        .eq("workspace_id", detail.jobs.workspace_id)
+        .neq("id", detail.job_id)
+        .order("created_at", { ascending: false }),
+      supabase.from("job_candidates").select("job_id").eq("candidate_id", detail.candidate_id),
+    ]);
+    setLoadingJobOptions(false);
+    if (jobsRes.error) return toast.error(jobsRes.error.message);
+    if (existingRes.error) return toast.error(existingRes.error.message);
+
+    const alreadyAttached = new Set((existingRes.data ?? []).map((row) => row.job_id));
+    const availableJobs = ((jobsRes.data ?? []) as unknown as JobOption[]).filter((job) => !alreadyAttached.has(job.id));
+    setJobOptions(availableJobs);
+    setSelectedJobId("");
+    setTargetStage(stages[0]?.key ?? "application");
+  };
+
+  const openAddToJob = () => {
+    setAddToJobOpen(true);
+    loadJobOptions();
+  };
+
+  const addCandidateToJob = async () => {
+    if (!detail || !user || !selectedJobId) return;
+    setAddingToJob(true);
+    const { error } = await supabase.from("job_candidates").insert({
+      job_id: selectedJobId,
+      candidate_id: detail.candidate_id,
+      added_by: user.id,
+      stage: targetStage,
+    });
+    setAddingToJob(false);
+    if (error) return toast.error(error.message);
+    toast.success("Candidate added to job.");
+    setAddToJobOpen(false);
+    setSelectedJobId("");
+  };
+
   const generateSummary = async (force = false) => {
     if (!detail) return;
     setSummaryLoading(true);
@@ -251,14 +397,15 @@ export default function JobCandidate() {
     if (error || !c) { setPosting(false); return toast.error(error?.message ?? "Failed"); }
 
     const text = newComment.trim();
-    const mentioned: string[] = [];
-    for (const u of mentionables) {
-      if (!u.display_name) continue;
-      const re = new RegExp(`@${u.display_name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-      if (re.test(text) && u.id !== user.id) mentioned.push(u.id);
-    }
+    const mentioned = parseMentionedUserIds(text, mentionables, user.id);
     if (mentioned.length) {
-      await supabase.from("comment_mentions").insert(mentioned.map((id) => ({ comment_id: c.id, mentioned_user_id: id })));
+      const { error: mentionError } = await supabase
+        .from("comment_mentions")
+        .insert(mentioned.map((id) => ({ comment_id: c.id, mentioned_user_id: id })));
+      if (mentionError) {
+        setPosting(false);
+        return toast.error(`Comment posted, but mentions failed: ${mentionError.message}`);
+      }
     }
 
     setNewComment("");
@@ -330,6 +477,16 @@ export default function JobCandidate() {
               <Button size="sm" variant="outline" onClick={unrejectCandidate} disabled={progressing}>
                 <Undo2 className="h-3.5 w-3.5" /> Un-reject
               </Button>
+            )}
+            {canEdit && (
+              <>
+                <Button size="sm" variant="outline" onClick={openEditCandidate}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit candidate
+                </Button>
+                <Button size="sm" variant="outline" onClick={openAddToJob}>
+                  <Briefcase className="h-3.5 w-3.5" /> Add to job
+                </Button>
+              </>
             )}
             {resumeUrl && (
               <Button size="sm" variant="outline" asChild>
@@ -549,17 +706,158 @@ export default function JobCandidate() {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
             />
-            {mentionables.length > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                Mention: {mentionables.filter((u) => u.display_name).map((u) => `@${u.display_name}`).slice(0, 5).join(", ")}
-              </p>
-            )}
-            <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
-              <Send className="h-3 w-3" /> Post
-            </Button>
+            <div className="flex items-center gap-2">
+              <MentionPicker
+                users={mentionables}
+                disabled={posting}
+                onSelect={(mentionUser) => setNewComment((value) => appendMention(value, mentionUser))}
+              />
+              <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
+                <Send className="h-3 w-3" /> Post
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editCandidateOpen} onOpenChange={setEditCandidateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Edit candidate</DialogTitle></DialogHeader>
+          <form onSubmit={saveCandidateInfo} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full name</Label>
+              <Input
+                value={editCandidateForm.full_name}
+                onChange={(e) => setEditCandidateForm({ ...editCandidateForm, full_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={editCandidateForm.email}
+                  onChange={(e) => setEditCandidateForm({ ...editCandidateForm, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input
+                  value={editCandidateForm.phone}
+                  onChange={(e) => setEditCandidateForm({ ...editCandidateForm, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Headline</Label>
+                <Input
+                  value={editCandidateForm.headline}
+                  onChange={(e) => setEditCandidateForm({ ...editCandidateForm, headline: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input
+                  value={editCandidateForm.location}
+                  onChange={(e) => setEditCandidateForm({ ...editCandidateForm, location: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>LinkedIn URL</Label>
+                <Input
+                  value={editCandidateForm.linkedin_url}
+                  onChange={(e) => setEditCandidateForm({ ...editCandidateForm, linkedin_url: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Source</Label>
+                <Select
+                  value={editCandidateForm.source}
+                  onValueChange={(value) => setEditCandidateForm({ ...editCandidateForm, source: value })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No source</SelectItem>
+                    {CANDIDATE_SOURCES.map((source) => (
+                      <SelectItem key={source} value={source}>{source}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                rows={3}
+                value={editCandidateForm.notes}
+                onChange={(e) => setEditCandidateForm({ ...editCandidateForm, notes: e.target.value })}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setEditCandidateOpen(false)} disabled={savingCandidate}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingCandidate || !editCandidateForm.full_name.trim()}>
+                {savingCandidate ? "Saving…" : "Save candidate"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addToJobOpen} onOpenChange={setAddToJobOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add candidate to another job</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {loadingJobOptions ? (
+              <p className="text-sm text-muted-foreground">Loading available jobs…</p>
+            ) : jobOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                This candidate is already on every other available job in this workspace.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Job</Label>
+                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                    <SelectTrigger><SelectValue placeholder="Choose job" /></SelectTrigger>
+                    <SelectContent>
+                      {jobOptions.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.title}{job.clients?.name ? ` — ${job.clients.name}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Stage</Label>
+                  <Select value={targetStage} onValueChange={setTargetStage}>
+                    <SelectTrigger><SelectValue placeholder="Pipeline stage" /></SelectTrigger>
+                    <SelectContent>
+                      {stages.map((stage) => (
+                        <SelectItem key={stage.key} value={stage.key}>{stage.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setAddToJobOpen(false)} disabled={addingToJob}>
+              Cancel
+            </Button>
+            <Button onClick={addCandidateToJob} disabled={addingToJob || loadingJobOptions || !selectedJobId || jobOptions.length === 0}>
+              {addingToJob ? "Adding…" : "Add to job"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </PageContainer>
   );
