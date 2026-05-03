@@ -17,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
-import { MentionPicker } from "@/components/pipeline/MentionPicker";
-import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
+import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
+import { CommentBody } from "@/components/pipeline/CommentBody";
+import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { toast } from "sonner";
 
 type Detail = {
