@@ -234,8 +234,8 @@ export default function ClientDetail() {
                         <Star className={`h-4 w-4 ${c.is_primary ? "fill-current text-primary" : ""}`} />
                       </Button>
                       {!c.user_id && c.email && (
-                        <Button size="sm" variant="ghost" onClick={() => inviteAsHM(c)} title="Invite as hiring manager">
-                          <Mail className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => inviteAsHM(c)}>
+                          <Mail className="h-4 w-4" /> Invite as hiring manager
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" onClick={() => removeContact(c.id)} title="Remove">
