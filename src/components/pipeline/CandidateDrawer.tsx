@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MentionPicker } from "@/components/pipeline/MentionPicker";
+import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,8 +64,6 @@ type Feedback = {
   created_at: string;
   author?: { display_name: string | null } | null;
 };
-
-type MentionableUser = { id: string; display_name: string | null };
 
 export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = DEFAULT_STAGES }: Props) {
   const { user } = useAuth();
@@ -159,22 +159,47 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
       if (!wsId) return;
 
       const [memRes, hmRes] = await Promise.all([
-        supabase.from("workspace_members").select("user_id").eq("workspace_id", wsId),
-        supabase.from("client_contacts").select("user_id").eq("client_id", clientId).not("user_id", "is", null),
+        supabase.from("workspace_members").select("user_id, role").eq("workspace_id", wsId),
+        supabase.from("client_contacts").select("user_id, name, title").eq("client_id", clientId).not("user_id", "is", null),
       ]);
+      const memberRows = (memRes.data ?? []).filter((m) => ["owner", "recruiter"].includes(String(m.role)));
+      const hmRows = (hmRes.data ?? []).filter((c) => c.user_id);
       const ids = Array.from(new Set([
-        ...(memRes.data ?? []).map((m) => m.user_id),
-        ...(hmRes.data ?? []).map((c) => c.user_id as string),
-      ]));
+        ...memberRows.map((m) => m.user_id),
+        ...hmRows.map((c) => c.user_id as string),
+      ].filter((id) => id !== user?.id)));
       if (ids.length === 0) return setMentionables([]);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, display_name")
         .in("id", ids);
-      setMentionables(profiles ?? []);
+      const profilesById = new Map((profiles ?? []).map((p) => [p.id, p]));
+      const people = new Map<string, MentionableUser>();
+
+      for (const member of memberRows) {
+        if (member.user_id === user?.id) continue;
+        const profile = profilesById.get(member.user_id);
+        people.set(member.user_id, {
+          id: member.user_id,
+          display_name: profile?.display_name ?? null,
+          role_label: "Recruiter",
+        });
+      }
+      for (const contact of hmRows) {
+        const userId = contact.user_id as string;
+        if (userId === user?.id) continue;
+        const profile = profilesById.get(userId);
+        people.set(userId, {
+          id: userId,
+          display_name: contact.name || profile?.display_name || null,
+          role_label: "Hiring manager",
+          subtitle: contact.title,
+        });
+      }
+      setMentionables(Array.from(people.values()).sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? "")));
     };
     loadMentionables();
-  }, [detail]);
+  }, [detail, user?.id]);
 
   const moveStage = async (stage: string) => {
     if (!detail) return;
@@ -198,18 +223,16 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
       return toast.error(error?.message ?? "Failed");
     }
 
-    // Parse @mentions from text by matching display names
     const text = newComment.trim();
-    const mentioned: string[] = [];
-    for (const u of mentionables) {
-      if (!u.display_name) continue;
-      const re = new RegExp(`@${u.display_name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-      if (re.test(text) && u.id !== user.id) mentioned.push(u.id);
-    }
+    const mentioned = parseMentionedUserIds(text, mentionables, user.id);
     if (mentioned.length) {
-      await supabase.from("comment_mentions").insert(
-        mentioned.map((id) => ({ comment_id: c.id, mentioned_user_id: id }))
-      );
+      const { error: mentionError } = await supabase
+        .from("comment_mentions")
+        .insert(mentioned.map((id) => ({ comment_id: c.id, mentioned_user_id: id })));
+      if (mentionError) {
+        setPosting(false);
+        return toast.error(`Comment posted, but mentions failed: ${mentionError.message}`);
+      }
     }
 
     setNewComment("");
@@ -290,14 +313,16 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                   />
-                  {mentionables.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Mention: {mentionables.filter((u) => u.display_name).map((u) => `@${u.display_name}`).slice(0, 5).join(", ")}
-                    </p>
-                  )}
-                  <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
-                    <Send className="h-3 w-3" /> Post
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <MentionPicker
+                      users={mentionables}
+                      disabled={posting}
+                      onSelect={(mentionUser) => setNewComment((value) => appendMention(value, mentionUser))}
+                    />
+                    <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
+                      <Send className="h-3 w-3" /> Post
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
 
