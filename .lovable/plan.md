@@ -1,77 +1,36 @@
+## Goal
+Make it possible to add and test a Hiring Manager from the Team page without silently ending up with a user who can't see anything.
 
-# TalentFlow ATS — v1 Plan
+## Changes
 
-A mobile-first, offline-capable Applicant Tracking System for African freelance and solo recruiters, with team collaboration built in from day one.
+### 1. Team page: hiring-manager-aware invite form (`src/pages/Team.tsx`)
+- When the role select is set to **Hiring manager**, reveal two extra fields:
+  - **Client** (required) — `Select` populated from `clients` in the current workspace.
+  - **Name** (required) — used to create the `client_contacts` row.
+  - Optional **Title**.
+- On submit for `hiring_manager`:
+  1. Insert a `client_contacts` row (`client_id`, `name`, `email`, `title`) so the trigger can link them on signup.
+  2. Insert the `workspace_invites` row with role `hiring_manager`.
+  3. Copy the invite link to clipboard (existing behavior).
+- For other roles, behavior is unchanged.
+- Add a short helper line under the role select explaining: "Hiring managers must be linked to a client to see its jobs and candidates."
 
-## Design direction
-- **Style:** Light, airy, editorial. White background, generous whitespace, refined serif accents (e.g. Fraunces or Instrument Serif for headings) paired with a clean sans (Inter) for body.
-- **Palette:** Soft neutrals — off-white base, warm grey text, single muted accent (deep ink/indigo) for actions. Subtle borders, no heavy shadows.
-- **Mobile-first:** Bottom tab navigation on mobile, sidebar on desktop. Large tap targets, swipe gestures on candidate cards (swipe to advance stage), pull-to-refresh.
-- **Density:** Spacious cards, never cramped tables on mobile. Lists collapse to essentials with progressive disclosure.
+### 2. Members list: surface linked client(s) for hiring managers
+- In the existing Members section, for any member whose role is `hiring_manager`, query `client_contacts` by `user_id` and render the linked client name(s) as small badges next to their name.
+- If a hiring manager has no linked contact, show a `destructive` badge "Not linked to a client" with a small "Link to client…" button that opens a popover to create the contact (same fields as above) for an existing workspace user. This recovers any HMs that were invited the wrong way previously.
 
-## Core features (v1)
+### 3. ClientDetail: make the existing "Invite as hiring manager" more discoverable
+- Move the action from the icon-only ghost button to a labeled `Button` ("Invite as hiring manager") and add a subtle helper sentence at the top of the Contacts section: "Invite a contact as a hiring manager to give them scoped access to this client's jobs."
+- No logic change — `inviteAsHM` already does the right thing.
 
-**1. Auth & Workspaces**
-- Email + password sign up / sign in
-- On first login: create a workspace (agency name)
-- Invite teammates by email with roles: Owner, Recruiter, Viewer
-- Personal profile: name, avatar, role
+### 4. (Optional) AcceptInvite: better confirmation
+- After accepting a `hiring_manager` invite, show a one-line confirmation listing which clients they were linked to (read from `client_contacts` where `user_id = auth.uid()`). Helps verify the link worked.
 
-**2. Clients**
-- Add clients (company name, contact person, email, phone, notes)
-- View all roles per client
-- Track agreed fee % or flat fee per client
+## Technical notes
+- No schema changes required. `link_contact_to_user` trigger already fires on new `auth.users` and matches by lowercased email.
+- RLS already allows workspace owners to insert `client_contacts` (via `can_edit_workspace`), and `workspace_invites` (via `has_workspace_role 'owner'`), so the new Team flow works with current policies.
+- For the "Link to client" recovery flow on existing members, we insert a `client_contacts` row with the member's email and `user_id` set directly (owner has insert permission). We'll fetch the member's email via a new lightweight server function — or simpler, store/display via `profiles.display_name` and require the owner to type the email. Pick the simpler option: ask owner to confirm email when linking.
 
-**3. Jobs (roles)**
-- Create job tied to a client: title, location, type (full-time/contract), salary range, description, status (Open / On hold / Filled / Closed)
-- Pipeline view per job: Applied → Screening → Interview → Offer → Hired (+ Rejected lane)
-- Drag candidates between stages on desktop; swipe/tap-menu on mobile
-
-**4. Candidates & CV parsing**
-- Upload CV (PDF/DOC/DOCX) from phone — camera scan or file picker
-- Auto-extract: name, email, phone, location, skills, years of experience, last role (via AI)
-- Manual edit/override of any extracted field
-- Global candidate database, searchable across all jobs (skills, location, name, keyword)
-- Tag candidates, attach to multiple jobs
-- Timeline of activity per candidate (stage changes, notes, interviews)
-
-**5. Interviews & notes**
-- Schedule interview (date, time, type: phone/video/in-person, link)
-- Structured note template (strengths, concerns, recommendation, rating 1–5)
-- Calendar-style view of upcoming interviews
-- Optional reminder notifications
-
-**6. Mobile + offline**
-- Installable PWA (Add to Home Screen)
-- Local cache of recent jobs, candidates, and notes via IndexedDB
-- Queue mutations (new candidates, stage moves, notes) when offline; sync automatically when back online
-- Visible "offline" indicator + pending sync count
-
-**7. Dashboard**
-- Today: upcoming interviews, candidates awaiting action
-- Open jobs at a glance with pipeline counts
-- Recently added candidates
-
-## Out of scope for v1 (suggest as follow-ups)
-- Invoicing & commission payouts
-- Email/WhatsApp candidate outreach
-- Career page / public job board
-- Analytics & reporting
-- Calendar sync (Google/Outlook)
-- AI candidate-to-job matching score
-
-## Tech approach
-- **Frontend:** React + Vite + Tailwind, shadcn/ui components restyled to editorial aesthetic
-- **Backend:** Lovable Cloud (auth, Postgres, storage for CVs, edge functions)
-- **CV parsing:** Edge function calling Lovable AI Gateway (Gemini) for resume extraction
-- **Offline:** vite-plugin-pwa + IndexedDB (Dexie) mutation queue
-- **Roles:** Separate `user_roles` table with `has_role()` security definer function (avoids RLS recursion)
-
-## Build order
-1. Auth, workspace creation, team invites, base layout (mobile bottom nav + desktop sidebar) with editorial styling
-2. Clients + Jobs CRUD with pipeline view
-3. Candidates CRUD + CV upload + AI parsing
-4. Drag/swipe pipeline + candidate detail with timeline
-5. Interview scheduling + notes
-6. Dashboard
-7. PWA install + offline cache + sync queue
+## Out of scope
+- Changing the `hiring_manager` permission model.
+- Multi-client hiring managers UI beyond showing badges (already supported by data model).
