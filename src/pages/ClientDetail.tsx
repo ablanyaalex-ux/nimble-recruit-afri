@@ -168,6 +168,9 @@ export default function ClientDetail() {
         </TabsList>
 
         <TabsContent value="contacts" className="mt-6">
+          <p className="text-xs text-muted-foreground mb-3">
+            Add a contact, then invite them as a hiring manager to give them scoped access to this client's jobs and candidates.
+          </p>
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-display text-lg">Hiring managers & contacts</h2>
             {canEdit && (
