@@ -39,14 +39,6 @@ type InviteRow = {
 
 type ClientOption = { id: string; name: string };
 
-type ContactLink = {
-  id: string;
-  user_id: string | null;
-  email: string | null;
-  client_id: string;
-  client_name: string;
-};
-
 type MemberRow = {
   id: string;
   user_id: string;
