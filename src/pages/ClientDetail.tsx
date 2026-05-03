@@ -168,6 +168,9 @@ export default function ClientDetail() {
         </TabsList>
 
         <TabsContent value="contacts" className="mt-6">
+          <p className="text-xs text-muted-foreground mb-3">
+            Add a contact, then invite them as a hiring manager to give them scoped access to this client's jobs and candidates.
+          </p>
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-display text-lg">Hiring managers & contacts</h2>
             {canEdit && (
@@ -231,8 +234,8 @@ export default function ClientDetail() {
                         <Star className={`h-4 w-4 ${c.is_primary ? "fill-current text-primary" : ""}`} />
                       </Button>
                       {!c.user_id && c.email && (
-                        <Button size="sm" variant="ghost" onClick={() => inviteAsHM(c)} title="Invite as hiring manager">
-                          <Mail className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => inviteAsHM(c)}>
+                          <Mail className="h-4 w-4" /> Invite as hiring manager
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" onClick={() => removeContact(c.id)} title="Remove">
