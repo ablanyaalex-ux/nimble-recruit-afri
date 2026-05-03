@@ -17,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
-import { MentionPicker } from "@/components/pipeline/MentionPicker";
-import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
+import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
+import { CommentBody } from "@/components/pipeline/CommentBody";
+import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { toast } from "sonner";
 
 type Detail = {
@@ -696,22 +697,19 @@ export default function JobCandidate() {
               <div className="text-xs text-muted-foreground mb-1">
                 {c.author?.display_name ?? "Someone"} • {new Date(c.created_at).toLocaleString()}
               </div>
-              <div className="text-sm whitespace-pre-wrap">{c.body}</div>
+              <CommentBody text={c.body} users={mentionables} />
             </Card>
           ))}
           <div className="space-y-2">
-            <Textarea
-              placeholder="Write a comment… use @name to mention"
-              rows={3}
+            <MentionTextarea
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={setNewComment}
+              users={mentionables}
+              placeholder="Write a comment… type @ to mention"
+              rows={3}
+              disabled={posting}
             />
-            <div className="flex items-center gap-2">
-              <MentionPicker
-                users={mentionables}
-                disabled={posting}
-                onSelect={(mentionUser) => setNewComment((value) => appendMention(value, mentionUser))}
-              />
+            <div className="flex items-center justify-end">
               <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
                 <Send className="h-3 w-3" /> Post
               </Button>
