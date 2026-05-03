@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 type JobInput = {
@@ -47,6 +48,7 @@ export function EditJobDialog({
   job: JobInput;
   onSaved: () => void;
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     title: job.title,
     client_id: job.client_id,
@@ -59,6 +61,9 @@ export function EditJobDialog({
   const [contacts, setContacts] = useState<ContactOpt[]>([]);
   const [selectedHmIds, setSelectedHmIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
 
   const loadContacts = async (clientId: string) => {
     const { data, error } = await supabase
@@ -84,6 +89,8 @@ export function EditJobDialog({
         description: job.description ?? "",
         reference: job.reference ?? "",
       });
+      setNewClientOpen(false);
+      setNewClientName("");
       (async () => {
         const [clientsRes, hmRes] = await Promise.all([
           supabase
@@ -116,6 +123,30 @@ export function EditJobDialog({
 
   const toggleHiringManager = (id: string) => {
     setSelectedHmIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const createClientInline = async () => {
+    if (!user) return toast.error("You must be signed in to create a client.");
+    const name = newClientName.trim();
+    if (!name) return toast.error("Client name is required");
+
+    setCreatingClient(true);
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({ workspace_id: job.workspace_id, name, created_by: user.id })
+      .select("id, name")
+      .single();
+    setCreatingClient(false);
+
+    if (error || !data) return toast.error(error?.message ?? "Failed to create client");
+
+    setClients((prev) => [...prev, { id: data.id, name: data.name }].sort((a, b) => a.name.localeCompare(b.name)));
+    setForm((current) => ({ ...current, client_id: data.id }));
+    setSelectedHmIds([]);
+    setContacts([]);
+    setNewClientName("");
+    setNewClientOpen(false);
+    toast.success("Client created.");
   };
 
   const onSave = async (e: React.FormEvent) => {
@@ -163,7 +194,7 @@ export function EditJobDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader><DialogTitle>Edit job</DialogTitle></DialogHeader>
         <form onSubmit={onSave} className="space-y-4">
           <div className="space-y-2">
@@ -171,9 +202,38 @@ export function EditJobDialog({
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </div>
           <div className="space-y-2">
-            <Label>Client</Label>
-            {clients.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No clients available in this workspace.</p>
+            <div className="flex items-center justify-between">
+              <Label>Client</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setNewClientOpen((value) => !value)}
+              >
+                <Plus className="h-3 w-3" /> {newClientOpen ? "Cancel" : "New client"}
+              </Button>
+            </div>
+            {newClientOpen ? (
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  placeholder="Client name"
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      createClientInline();
+                    }
+                  }}
+                />
+                <Button type="button" onClick={createClientInline} disabled={creatingClient || !newClientName.trim()}>
+                  {creatingClient ? "Adding…" : "Add"}
+                </Button>
+              </div>
+            ) : clients.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No clients available in this workspace. Use New client to add one.</p>
             ) : (
               <Select value={form.client_id} onValueChange={changeClient}>
                 <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
