@@ -674,6 +674,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_assigned_hiring_manager: {
+        Args: { _job_id: string; _uid: string }
+        Returns: boolean
+      }
       is_linked_hiring_manager: {
         Args: { _client_id: string; _uid: string }
         Returns: boolean
