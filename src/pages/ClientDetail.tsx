@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Plus, Star, Trash2, Mail, Phone, Briefcase } from "lucide-react";
+import { ArrowLeft, Plus, Star, Trash2, Mail, Phone, Briefcase, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,9 @@ export default function ClientDetail() {
     title: "",
     is_primary: false,
   });
+  const [editClientOpen, setEditClientOpen] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: "", website: "", industry: "", notes: "" });
+  const [savingClient, setSavingClient] = useState(false);
 
   const refresh = async () => {
     if (!id) return;
@@ -120,6 +124,38 @@ export default function ClientDetail() {
     refresh();
   };
 
+  const openEditClient = () => {
+    if (!client) return;
+    setClientForm({
+      name: client.name,
+      website: client.website ?? "",
+      industry: client.industry ?? "",
+      notes: client.notes ?? "",
+    });
+    setEditClientOpen(true);
+  };
+
+  const saveClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    if (!clientForm.name.trim()) return toast.error("Name is required");
+    setSavingClient(true);
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        name: clientForm.name.trim(),
+        website: clientForm.website.trim() || null,
+        industry: clientForm.industry.trim() || null,
+        notes: clientForm.notes.trim() || null,
+      })
+      .eq("id", client.id);
+    setSavingClient(false);
+    if (error) return toast.error(error.message);
+    toast.success("Client updated.");
+    setEditClientOpen(false);
+    refresh();
+  };
+
   const inviteAsHM = async (c: Contact) => {
     if (!c.email || !user || !client) return toast.error("Contact needs an email.");
     const { error } = await supabase.from("workspace_invites").insert({
@@ -169,7 +205,43 @@ export default function ClientDetail() {
         eyebrow={client.industry ?? "Client"}
         title={client.name}
         description={client.website ?? undefined}
+        actions={
+          canEdit && (
+            <Button variant="outline" size="sm" onClick={openEditClient}>
+              <Pencil className="h-4 w-4" /> Edit client
+            </Button>
+          )
+        }
       />
+
+      <Dialog open={editClientOpen} onOpenChange={setEditClientOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit client</DialogTitle></DialogHeader>
+          <form onSubmit={saveClient} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} required />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Industry</Label>
+                <Input value={clientForm.industry} onChange={(e) => setClientForm({ ...clientForm, industry: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Website</Label>
+                <Input value={clientForm.website} onChange={(e) => setClientForm({ ...clientForm, website: e.target.value })} placeholder="https://" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea rows={4} value={clientForm.notes} onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })} />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={savingClient}>{savingClient ? "Saving…" : "Save changes"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="contacts">
         <TabsList>
