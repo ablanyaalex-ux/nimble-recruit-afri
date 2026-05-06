@@ -124,6 +124,38 @@ export default function ClientDetail() {
     refresh();
   };
 
+  const openEditClient = () => {
+    if (!client) return;
+    setClientForm({
+      name: client.name,
+      website: client.website ?? "",
+      industry: client.industry ?? "",
+      notes: client.notes ?? "",
+    });
+    setEditClientOpen(true);
+  };
+
+  const saveClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    if (!clientForm.name.trim()) return toast.error("Name is required");
+    setSavingClient(true);
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        name: clientForm.name.trim(),
+        website: clientForm.website.trim() || null,
+        industry: clientForm.industry.trim() || null,
+        notes: clientForm.notes.trim() || null,
+      })
+      .eq("id", client.id);
+    setSavingClient(false);
+    if (error) return toast.error(error.message);
+    toast.success("Client updated.");
+    setEditClientOpen(false);
+    refresh();
+  };
+
   const inviteAsHM = async (c: Contact) => {
     if (!c.email || !user || !client) return toast.error("Contact needs an email.");
     const { error } = await supabase.from("workspace_invites").insert({
