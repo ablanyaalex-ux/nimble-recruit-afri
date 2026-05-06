@@ -67,6 +67,9 @@ export default function ClientDetail() {
     title: "",
     is_primary: false,
   });
+  const [editClientOpen, setEditClientOpen] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: "", website: "", industry: "", notes: "" });
+  const [savingClient, setSavingClient] = useState(false);
 
   const refresh = async () => {
     if (!id) return;
