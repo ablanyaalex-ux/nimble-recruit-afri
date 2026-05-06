@@ -55,17 +55,13 @@ export default function Dashboard() {
     (async () => {
       setLoading(true);
       let assignedJobIds: string[] | null = null;
-      if (hm && user) {
-        const { data: contactRows } = await supabase.from("client_contacts").select("id").eq("user_id", user.id);
-        const contactIds = (contactRows ?? []).map((row) => row.id);
-        if (contactIds.length === 0) assignedJobIds = [];
-        else {
-          const { data: assignments } = await supabase
-            .from("job_hiring_managers")
-            .select("job_id")
-            .in("contact_id", contactIds);
-          assignedJobIds = Array.from(new Set((assignments ?? []).map((row) => row.job_id)));
-        }
+      if (hm) {
+        // Use RLS to fetch only the jobs this HM is assigned to.
+        const { data: assignedJobs } = await supabase
+          .from("jobs")
+          .select("id")
+          .eq("workspace_id", currentWorkspaceId);
+        assignedJobIds = (assignedJobs ?? []).map((r) => r.id);
       }
 
       if (hm && assignedJobIds?.length === 0) {
