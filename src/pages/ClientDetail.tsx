@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Plus, Star, Trash2, Mail, Phone, Briefcase } from "lucide-react";
+import { ArrowLeft, Plus, Star, Trash2, Mail, Phone, Briefcase, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
