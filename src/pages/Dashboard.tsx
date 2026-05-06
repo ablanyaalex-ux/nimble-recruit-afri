@@ -158,7 +158,11 @@ export default function Dashboard() {
       <PageHeader
         eyebrow="Today"
         title={`Good to see you, ${greeting}.`}
-        description={`You're signed in to ${ws?.workspaces.name ?? "your workspace"}. Your role: ${ws?.role ?? "member"}.`}
+        description={
+          hm
+            ? `You're signed in to ${ws?.workspaces.name ?? "your workspace"}.`
+            : `You're signed in to ${ws?.workspaces.name ?? "your workspace"}. Your role: ${ws?.role ?? "member"}.`
+        }
       />
 
       <div className="grid gap-4 md:gap-6 md:grid-cols-3 mb-6">
