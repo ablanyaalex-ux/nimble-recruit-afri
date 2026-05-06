@@ -54,34 +54,69 @@ export default function Dashboard() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      // Jobs in this workspace
+      let assignedJobIds: string[] | null = null;
+      if (hm && user) {
+        const { data: contactRows } = await supabase.from("client_contacts").select("id").eq("user_id", user.id);
+        const contactIds = (contactRows ?? []).map((row) => row.id);
+        if (contactIds.length === 0) assignedJobIds = [];
+        else {
+          const { data: assignments } = await supabase
+            .from("job_hiring_managers")
+            .select("job_id")
+            .in("contact_id", contactIds);
+          assignedJobIds = Array.from(new Set((assignments ?? []).map((row) => row.job_id)));
+        }
+      }
+
+      if (hm && assignedJobIds?.length === 0) {
+        if (cancelled) return;
+        setOpenJobs(0);
+        setTotalJobs(0);
+        setCandidatesCount(null);
+        setStageCounts([]);
+        setRecentJobs([]);
+        setLoading(false);
+        return;
+      }
+
+      let openQ = supabase
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", currentWorkspaceId)
+        .eq("status", "open");
+      let totalQ = supabase
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", currentWorkspaceId);
+      let jcQ = supabase
+        .from("job_candidates")
+        .select("stage, jobs!inner(workspace_id)")
+        .eq("jobs.workspace_id", currentWorkspaceId);
+      let recentQ = supabase
+        .from("jobs")
+        .select("id, title, status, reference, clients(name)")
+        .eq("workspace_id", currentWorkspaceId)
+        .order("updated_at", { ascending: false })
+        .limit(5);
+
+      if (hm && assignedJobIds) {
+        openQ = openQ.in("id", assignedJobIds);
+        totalQ = totalQ.in("id", assignedJobIds);
+        jcQ = jcQ.in("job_id", assignedJobIds);
+        recentQ = recentQ.in("id", assignedJobIds);
+      }
+
       const [openRes, totalRes, candRes, jcRes, recentRes] = await Promise.all([
-        supabase
-          .from("jobs")
-          .select("id", { count: "exact", head: true })
-          .eq("workspace_id", currentWorkspaceId)
-          .eq("status", "open"),
-        supabase
-          .from("jobs")
-          .select("id", { count: "exact", head: true })
-          .eq("workspace_id", currentWorkspaceId),
+        openQ,
+        totalQ,
         hm
           ? Promise.resolve({ count: null as number | null })
           : supabase
               .from("candidates")
               .select("id", { count: "exact", head: true })
               .eq("workspace_id", currentWorkspaceId),
-        // Stage counts via job_candidates joined with jobs in this workspace
-        supabase
-          .from("job_candidates")
-          .select("stage, jobs!inner(workspace_id)")
-          .eq("jobs.workspace_id", currentWorkspaceId),
-        supabase
-          .from("jobs")
-          .select("id, title, status, reference, clients(name)")
-          .eq("workspace_id", currentWorkspaceId)
-          .order("updated_at", { ascending: false })
-          .limit(5),
+        jcQ,
+        recentQ,
       ]);
       if (cancelled) return;
       setOpenJobs(openRes.count ?? 0);
@@ -100,7 +135,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [currentWorkspaceId, hm]);
+  }, [currentWorkspaceId, hm, user?.id]);
 
   // Active interviews = candidates currently sitting in any "interview"-named stage
   const interviewCount = useMemo(() => {
