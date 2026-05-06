@@ -205,7 +205,43 @@ export default function ClientDetail() {
         eyebrow={client.industry ?? "Client"}
         title={client.name}
         description={client.website ?? undefined}
+        actions={
+          canEdit && (
+            <Button variant="outline" size="sm" onClick={openEditClient}>
+              <Pencil className="h-4 w-4" /> Edit client
+            </Button>
+          )
+        }
       />
+
+      <Dialog open={editClientOpen} onOpenChange={setEditClientOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit client</DialogTitle></DialogHeader>
+          <form onSubmit={saveClient} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} required />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Industry</Label>
+                <Input value={clientForm.industry} onChange={(e) => setClientForm({ ...clientForm, industry: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Website</Label>
+                <Input value={clientForm.website} onChange={(e) => setClientForm({ ...clientForm, website: e.target.value })} placeholder="https://" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea rows={4} value={clientForm.notes} onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })} />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={savingClient}>{savingClient ? "Saving…" : "Save changes"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="contacts">
         <TabsList>
