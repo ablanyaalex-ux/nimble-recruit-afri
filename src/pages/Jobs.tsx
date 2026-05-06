@@ -72,6 +72,23 @@ export default function Jobs() {
   const [creatingClient, setCreatingClient] = useState(false);
   const [selectedHmIds, setSelectedHmIds] = useState<string[]>([]);
 
+  const getAssignedJobIds = async () => {
+    if (!user) return [];
+    const { data: contactRows } = await supabase
+      .from("client_contacts")
+      .select("id")
+      .eq("user_id", user.id);
+    const contactIds = (contactRows ?? []).map((row) => row.id);
+    if (contactIds.length === 0) return [];
+
+    const { data: assignments } = await supabase
+      .from("job_hiring_managers")
+      .select("job_id")
+      .in("contact_id", contactIds);
+
+    return Array.from(new Set((assignments ?? []).map((row) => row.job_id)));
+  };
+
   const refresh = async () => {
     if (!currentWorkspaceId && !hm) return;
     setLoading(true);
@@ -80,6 +97,15 @@ export default function Jobs() {
       .select("id, title, status, location, employment_type, reference, client_id, clients(name)")
       .order("created_at", { ascending: false });
     if (currentWorkspaceId) q = q.eq("workspace_id", currentWorkspaceId);
+    if (hm) {
+      const assignedJobIds = await getAssignedJobIds();
+      if (assignedJobIds.length === 0) {
+        setJobs([]);
+        setLoading(false);
+        return;
+      }
+      q = q.in("id", assignedJobIds);
+    }
     const { data } = await q;
     if (data) setJobs(data as unknown as Job[]);
 
@@ -97,7 +123,7 @@ export default function Jobs() {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWorkspaceId]);
+  }, [currentWorkspaceId, user?.id, hm]);
 
   // Suggest a reference & load contacts whenever client changes
   useEffect(() => {

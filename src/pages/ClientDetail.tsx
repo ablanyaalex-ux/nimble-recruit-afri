@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { sendInviteEmail } from "@/lib/invites";
 import { toast } from "sonner";
 
 type Client = {
@@ -142,7 +143,17 @@ export default function ClientDetail() {
     if (inv?.token) {
       const link = `${window.location.origin}/invite/${inv.token}`;
       await navigator.clipboard.writeText(link).catch(() => {});
-      toast.success("Invite created — link copied.");
+      const emailError = await sendInviteEmail({
+        email: c.email,
+        inviteLink: link,
+        role: "hiring_manager",
+        workspaceName: client.name,
+      });
+      if (emailError) {
+        toast.warning("Invite created, but email was not sent. Link copied.");
+      } else {
+        toast.success("Invite email sent — link copied.");
+      }
     }
   };
 

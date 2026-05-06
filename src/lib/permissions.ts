@@ -12,8 +12,8 @@ export const canViewAllCandidates = (role: WorkspaceRole | null) =>
 export const canMoveStages = (role: WorkspaceRole | null) =>
   role === "owner" || role === "recruiter";
 
-// Stage keys that hiring managers may NOT see (they only see from First Interview onward)
-export const HM_HIDDEN_STAGE_KEYS = new Set<string>(["application", "reviewed", "sourced", "contacted", "screened"]);
+// Stage keys that hiring managers may NOT see (they see from Review onward)
+export const HM_HIDDEN_STAGE_KEYS = new Set<string>(["application", "sourced", "contacted", "screened"]);
 
 export type PipelineStage = { key: string; label: string; position: number };
 

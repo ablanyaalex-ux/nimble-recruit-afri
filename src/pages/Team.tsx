@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { sendInviteEmail } from "@/lib/invites";
 import { toast } from "sonner";
 
 type InviteRow = {
@@ -184,7 +185,18 @@ export default function Team() {
     }
     const link = `${window.location.origin}/invite/${data!.token}`;
     await navigator.clipboard.writeText(link).catch(() => {});
-    toast.success("Invite created — link copied to clipboard.");
+    const workspaceName = memberships.find((m) => m.workspace_id === currentWorkspaceId)?.workspaces?.name;
+    const emailError = await sendInviteEmail({
+      email: parsed.data.email,
+      inviteLink: link,
+      role: parsed.data.role,
+      workspaceName,
+    });
+    if (emailError) {
+      toast.warning("Invite created, but email was not sent. Link copied to clipboard.");
+    } else {
+      toast.success("Invite email sent — link copied to clipboard.");
+    }
     setEmail("");
     setHmClientId("");
     setHmName("");
