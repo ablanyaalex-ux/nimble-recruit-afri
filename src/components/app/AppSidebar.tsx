@@ -19,7 +19,7 @@ const allNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true, hideForHM: false },
   { title: "Jobs", url: "/jobs", icon: Briefcase, hideForHM: false },
   { title: "Candidates", url: "/candidates", icon: Users, hideForHM: true },
-  { title: "Clients", url: "/clients", icon: Building2, hideForHM: false },
+  { title: "Clients", url: "/clients", icon: Building2, hideForHM: true },
   { title: "Interviews", url: "/interviews", icon: CalendarDays, hideForHM: false },
   { title: "Team", url: "/team", icon: UserPlus, hideForHM: true },
 ];
