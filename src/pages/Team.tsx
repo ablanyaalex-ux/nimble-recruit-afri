@@ -56,7 +56,7 @@ const baseInviteSchema = z.object({
 
 export default function Team() {
   const { user } = useAuth();
-  const { currentWorkspaceId, currentRole, loading } = useWorkspace();
+  const { currentWorkspaceId, currentRole, loading, memberships } = useWorkspace();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"recruiter" | "viewer" | "hiring_manager">("recruiter");
   const [hmClientId, setHmClientId] = useState("");
