@@ -428,10 +428,18 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
               <TabsContent value="profile" className="mt-4 space-y-3">
                 <Card className="p-4 space-y-3 text-sm">
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
+                  {hideForHM ? (
+                    <p className="text-sm text-muted-foreground">
+                      Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
+                    </p>
+                  ) : (
+                    <>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
+                    </>
+                  )}
                 </Card>
               </TabsContent>
             </Tabs>
