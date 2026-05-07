@@ -284,6 +284,7 @@ export type Database = {
       job_candidates: {
         Row: {
           added_by: string
+          anonymized: boolean
           candidate_id: string
           created_at: string
           id: string
@@ -298,6 +299,7 @@ export type Database = {
         }
         Insert: {
           added_by: string
+          anonymized?: boolean
           candidate_id: string
           created_at?: string
           id?: string
@@ -312,6 +314,7 @@ export type Database = {
         }
         Update: {
           added_by?: string
+          anonymized?: boolean
           candidate_id?: string
           created_at?: string
           id?: string
@@ -680,6 +683,10 @@ export type Database = {
       }
       is_linked_hiring_manager: {
         Args: { _client_id: string; _uid: string }
+        Returns: boolean
+      }
+      is_non_hm_workspace_member: {
+        Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
       is_workspace_member: {
