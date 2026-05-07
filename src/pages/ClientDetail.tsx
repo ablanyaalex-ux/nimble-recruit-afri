@@ -277,6 +277,35 @@ export default function ClientDetail() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editingContact} onOpenChange={(o) => !o && setEditingContact(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit contact</DialogTitle></DialogHeader>
+          <form onSubmit={saveContact} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={contactEditForm.name} onChange={(e) => setContactEditForm({ ...contactEditForm, name: e.target.value })} required />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={contactEditForm.email} onChange={(e) => setContactEditForm({ ...contactEditForm, email: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={contactEditForm.phone} onChange={(e) => setContactEditForm({ ...contactEditForm, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input value={contactEditForm.title} onChange={(e) => setContactEditForm({ ...contactEditForm, title: e.target.value })} />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={savingContact}>{savingContact ? "Saving…" : "Save changes"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="contacts">
         <TabsList>
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
