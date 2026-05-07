@@ -95,6 +95,7 @@ type PipelineEntry = {
   rejected: boolean;
   rejection_reason: string | null;
   candidate_id: string;
+  anonymized: boolean;
   candidates: { full_name: string; headline: string | null; source: string | null; location: string | null };
 };
 
