@@ -70,6 +70,40 @@ export default function ClientDetail() {
   const [editClientOpen, setEditClientOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", website: "", industry: "", notes: "" });
   const [savingClient, setSavingClient] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactEditForm, setContactEditForm] = useState({ name: "", email: "", phone: "", title: "" });
+  const [savingContact, setSavingContact] = useState(false);
+
+  const openEditContact = (c: Contact) => {
+    setEditingContact(c);
+    setContactEditForm({
+      name: c.name,
+      email: c.email ?? "",
+      phone: c.phone ?? "",
+      title: c.title ?? "",
+    });
+  };
+
+  const saveContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContact) return;
+    if (!contactEditForm.name.trim()) return toast.error("Name is required");
+    setSavingContact(true);
+    const { error } = await supabase
+      .from("client_contacts")
+      .update({
+        name: contactEditForm.name.trim(),
+        email: contactEditForm.email.trim() || null,
+        phone: contactEditForm.phone.trim() || null,
+        title: contactEditForm.title.trim() || null,
+      })
+      .eq("id", editingContact.id);
+    setSavingContact(false);
+    if (error) return toast.error(error.message);
+    toast.success("Contact updated.");
+    setEditingContact(null);
+    refresh();
+  };
 
   const refresh = async () => {
     if (!id) return;
@@ -243,6 +277,35 @@ export default function ClientDetail() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editingContact} onOpenChange={(o) => !o && setEditingContact(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit contact</DialogTitle></DialogHeader>
+          <form onSubmit={saveContact} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={contactEditForm.name} onChange={(e) => setContactEditForm({ ...contactEditForm, name: e.target.value })} required />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={contactEditForm.email} onChange={(e) => setContactEditForm({ ...contactEditForm, email: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={contactEditForm.phone} onChange={(e) => setContactEditForm({ ...contactEditForm, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input value={contactEditForm.title} onChange={(e) => setContactEditForm({ ...contactEditForm, title: e.target.value })} />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={savingContact}>{savingContact ? "Saving…" : "Save changes"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="contacts">
         <TabsList>
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
@@ -315,6 +378,9 @@ export default function ClientDetail() {
                     <div className="flex items-center gap-1 shrink-0">
                       <Button size="sm" variant="ghost" onClick={() => togglePrimary(c)} title={c.is_primary ? "Unset primary" : "Mark primary"}>
                         <Star className={`h-4 w-4 ${c.is_primary ? "fill-current text-primary" : ""}`} />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openEditContact(c)} title="Edit">
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       {!c.user_id && c.email && (
                         <Button size="sm" variant="outline" onClick={() => inviteAsHM(c)}>

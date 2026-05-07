@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { canMoveStages, DEFAULT_STAGES, type PipelineStage } from "@/lib/permissions";
+import { canMoveStages, DEFAULT_STAGES, isHiringManager, type PipelineStage } from "@/lib/permissions";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +35,7 @@ type Detail = {
   id: string;
   stage: string;
   candidate_id: string;
+  anonymized: boolean;
   candidates: {
     full_name: string;
     email: string | null;
@@ -69,6 +71,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
+  const hm = isHiringManager(currentRole);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
@@ -88,7 +91,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     if (!jobCandidateId) return;
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes)")
+      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -210,6 +213,18 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     refresh();
   };
 
+  const toggleAnonymized = async (next: boolean) => {
+    if (!detail) return;
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ anonymized: next } as any)
+      .eq("id", detail.id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? "Candidate anonymised for hiring managers." : "Candidate details revealed.");
+    onChanged();
+    refresh();
+  };
+
   const postComment = async () => {
     if (!detail || !user || !newComment.trim()) return;
     setPosting(true);
@@ -258,13 +273,17 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     refresh();
   };
 
+  const isReviewStage = detail?.stage === "reviewed";
+  const hideForHM = !!detail?.anonymized && hm;
+  const candidateName = hideForHM ? "Anonymous candidate" : detail?.candidates.full_name ?? "";
+
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         {detail && (
           <>
             <SheetHeader>
-              <SheetTitle className="font-display text-2xl">{detail.candidates.full_name}</SheetTitle>
+              <SheetTitle className="font-display text-2xl">{candidateName}</SheetTitle>
               {detail.candidates.headline && (
                 <p className="text-sm text-muted-foreground">{detail.candidates.headline}</p>
               )}
@@ -272,6 +291,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{stages.find((s) => s.key === detail.stage)?.label ?? detail.stage}</Badge>
+              {detail.anonymized && (
+                <Badge variant="outline">Anonymised for HMs</Badge>
+              )}
               {canMove && (
                 <Select value={detail.stage} onValueChange={moveStage}>
                   <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
@@ -282,12 +304,24 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                   </SelectContent>
                 </Select>
               )}
-              {resumeUrl && (
+              {resumeUrl && !hideForHM && (
                 <Button size="sm" variant="outline" asChild>
                   <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
                 </Button>
               )}
             </div>
+
+            {canMove && isReviewStage && (
+              <Card className="mt-3 p-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">Anonymise for hiring managers</div>
+                  <p className="text-xs text-muted-foreground">
+                    Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+                  </p>
+                </div>
+                <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+              </Card>
+            )}
 
             <Tabs defaultValue="comments" className="mt-6">
               <TabsList>
@@ -394,10 +428,18 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
               <TabsContent value="profile" className="mt-4 space-y-3">
                 <Card className="p-4 space-y-3 text-sm">
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
-                  <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
+                  {hideForHM ? (
+                    <p className="text-sm text-muted-foreground">
+                      Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
+                    </p>
+                  ) : (
+                    <>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
+                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
+                    </>
+                  )}
                 </Card>
               </TabsContent>
             </Tabs>

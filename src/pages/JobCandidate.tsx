@@ -4,7 +4,8 @@ import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, visibleStagesForRole } from "@/lib/permissions";
+import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, isHiringManager, visibleStagesForRole } from "@/lib/permissions";
+import { Switch } from "@/components/ui/switch";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer } from "@/components/app/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -29,6 +30,7 @@ type Detail = {
   rejection_reason: string | null;
   candidate_id: string;
   job_id: string;
+  anonymized: boolean;
   jobs: { workspace_id: string; client_id: string; title: string } | null;
   candidates: {
     full_name: string;
@@ -89,6 +91,7 @@ export default function JobCandidate() {
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
+  const isHM = isHiringManager(currentRole);
 
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,7 +138,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -223,6 +226,17 @@ export default function JobCandidate() {
     if (error) return toast.error(error.message);
     toast.success("Stage updated.");
     setDetail({ ...detail, stage });
+  };
+
+  const toggleAnonymized = async (next: boolean) => {
+    if (!detail) return;
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ anonymized: next } as any)
+      .eq("id", detail.id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? "Candidate anonymised for hiring managers." : "Candidate details revealed.");
+    setDetail({ ...detail, anonymized: next });
   };
 
   const progressCandidate = async () => {
@@ -437,6 +451,9 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
+  const hideForHM = detail.anonymized && isHM;
+  const displayName = hideForHM ? "Anonymous candidate" : c.full_name;
+  const isReviewStage = detail.stage === "reviewed";
 
   return (
     <PageContainer>
@@ -448,12 +465,13 @@ export default function JobCandidate() {
       <Card className={`p-6 mb-6 ${detail.rejected ? "border-destructive/40" : ""}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div className="min-w-0">
-            <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{c.full_name}</h1>
-            {c.headline && <p className="text-sm text-muted-foreground mt-1">{c.headline}</p>}
+            <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{displayName}</h1>
+            {!hideForHM && c.headline && <p className="text-sm text-muted-foreground mt-1">{c.headline}</p>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {detail.rejected && <Badge variant="destructive">Rejected</Badge>}
             <Badge variant="secondary">{currentStage}</Badge>
+            {detail.anonymized && <Badge variant="outline">Anonymised for HMs</Badge>}
             {canMove && (
               <Select value={detail.stage} onValueChange={moveStage}>
                 <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
@@ -489,7 +507,7 @@ export default function JobCandidate() {
                 </Button>
               </>
             )}
-            {resumeUrl && (
+            {resumeUrl && !hideForHM && (
               <Button size="sm" variant="outline" asChild>
                 <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
               </Button>
@@ -497,13 +515,31 @@ export default function JobCandidate() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={c.phone ? <a className="hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={c.location ? c.location : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
-        </div>
+        {canMove && isReviewStage && (
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
+            <div>
+              <div className="text-sm font-medium">Anonymise for hiring managers</div>
+              <p className="text-xs text-muted-foreground">
+                Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+              </p>
+            </div>
+            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+          </div>
+        )}
+
+        {hideForHM ? (
+          <p className="text-sm text-muted-foreground">
+            Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={c.phone ? <a className="hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={c.location ? c.location : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
+          </div>
+        )}
         {detail.rejected && detail.rejection_reason && (
           <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/5 p-3">
             <div className="text-[11px] uppercase tracking-wider text-destructive font-medium mb-1">Rejection reason</div>
@@ -523,67 +559,75 @@ export default function JobCandidate() {
 
 
         <TabsContent value="resume" className="mt-4 space-y-4">
-          {c.resume_path && (
-            <Card className="p-4">
-              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                  <div className="font-display text-base">AI summary</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {summary && (
-                    <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
-                      <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
-                    </Button>
-                  )}
-                  {!summary && (
-                    <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
-                      <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {summaryLoading && !summary ? (
-                <p className="text-sm text-muted-foreground">Reading the resume and writing a brief… this can take ~10–20s.</p>
-              ) : summary ? (
-                <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{summary}</div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Click <em>Generate summary</em> to get an AI-written brief of this resume.</p>
-              )}
+          {hideForHM ? (
+            <Card className="p-6 text-center text-sm text-muted-foreground">
+              The resume is hidden during anonymous review.
             </Card>
-          )}
-          <Card className="p-4">
-            {resumeUrl && c.resume_path ? (
-              (() => {
-                const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
-                const fileName = c.resume_path.split("/").pop() ?? "resume";
-                return (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="text-sm font-medium truncate">{fileName}</div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
-                        </Button>
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={resumeUrl} download={fileName}><Download className="h-3 w-3" /> Download</a>
-                        </Button>
-                      </div>
+          ) : (
+            <>
+              {c.resume_path && (
+                <Card className="p-4">
+                  <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                      <div className="font-display text-base">AI summary</div>
                     </div>
-                    {isPdf ? (
-                      <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
-                    ) : (
-                      <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                        Inline preview isn't available for this file type. Use “Open” or “Download” above to view it.
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {summary && (
+                        <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
+                          <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
+                        </Button>
+                      )}
+                      {!summary && (
+                        <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
+                          <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                );
-              })()
-            ) : (
-              <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
-            )}
-          </Card>
+                  {summaryLoading && !summary ? (
+                    <p className="text-sm text-muted-foreground">Reading the resume and writing a brief… this can take ~10–20s.</p>
+                  ) : summary ? (
+                    <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{summary}</div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Click <em>Generate summary</em> to get an AI-written brief of this resume.</p>
+                  )}
+                </Card>
+              )}
+              <Card className="p-4">
+                {resumeUrl && c.resume_path ? (
+                  (() => {
+                    const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
+                    const fileName = c.resume_path.split("/").pop() ?? "resume";
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="text-sm font-medium truncate">{fileName}</div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                            </Button>
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={resumeUrl} download={fileName}><Download className="h-3 w-3" /> Download</a>
+                            </Button>
+                          </div>
+                        </div>
+                        {isPdf ? (
+                          <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
+                        ) : (
+                          <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                            Inline preview isn't available for this file type. Use "Open" or "Download" above to view it.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
+                )}
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="cover" className="mt-4">
