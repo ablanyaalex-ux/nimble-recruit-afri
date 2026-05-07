@@ -29,6 +29,7 @@ type Detail = {
   rejection_reason: string | null;
   candidate_id: string;
   job_id: string;
+  anonymized: boolean;
   jobs: { workspace_id: string; client_id: string; title: string } | null;
   candidates: {
     full_name: string;
