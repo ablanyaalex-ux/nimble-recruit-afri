@@ -273,13 +273,17 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     refresh();
   };
 
+  const isReviewStage = detail?.stage === "reviewed";
+  const hideForHM = !!detail?.anonymized && hm;
+  const candidateName = hideForHM ? "Anonymous candidate" : detail?.candidates.full_name ?? "";
+
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         {detail && (
           <>
             <SheetHeader>
-              <SheetTitle className="font-display text-2xl">{detail.candidates.full_name}</SheetTitle>
+              <SheetTitle className="font-display text-2xl">{candidateName}</SheetTitle>
               {detail.candidates.headline && (
                 <p className="text-sm text-muted-foreground">{detail.candidates.headline}</p>
               )}
@@ -287,6 +291,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{stages.find((s) => s.key === detail.stage)?.label ?? detail.stage}</Badge>
+              {detail.anonymized && (
+                <Badge variant="outline">Anonymised for HMs</Badge>
+              )}
               {canMove && (
                 <Select value={detail.stage} onValueChange={moveStage}>
                   <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
@@ -297,12 +304,24 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                   </SelectContent>
                 </Select>
               )}
-              {resumeUrl && (
+              {resumeUrl && !hideForHM && (
                 <Button size="sm" variant="outline" asChild>
                   <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
                 </Button>
               )}
             </div>
+
+            {canMove && isReviewStage && (
+              <Card className="mt-3 p-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">Anonymise for hiring managers</div>
+                  <p className="text-xs text-muted-foreground">
+                    Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+                  </p>
+                </div>
+                <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+              </Card>
+            )}
 
             <Tabs defaultValue="comments" className="mt-6">
               <TabsList>
