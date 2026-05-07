@@ -70,6 +70,40 @@ export default function ClientDetail() {
   const [editClientOpen, setEditClientOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", website: "", industry: "", notes: "" });
   const [savingClient, setSavingClient] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactEditForm, setContactEditForm] = useState({ name: "", email: "", phone: "", title: "" });
+  const [savingContact, setSavingContact] = useState(false);
+
+  const openEditContact = (c: Contact) => {
+    setEditingContact(c);
+    setContactEditForm({
+      name: c.name,
+      email: c.email ?? "",
+      phone: c.phone ?? "",
+      title: c.title ?? "",
+    });
+  };
+
+  const saveContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContact) return;
+    if (!contactEditForm.name.trim()) return toast.error("Name is required");
+    setSavingContact(true);
+    const { error } = await supabase
+      .from("client_contacts")
+      .update({
+        name: contactEditForm.name.trim(),
+        email: contactEditForm.email.trim() || null,
+        phone: contactEditForm.phone.trim() || null,
+        title: contactEditForm.title.trim() || null,
+      })
+      .eq("id", editingContact.id);
+    setSavingContact(false);
+    if (error) return toast.error(error.message);
+    toast.success("Contact updated.");
+    setEditingContact(null);
+    refresh();
+  };
 
   const refresh = async () => {
     if (!id) return;
