@@ -91,6 +91,7 @@ export default function JobCandidate() {
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
+  const isHM = isHiringManager(currentRole);
 
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
