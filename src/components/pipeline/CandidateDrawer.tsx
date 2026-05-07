@@ -213,6 +213,18 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     refresh();
   };
 
+  const toggleAnonymized = async (next: boolean) => {
+    if (!detail) return;
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ anonymized: next } as any)
+      .eq("id", detail.id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? "Candidate anonymised for hiring managers." : "Candidate details revealed.");
+    onChanged();
+    refresh();
+  };
+
   const postComment = async () => {
     if (!detail || !user || !newComment.trim()) return;
     setPosting(true);
