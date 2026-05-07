@@ -4,7 +4,8 @@ import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, visibleStagesForRole } from "@/lib/permissions";
+import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, isHiringManager, visibleStagesForRole } from "@/lib/permissions";
+import { Switch } from "@/components/ui/switch";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer } from "@/components/app/PageHeader";
 import { Card } from "@/components/ui/card";
