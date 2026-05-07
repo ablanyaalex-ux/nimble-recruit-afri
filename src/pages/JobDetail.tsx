@@ -776,21 +776,26 @@ export default function JobDetail() {
                     <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
                   </div>
                   <div className="space-y-2 min-h-[80px]">
-                    {stageEntries.map((entry) => (
-                      <DraggableCard
-                        key={entry.id}
-                        entry={entry}
-                        canDrag={canDrag}
-                        canEdit={canEdit}
-                        selected={selected.has(entry.id)}
-                        selectMode={selectMode}
-                        onToggleSelect={() => toggleSelect(entry.id)}
-                        onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
-                        onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
-                        onReject={(reason) => rejectCandidates([entry.id], reason)}
-                        onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
-                      />
-                    ))}
+                    {stageEntries.map((entry) => {
+                      const displayEntry = isHM && entry.anonymized
+                        ? { ...entry, candidates: { ...entry.candidates, full_name: "Anonymous candidate" } }
+                        : entry;
+                      return (
+                        <DraggableCard
+                          key={entry.id}
+                          entry={displayEntry}
+                          canDrag={canDrag}
+                          canEdit={canEdit}
+                          selected={selected.has(entry.id)}
+                          selectMode={selectMode}
+                          onToggleSelect={() => toggleSelect(entry.id)}
+                          onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
+                          onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
+                          onReject={(reason) => rejectCandidates([entry.id], reason)}
+                          onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
+                        />
+                      );
+                    })}
                   </div>
                 </DroppableColumn>
               );
