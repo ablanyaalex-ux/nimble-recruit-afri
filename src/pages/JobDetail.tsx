@@ -287,7 +287,7 @@ export default function JobDetail() {
         .single(),
       supabase
         .from("job_candidates")
-        .select("id, stage, rejected, rejection_reason, candidate_id, candidates(full_name, headline, source, location)")
+        .select("id, stage, rejected, rejection_reason, candidate_id, anonymized, candidates(full_name, headline, source, location)")
         .eq("job_id", id)
         .order("position"),
     ]);
