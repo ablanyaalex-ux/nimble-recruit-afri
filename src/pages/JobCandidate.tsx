@@ -228,6 +228,17 @@ export default function JobCandidate() {
     setDetail({ ...detail, stage });
   };
 
+  const toggleAnonymized = async (next: boolean) => {
+    if (!detail) return;
+    const { error } = await supabase
+      .from("job_candidates")
+      .update({ anonymized: next } as any)
+      .eq("id", detail.id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? "Candidate anonymised for hiring managers." : "Candidate details revealed.");
+    setDetail({ ...detail, anonymized: next });
+  };
+
   const progressCandidate = async () => {
     if (!detail) return;
     const idx = stages.findIndex((s) => s.key === detail.stage);
