@@ -35,6 +35,7 @@ type Detail = {
   id: string;
   stage: string;
   candidate_id: string;
+  anonymized: boolean;
   candidates: {
     full_name: string;
     email: string | null;
