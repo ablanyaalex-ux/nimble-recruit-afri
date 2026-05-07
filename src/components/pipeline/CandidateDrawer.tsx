@@ -71,6 +71,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
+  const hm = isHiringManager(currentRole);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
