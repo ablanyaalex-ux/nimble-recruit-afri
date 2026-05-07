@@ -350,6 +350,9 @@ export default function ClientDetail() {
                       <Button size="sm" variant="ghost" onClick={() => togglePrimary(c)} title={c.is_primary ? "Unset primary" : "Mark primary"}>
                         <Star className={`h-4 w-4 ${c.is_primary ? "fill-current text-primary" : ""}`} />
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openEditContact(c)} title="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       {!c.user_id && c.email && (
                         <Button size="sm" variant="outline" onClick={() => inviteAsHM(c)}>
                           <Mail className="h-4 w-4" /> Invite as hiring manager
