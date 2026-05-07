@@ -465,12 +465,13 @@ export default function JobCandidate() {
       <Card className={`p-6 mb-6 ${detail.rejected ? "border-destructive/40" : ""}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div className="min-w-0">
-            <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{c.full_name}</h1>
-            {c.headline && <p className="text-sm text-muted-foreground mt-1">{c.headline}</p>}
+            <h1 className="font-display text-3xl md:text-4xl tracking-tight leading-tight">{displayName}</h1>
+            {!hideForHM && c.headline && <p className="text-sm text-muted-foreground mt-1">{c.headline}</p>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {detail.rejected && <Badge variant="destructive">Rejected</Badge>}
             <Badge variant="secondary">{currentStage}</Badge>
+            {detail.anonymized && <Badge variant="outline">Anonymised for HMs</Badge>}
             {canMove && (
               <Select value={detail.stage} onValueChange={moveStage}>
                 <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
@@ -506,7 +507,7 @@ export default function JobCandidate() {
                 </Button>
               </>
             )}
-            {resumeUrl && (
+            {resumeUrl && !hideForHM && (
               <Button size="sm" variant="outline" asChild>
                 <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
               </Button>
@@ -514,13 +515,31 @@ export default function JobCandidate() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={c.phone ? <a className="hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={c.location ? c.location : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
-          <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
-        </div>
+        {canMove && isReviewStage && (
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
+            <div>
+              <div className="text-sm font-medium">Anonymise for hiring managers</div>
+              <p className="text-xs text-muted-foreground">
+                Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+              </p>
+            </div>
+            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+          </div>
+        )}
+
+        {hideForHM ? (
+          <p className="text-sm text-muted-foreground">
+            Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={c.phone ? <a className="hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={c.location ? c.location : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={c.linkedin_url ? <a className="hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">View profile</a> : <span className="text-muted-foreground">—</span>} />
+          </div>
+        )}
         {detail.rejected && detail.rejection_reason && (
           <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/5 p-3">
             <div className="text-[11px] uppercase tracking-wider text-destructive font-medium mb-1">Rejection reason</div>
