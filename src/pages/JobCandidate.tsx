@@ -451,6 +451,9 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
+  const hideForHM = detail.anonymized && isHM;
+  const displayName = hideForHM ? "Anonymous candidate" : c.full_name;
+  const isReviewStage = detail.stage === "reviewed";
 
   return (
     <PageContainer>
