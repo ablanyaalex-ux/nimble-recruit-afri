@@ -163,6 +163,54 @@ export default function AuthPage() {
           </p>
         </div>
       </main>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Enter the email associated with your account and we'll send you a link to set a new password.
+          </p>
+          <form
+            className="space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!forgotEmail) return;
+              setSendingReset(true);
+              try {
+                const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                  redirectTo: `${window.location.origin}/reset-password`,
+                });
+                if (error) throw error;
+                toast.success("Check your inbox for a reset link.");
+                setForgotOpen(false);
+              } catch (err: any) {
+                toast.error(err.message ?? "Could not send reset email");
+              } finally {
+                setSendingReset(false);
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                required
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you@agency.com"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={sendingReset || !forgotEmail}>
+                {sendingReset ? "Sending…" : "Send reset link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
