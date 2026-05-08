@@ -111,6 +111,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
           headline: form.headline.trim() || null,
           location: form.location.trim() || null,
           source: form.source || null,
+          referrer_name: form.source === "Referral" ? (form.referrer_name.trim() || null) : null,
           notes: form.notes.trim() || null,
         } as any)
         .select("id")
