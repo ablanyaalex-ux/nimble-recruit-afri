@@ -35,6 +35,7 @@ const App = () => (
           <WorkspaceProvider>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
               <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route path="/careers/:workspaceId" element={<CareersPublic />} />
