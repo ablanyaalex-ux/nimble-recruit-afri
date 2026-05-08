@@ -276,7 +276,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
   const isReviewStage = detail?.stage === "reviewed";
   const hideForHM = !!detail?.anonymized && hm;
-  const candidateName = hideForHM ? "Anonymous candidate" : detail?.candidates.full_name ?? "";
+  const candidateName = hideForHM
+    ? anonymizeName(detail?.candidates.full_name)
+    : detail?.candidates.full_name ?? "";
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
