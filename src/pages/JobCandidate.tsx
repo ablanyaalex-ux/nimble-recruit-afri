@@ -21,6 +21,7 @@ import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPop
 import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
+import { anonymizeName, stripEducationSection } from "@/lib/anonymize";
 import { toast } from "sonner";
 
 type Detail = {
