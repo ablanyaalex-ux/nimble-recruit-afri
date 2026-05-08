@@ -23,6 +23,7 @@ import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
+import { anonymizeName } from "@/lib/anonymize";
 
 type Props = {
   jobCandidateId: string | null;
