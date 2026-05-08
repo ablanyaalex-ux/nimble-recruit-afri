@@ -57,6 +57,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
     headline: "",
     location: "",
     source: "",
+    referrer_name: "",
     notes: "",
   });
   const [resume, setResume] = useState<File | null>(null);
