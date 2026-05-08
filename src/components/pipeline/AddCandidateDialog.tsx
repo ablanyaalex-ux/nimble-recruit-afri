@@ -204,6 +204,16 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            {form.source === "Referral" && (
+              <div className="space-y-1">
+                <Label className="text-xs">Referrer's name *</Label>
+                <Input
+                  placeholder="Who referred this candidate?"
+                  value={form.referrer_name}
+                  onChange={(e) => setForm({ ...form, referrer_name: e.target.value })}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Stage</Label>
