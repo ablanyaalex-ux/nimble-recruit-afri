@@ -98,6 +98,9 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
 
   const addNew = async () => {
     if (!user || !form.full_name.trim()) return;
+    if (form.source === "Referral" && !form.referrer_name.trim()) {
+      return toast.error("Please enter the referrer's name.");
+    }
     setSaving(true);
     try {
       const { data: cand, error: cErr } = await supabase
