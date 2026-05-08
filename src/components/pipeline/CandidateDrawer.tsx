@@ -287,7 +287,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
           <>
             <SheetHeader>
               <SheetTitle className="font-display text-2xl">{candidateName}</SheetTitle>
-              {detail.candidates.headline && (
+              {!hideForHM && detail.candidates.headline && (
                 <p className="text-sm text-muted-foreground">{detail.candidates.headline}</p>
               )}
             </SheetHeader>
