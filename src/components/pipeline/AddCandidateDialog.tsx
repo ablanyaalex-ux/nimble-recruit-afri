@@ -77,7 +77,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
 
   const reset = () => {
     setPick("");
-    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", source: "", notes: "" });
+    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", source: "", referrer_name: "", notes: "" });
     setResume(null);
   };
 
