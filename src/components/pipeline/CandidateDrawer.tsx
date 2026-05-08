@@ -23,6 +23,7 @@ import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
+import { anonymizeName } from "@/lib/anonymize";
 
 type Props = {
   jobCandidateId: string | null;
@@ -275,7 +276,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
   const isReviewStage = detail?.stage === "reviewed";
   const hideForHM = !!detail?.anonymized && hm;
-  const candidateName = hideForHM ? "Anonymous candidate" : detail?.candidates.full_name ?? "";
+  const candidateName = hideForHM
+    ? anonymizeName(detail?.candidates.full_name)
+    : detail?.candidates.full_name ?? "";
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
@@ -284,7 +287,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
           <>
             <SheetHeader>
               <SheetTitle className="font-display text-2xl">{candidateName}</SheetTitle>
-              {detail.candidates.headline && (
+              {!hideForHM && detail.candidates.headline && (
                 <p className="text-sm text-muted-foreground">{detail.candidates.headline}</p>
               )}
             </SheetHeader>

@@ -57,6 +57,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
     headline: "",
     location: "",
     source: "",
+    referrer_name: "",
     notes: "",
   });
   const [resume, setResume] = useState<File | null>(null);
@@ -76,7 +77,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
 
   const reset = () => {
     setPick("");
-    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", source: "", notes: "" });
+    setForm({ full_name: "", email: "", phone: "", headline: "", location: "", source: "", referrer_name: "", notes: "" });
     setResume(null);
   };
 
@@ -97,6 +98,9 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
 
   const addNew = async () => {
     if (!user || !form.full_name.trim()) return;
+    if (form.source === "Referral" && !form.referrer_name.trim()) {
+      return toast.error("Please enter the referrer's name.");
+    }
     setSaving(true);
     try {
       const { data: cand, error: cErr } = await supabase
@@ -110,6 +114,7 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
           headline: form.headline.trim() || null,
           location: form.location.trim() || null,
           source: form.source || null,
+          referrer_name: form.source === "Referral" ? (form.referrer_name.trim() || null) : null,
           notes: form.notes.trim() || null,
         } as any)
         .select("id")
@@ -202,6 +207,16 @@ export function AddCandidateDialog({ jobId, workspaceId, onAdded }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            {form.source === "Referral" && (
+              <div className="space-y-1">
+                <Label className="text-xs">Referrer's name *</Label>
+                <Input
+                  placeholder="Who referred this candidate?"
+                  value={form.referrer_name}
+                  onChange={(e) => setForm({ ...form, referrer_name: e.target.value })}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Stage</Label>

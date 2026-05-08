@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/auth";
 import { WorkspaceProvider } from "@/lib/workspace";
 import AppLayout from "@/components/app/AppLayout";
 import AuthPage from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import CreateWorkspace from "./pages/CreateWorkspace";
 import Dashboard from "./pages/Dashboard";
 import Team from "./pages/Team";
@@ -34,6 +35,7 @@ const App = () => (
           <WorkspaceProvider>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
               <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route path="/careers/:workspaceId" element={<CareersPublic />} />
