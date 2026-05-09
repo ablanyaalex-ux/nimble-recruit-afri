@@ -437,9 +437,17 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               <TabsContent value="profile" className="mt-4 space-y-3">
                 <Card className="p-4 space-y-3 text-sm">
                   {hideForHM ? (
-                    <p className="text-sm text-muted-foreground">
-                      Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
-                    </p>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Contact details, LinkedIn, location, education and other personal identifiers are redacted during anonymous review.
+                      </p>
+                      {redactedCv && (
+                        <div>
+                          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Redacted CV</Label>
+                          <p className="mt-1 whitespace-pre-wrap">{redactedCv}</p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
