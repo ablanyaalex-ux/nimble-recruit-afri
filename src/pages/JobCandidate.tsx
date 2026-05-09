@@ -21,7 +21,7 @@ import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPop
 import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
-import { anonymizeName, stripEducationSection } from "@/lib/anonymize";
+import { anonymizeName, redactResumeText } from "@/lib/anonymize";
 import { toast } from "sonner";
 
 type Detail = {
@@ -44,6 +44,7 @@ type Detail = {
     source: string | null;
     location: string | null;
     resume_summary: string | null;
+    anonymized_resume_summary: string | null;
   };
 };
 
@@ -104,6 +105,7 @@ export default function JobCandidate() {
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
   const [summary, setSummary] = useState<string | null>(null);
+  const [anonymizedSummary, setAnonymizedSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
@@ -139,12 +141,13 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, anonymized_resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
       setSummary((data.candidates as any)?.resume_summary ?? null);
+      setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
@@ -387,7 +390,7 @@ export default function JobCandidate() {
     if (!detail) return;
     setSummaryLoading(true);
     const { data, error } = await supabase.functions.invoke("summarize-resume", {
-      body: { candidateId: detail.candidate_id, force },
+      body: { candidateId: detail.candidate_id, jobCandidateId: detail.id, force },
     });
     setSummaryLoading(false);
     if (error) {
@@ -396,6 +399,11 @@ export default function JobCandidate() {
     }
     if ((data as any)?.summary) {
       setSummary((data as any).summary);
+    }
+    if ((data as any)?.anonymizedSummary) {
+      setAnonymizedSummary((data as any).anonymizedSummary);
+    }
+    if ((data as any)?.summary || (data as any)?.anonymizedSummary) {
       if (!(data as any).cached) toast.success("Summary generated.");
     } else if ((data as any)?.error) {
       toast.error((data as any).error);
@@ -454,7 +462,9 @@ export default function JobCandidate() {
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const hideForHM = detail.anonymized && isHM;
   const displayName = hideForHM ? anonymizeName(c.full_name) : c.full_name;
-  const displaySummary = hideForHM ? stripEducationSection(summary) : summary;
+  const displaySummary = hideForHM
+    ? redactResumeText(anonymizedSummary ?? summary, c)
+    : summary;
   const isReviewStage = detail.stage === "reviewed";
 
   return (
@@ -509,7 +519,7 @@ export default function JobCandidate() {
                 </Button>
               </>
             )}
-            {resumeUrl && !hideForHM && (
+              {resumeUrl && !hideForHM && (
               <Button size="sm" variant="outline" asChild>
                 <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
               </Button>
@@ -522,7 +532,7 @@ export default function JobCandidate() {
             <div>
               <div className="text-sm font-medium">Anonymise for hiring managers</div>
               <p className="text-xs text-muted-foreground">
-                Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+                Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
               </p>
             </div>
             <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
@@ -530,9 +540,13 @@ export default function JobCandidate() {
         )}
 
         {hideForHM ? (
-          <p className="text-sm text-muted-foreground">
-            Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
-          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={<span className="text-muted-foreground">Redacted</span>} />
+            <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={<span className="text-muted-foreground">Redacted</span>} />
+            <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={<span className="text-muted-foreground">Redacted</span>} />
+            <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={<span className="text-muted-foreground">Redacted</span>} />
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
@@ -569,20 +583,17 @@ export default function JobCandidate() {
                   <div className="font-display text-base">AI summary</div>
                   {hideForHM && <Badge variant="outline" className="text-[10px]">Anonymised</Badge>}
                 </div>
-                {!hideForHM && (
-                  <div className="flex items-center gap-2">
-                    {summary && (
-                      <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
-                        <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
-                      </Button>
-                    )}
-                    {!summary && (
-                      <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
-                        <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
-                      </Button>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {(!hideForHM && summary) || (hideForHM && anonymizedSummary) ? (
+                    <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
+                      <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
+                      <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
+                    </Button>
+                  )}
+                </div>
               </div>
               {summaryLoading && !summary ? (
                 <p className="text-sm text-muted-foreground">Reading the resume and writing a brief… this can take ~10–20s.</p>
@@ -598,8 +609,29 @@ export default function JobCandidate() {
             </Card>
           )}
           {hideForHM ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">
-              The full resume is hidden during anonymous review to mask contact details and education.
+            <Card className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <div>
+                  <div className="text-sm font-medium">Redacted CV</div>
+                  <p className="text-xs text-muted-foreground">
+                    Personal details, LinkedIn, age, marital status, location and education identifiers are removed.
+                  </p>
+                </div>
+                {!displaySummary && (
+                  <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
+                    <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
+                  </Button>
+                )}
+              </div>
+              {displaySummary ? (
+                <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                  {displaySummary}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  A redacted CV brief needs to be generated before hiring-manager review.
+                </p>
+              )}
             </Card>
           ) : (
             <Card className="p-4">

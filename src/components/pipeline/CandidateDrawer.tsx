@@ -23,7 +23,7 @@ import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
-import { anonymizeName } from "@/lib/anonymize";
+import { anonymizeName, redactResumeText } from "@/lib/anonymize";
 
 type Props = {
   jobCandidateId: string | null;
@@ -44,6 +44,8 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
+    resume_summary: string | null;
+    anonymized_resume_summary: string | null;
     notes: string | null;
   };
 };
@@ -92,7 +94,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     if (!jobCandidateId) return;
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes)")
+      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, anonymized_resume_summary, notes)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -279,6 +281,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
+  const redactedCv = hideForHM
+    ? redactResumeText(detail?.candidates.anonymized_resume_summary ?? detail?.candidates.resume_summary, detail?.candidates)
+    : null;
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
@@ -319,7 +324,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 <div>
                   <div className="text-sm font-medium">Anonymise for hiring managers</div>
                   <p className="text-xs text-muted-foreground">
-                    Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+                    Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
                   </p>
                 </div>
                 <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
@@ -432,9 +437,17 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               <TabsContent value="profile" className="mt-4 space-y-3">
                 <Card className="p-4 space-y-3 text-sm">
                   {hideForHM ? (
-                    <p className="text-sm text-muted-foreground">
-                      Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
-                    </p>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Contact details, LinkedIn, location, education and other personal identifiers are redacted during anonymous review.
+                      </p>
+                      {redactedCv && (
+                        <div>
+                          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Redacted CV</Label>
+                          <p className="mt-1 whitespace-pre-wrap">{redactedCv}</p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>

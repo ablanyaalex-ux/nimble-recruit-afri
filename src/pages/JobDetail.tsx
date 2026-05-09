@@ -72,6 +72,7 @@ import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
+import { anonymizeName } from "@/lib/anonymize";
 import { toast } from "sonner";
 
 type Job = {
@@ -778,7 +779,7 @@ export default function JobDetail() {
                   <div className="space-y-2 min-h-[80px]">
                     {stageEntries.map((entry) => {
                       const displayEntry = isHM && entry.anonymized
-                        ? { ...entry, candidates: { ...entry.candidates, full_name: "Anonymous candidate" } }
+                        ? { ...entry, candidates: { ...entry.candidates, full_name: anonymizeName(entry.candidates.full_name), headline: null, location: null } }
                         : entry;
                       return (
                         <DraggableCard
