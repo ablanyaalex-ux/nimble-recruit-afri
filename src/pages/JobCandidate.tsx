@@ -519,7 +519,7 @@ export default function JobCandidate() {
                 </Button>
               </>
             )}
-            {resumeUrl && !hideForHM && (
+              {resumeUrl && !hideForHM && (
               <Button size="sm" variant="outline" asChild>
                 <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
               </Button>
@@ -532,7 +532,7 @@ export default function JobCandidate() {
             <div>
               <div className="text-sm font-medium">Anonymise for hiring managers</div>
               <p className="text-xs text-muted-foreground">
-                Hides name, contact details, LinkedIn and resume from HMs to reduce bias during review.
+                Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
               </p>
             </div>
             <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
@@ -540,9 +540,13 @@ export default function JobCandidate() {
         )}
 
         {hideForHM ? (
-          <p className="text-sm text-muted-foreground">
-            Personal details are hidden during anonymous review. They will appear once the recruiter reveals the candidate.
-          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={<span className="text-muted-foreground">Redacted</span>} />
+            <HeaderField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={<span className="text-muted-foreground">Redacted</span>} />
+            <HeaderField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={<span className="text-muted-foreground">Redacted</span>} />
+            <HeaderField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={c.source ? <span className="capitalize">{c.source.replace(/_/g, " ")}</span> : <span className="text-muted-foreground">—</span>} />
+            <HeaderField icon={<Linkedin className="h-3.5 w-3.5" />} label="LinkedIn" value={<span className="text-muted-foreground">Redacted</span>} />
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <HeaderField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={c.email ? <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a> : <span className="text-muted-foreground">—</span>} />
