@@ -21,7 +21,7 @@ import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPop
 import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
-import { anonymizeName, stripEducationSection } from "@/lib/anonymize";
+import { anonymizeName, redactResumeText } from "@/lib/anonymize";
 import { toast } from "sonner";
 
 type Detail = {
@@ -44,6 +44,7 @@ type Detail = {
     source: string | null;
     location: string | null;
     resume_summary: string | null;
+    anonymized_resume_summary: string | null;
   };
 };
 
@@ -104,6 +105,7 @@ export default function JobCandidate() {
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
   const [summary, setSummary] = useState<string | null>(null);
+  const [anonymizedSummary, setAnonymizedSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
@@ -139,12 +141,13 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, anonymized_resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
       setSummary((data.candidates as any)?.resume_summary ?? null);
+      setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
