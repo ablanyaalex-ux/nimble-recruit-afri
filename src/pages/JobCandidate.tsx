@@ -583,20 +583,17 @@ export default function JobCandidate() {
                   <div className="font-display text-base">AI summary</div>
                   {hideForHM && <Badge variant="outline" className="text-[10px]">Anonymised</Badge>}
                 </div>
-                {!hideForHM && (
-                  <div className="flex items-center gap-2">
-                    {summary && (
-                      <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
-                        <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
-                      </Button>
-                    )}
-                    {!summary && (
-                      <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
-                        <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
-                      </Button>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {(!hideForHM && summary) || (hideForHM && anonymizedSummary) ? (
+                    <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
+                      <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading}>
+                      <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate summary"}
+                    </Button>
+                  )}
+                </div>
               </div>
               {summaryLoading && !summary ? (
                 <p className="text-sm text-muted-foreground">Reading the resume and writing a brief… this can take ~10–20s.</p>
@@ -612,8 +609,29 @@ export default function JobCandidate() {
             </Card>
           )}
           {hideForHM ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">
-              The full resume is hidden during anonymous review to mask contact details and education.
+            <Card className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <div>
+                  <div className="text-sm font-medium">Redacted CV</div>
+                  <p className="text-xs text-muted-foreground">
+                    Personal details, LinkedIn, age, marital status, location and education identifiers are removed.
+                  </p>
+                </div>
+                {!displaySummary && (
+                  <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
+                    <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
+                  </Button>
+                )}
+              </div>
+              {displaySummary ? (
+                <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                  {displaySummary}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  A redacted CV brief needs to be generated before hiring-manager review.
+                </p>
+              )}
             </Card>
           ) : (
             <Card className="p-4">
