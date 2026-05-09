@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { candidateId, force } = await req.json();
+    const { candidateId, jobCandidateId, force } = await req.json();
     if (!candidateId) {
       return new Response(JSON.stringify({ error: "candidateId required" }), {
         status: 400,
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     // Fetch candidate via user-scoped client to enforce RLS
     const { data: candidate, error: cErr } = await userClient
       .from("candidates")
-      .select("id, full_name, headline, resume_path, resume_summary")
+      .select("id, full_name, headline, resume_path, resume_summary, anonymized_resume_summary")
       .eq("id", candidateId)
       .maybeSingle();
     if (cErr || !candidate) {
@@ -58,8 +58,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (candidate.resume_summary && !force) {
-      return new Response(JSON.stringify({ summary: candidate.resume_summary, cached: true }), {
+    let anonymizedForCaller = false;
+    if (jobCandidateId) {
+      const { data: jc } = await userClient
+        .from("job_candidates")
+        .select("anonymized, jobs(workspace_id)")
+        .eq("id", jobCandidateId)
+        .eq("candidate_id", candidateId)
+        .maybeSingle();
+      const workspaceId = (jc as any)?.jobs?.workspace_id;
+      if (jc?.anonymized && workspaceId) {
+        const { data: member } = await userClient
+          .from("workspace_members")
+          .select("role")
+          .eq("workspace_id", workspaceId)
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        anonymizedForCaller = member?.role === "hiring_manager";
+      }
+    }
+
+    if (!force && candidate.resume_summary && candidate.anonymized_resume_summary) {
+      return new Response(JSON.stringify({
+        summary: anonymizedForCaller ? null : candidate.resume_summary,
+        anonymizedSummary: candidate.anonymized_resume_summary,
+        cached: true,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -95,6 +119,24 @@ Deno.serve(async (req) => {
     else if (lower.endsWith(".doc")) mime = "application/msword";
     else if (lower.endsWith(".txt")) mime = "text/plain";
 
+    const needsRecruiterSummary = force || !candidate.resume_summary;
+    const needsAnonymizedSummary = force || !candidate.anonymized_resume_summary;
+    const messages = [
+      {
+        role: "system",
+        content: needsRecruiterSummary
+          ? "You are a recruiting assistant. Summarize a candidate's resume into a concise, scannable brief for a busy recruiter. Output Markdown with these sections: '**Snapshot**' (2-3 sentence overview), '**Key strengths**' (3-5 bullets), '**Experience highlights**' (3-5 bullets, each with company/role/impact), '**Skills**' (comma-separated), '**Education**' (1-2 lines). Keep it factual; do not invent information. Then add a second section headed '---ANONYMISED REVIEW CV---' containing a hiring-manager review version that redacts name, contact details, LinkedIn/URLs, address/location, age/date of birth, gender, nationality/citizenship, marital/family status, personal IDs, photos, and all education details. In the anonymised version, keep useful review evidence: roles, responsibilities, achievements, relevant tools, skills, industries, scope and impact. Use initials only if a name is needed."
+          : "You are a recruiting assistant. Create only an anonymised CV brief for hiring-manager review. Output Markdown with useful review evidence: role/seniority snapshot, key strengths, experience highlights, skills, and any relevant certifications only if they do not identify education history. Redact name, contact details, LinkedIn/URLs, address/location, age/date of birth, gender, nationality/citizenship, marital/family status, personal IDs, photos, and all education details. Do not include schools, universities, graduation years, degrees, or personal identifiers. Keep it factual; do not invent information.",
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: `Process this resume${needsRecruiterSummary ? ` for candidate ${candidate.full_name}${candidate.headline ? ` (${candidate.headline})` : ""}` : " for anonymous hiring-manager review"}.` },
+          { type: "image_url", image_url: { url: `data:${mime};base64,${b64}` } },
+        ],
+      },
+    ];
+
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -103,20 +145,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a recruiting assistant. Summarize a candidate's resume into a concise, scannable brief for a busy recruiter. Output Markdown with these sections: '**Snapshot**' (2-3 sentence overview), '**Key strengths**' (3-5 bullets), '**Experience highlights**' (3-5 bullets, each with company/role/impact), '**Skills**' (comma-separated), '**Education**' (1-2 lines). Keep it factual; do not invent information.",
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: `Summarize this resume for candidate ${candidate.full_name}${candidate.headline ? ` (${candidate.headline})` : ""}.` },
-              { type: "image_url", image_url: { url: `data:${mime};base64,${b64}` } },
-            ],
-          },
-        ],
+        messages,
       }),
     });
 
@@ -139,19 +168,33 @@ Deno.serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!summary) {
+    const content: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
+    if (!content) {
       return new Response(JSON.stringify({ error: "Empty summary" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const [recruiterPart, anonymizedPart] = needsRecruiterSummary
+      ? content.split(/---\s*ANONYMISED REVIEW CV\s*---/i).map((part) => part.trim())
+      : [candidate.resume_summary ?? "", content];
+    const summary = needsRecruiterSummary ? recruiterPart : candidate.resume_summary;
+    const anonymizedSummary = anonymizedPart || content;
+
     await admin
       .from("candidates")
-      .update({ resume_summary: summary, resume_summary_generated_at: new Date().toISOString() })
+      .update({
+        ...(needsRecruiterSummary ? { resume_summary: summary } : {}),
+        ...(needsAnonymizedSummary ? { anonymized_resume_summary: anonymizedSummary } : {}),
+        resume_summary_generated_at: new Date().toISOString(),
+      })
       .eq("id", candidateId);
 
-    return new Response(JSON.stringify({ summary, cached: false }), {
+    return new Response(JSON.stringify({
+      summary: anonymizedForCaller ? null : summary,
+      anonymizedSummary,
+      cached: false,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
