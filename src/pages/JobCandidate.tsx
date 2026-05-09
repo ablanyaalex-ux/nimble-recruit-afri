@@ -390,7 +390,7 @@ export default function JobCandidate() {
     if (!detail) return;
     setSummaryLoading(true);
     const { data, error } = await supabase.functions.invoke("summarize-resume", {
-      body: { candidateId: detail.candidate_id, force },
+      body: { candidateId: detail.candidate_id, jobCandidateId: detail.id, force },
     });
     setSummaryLoading(false);
     if (error) {
@@ -399,6 +399,11 @@ export default function JobCandidate() {
     }
     if ((data as any)?.summary) {
       setSummary((data as any).summary);
+    }
+    if ((data as any)?.anonymizedSummary) {
+      setAnonymizedSummary((data as any).anonymizedSummary);
+    }
+    if ((data as any)?.summary || (data as any)?.anonymizedSummary) {
       if (!(data as any).cached) toast.success("Summary generated.");
     } else if ((data as any)?.error) {
       toast.error((data as any).error);
@@ -457,7 +462,9 @@ export default function JobCandidate() {
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const hideForHM = detail.anonymized && isHM;
   const displayName = hideForHM ? anonymizeName(c.full_name) : c.full_name;
-  const displaySummary = hideForHM ? stripEducationSection(summary) : summary;
+  const displaySummary = hideForHM
+    ? redactResumeText(anonymizedSummary ?? summary, c)
+    : summary;
   const isReviewStage = detail.stage === "reviewed";
 
   return (
