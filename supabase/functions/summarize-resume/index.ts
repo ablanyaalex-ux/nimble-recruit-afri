@@ -5,6 +5,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function initials(fullName?: string | null) {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0]?.toUpperCase() ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0]?.toUpperCase() ?? "" : "";
+  return last ? `${first}. ${last}.` : first ? `${first}.` : "Candidate";
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function redactText(text: string, candidate: { full_name?: string | null; headline?: string | null }) {
+  let redacted = text;
+  if (candidate.full_name?.trim()) {
+    redacted = redacted.replace(new RegExp(escapeRegExp(candidate.full_name.trim()), "gi"), initials(candidate.full_name));
+  }
+  return redacted
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email redacted]")
+    .replace(/(?:https?:\/\/|www\.)\S+/gi, "[link redacted]")
+    .replace(/\b(?:linkedin\.com\/in\/|linkedin profile|linkedin)\S*[^\n]*/gi, "[LinkedIn redacted]")
+    .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, "[phone redacted]")
+    .replace(/^\s*(?:age|date of birth|dob|birth date|born)\s*[:\-].*$/gim, "[age/date of birth redacted]")
+    .replace(/^\s*(?:marital status|civil status|spouse|children|family status)\s*[:\-].*$/gim, "[marital/family status redacted]")
+    .replace(/^\s*(?:gender|sex|pronouns|nationality|citizenship|address|location)\s*[:\-].*$/gim, "[personal identifier redacted]")
+    .replace(/\*\*\s*Education\s*\*\*[\s\S]*?(?=\n\s*\*\*|$)/gi, "**Education**\n[education details redacted]")
+    .trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -179,7 +207,7 @@ Deno.serve(async (req) => {
       ? content.split(/---\s*ANONYMISED REVIEW CV\s*---/i).map((part) => part.trim())
       : [candidate.resume_summary ?? "", content];
     const summary = needsRecruiterSummary ? recruiterPart : candidate.resume_summary;
-    const anonymizedSummary = anonymizedPart || content;
+    const anonymizedSummary = redactText(anonymizedPart || content, candidate);
 
     await admin
       .from("candidates")
