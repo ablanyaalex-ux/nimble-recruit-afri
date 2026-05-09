@@ -48,6 +48,7 @@ export type Database = {
       }
       candidates: {
         Row: {
+          anonymized_resume_summary: string | null
           created_at: string
           created_by: string
           email: string | null
@@ -67,6 +68,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          anonymized_resume_summary?: string | null
           created_at?: string
           created_by: string
           email?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          anonymized_resume_summary?: string | null
           created_at?: string
           created_by?: string
           email?: string | null
