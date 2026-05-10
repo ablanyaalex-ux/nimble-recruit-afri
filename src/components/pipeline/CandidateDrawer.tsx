@@ -459,6 +459,25 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
+                      {canMove && isReviewStage && (
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                          <div className="min-w-0">
+                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">CV redaction</Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Choose exactly what's hidden on the CV shown to hiring managers.
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setRedactOpen(true)}
+                            disabled={!detail.candidates.resume_full_text}
+                            title={detail.candidates.resume_full_text ? "" : "Generate the AI summary first to extract the CV text"}
+                          >
+                            Customise redaction
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                 </Card>
@@ -469,7 +488,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               open={redactOpen}
               onOpenChange={setRedactOpen}
               candidateId={detail.candidate_id}
-              originalSummary={detail.candidates.resume_summary}
+              originalCv={detail.candidates.resume_full_text}
               currentRedacted={detail.candidates.anonymized_resume_summary}
               onSaved={() => refresh()}
             />
