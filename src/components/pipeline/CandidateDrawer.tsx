@@ -329,20 +329,10 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 <div className="min-w-0">
                   <div className="text-sm font-medium">Anonymise for hiring managers</div>
                   <p className="text-xs text-muted-foreground">
-                    Use <em>Customise redaction</em> to choose exactly what to hide on the CV.
+                    Customise what's hidden from the CV in the Profile tab.
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setRedactOpen(true)}
-                    disabled={!detail.candidates.resume_summary && !detail.candidates.anonymized_resume_summary}
-                  >
-                    Customise redaction
-                  </Button>
-                  <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
-                </div>
+                <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
               </Card>
             )}
 
