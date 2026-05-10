@@ -964,7 +964,7 @@ export default function JobCandidate() {
         open={redactOpen}
         onOpenChange={setRedactOpen}
         candidateId={detail.candidate_id}
-        originalSummary={summary}
+        originalCv={resumeFullText}
         currentRedacted={anonymizedSummary}
         onSaved={(next) => setAnonymizedSummary(next)}
       />
