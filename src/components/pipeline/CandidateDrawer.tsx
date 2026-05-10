@@ -24,6 +24,7 @@ import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/li
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
 import { anonymizeName, redactResumeText } from "@/lib/anonymize";
+import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
 
 type Props = {
   jobCandidateId: string | null;
@@ -82,6 +83,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const [redactOpen, setRedactOpen] = useState(false);
   const [fbForm, setFbForm] = useState({
     rating: "",
     recommendation: "",
@@ -281,8 +283,10 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
+  // Prefer the recruiter's manually redacted version exactly as written.
   const redactedCv = hideForHM
-    ? redactResumeText(detail?.candidates.anonymized_resume_summary ?? detail?.candidates.resume_summary, detail?.candidates)
+    ? (detail?.candidates.anonymized_resume_summary
+        ?? redactResumeText(detail?.candidates.resume_summary, detail?.candidates))
     : null;
 
   return (
@@ -320,14 +324,24 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
             </div>
 
             {canMove && isReviewStage && (
-              <Card className="mt-3 p-3 flex items-center justify-between gap-3">
-                <div>
+              <Card className="mt-3 p-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
                   <div className="text-sm font-medium">Anonymise for hiring managers</div>
                   <p className="text-xs text-muted-foreground">
-                    Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
+                    Use <em>Customise redaction</em> to choose exactly what to hide on the CV.
                   </p>
                 </div>
-                <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRedactOpen(true)}
+                    disabled={!detail.candidates.resume_summary && !detail.candidates.anonymized_resume_summary}
+                  >
+                    Customise redaction
+                  </Button>
+                  <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+                </div>
               </Card>
             )}
 
@@ -459,6 +473,15 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 </Card>
               </TabsContent>
             </Tabs>
+
+            <RedactCvDialog
+              open={redactOpen}
+              onOpenChange={setRedactOpen}
+              candidateId={detail.candidate_id}
+              originalSummary={detail.candidates.resume_summary}
+              currentRedacted={detail.candidates.anonymized_resume_summary}
+              onSaved={() => refresh()}
+            />
           </>
         )}
       </SheetContent>

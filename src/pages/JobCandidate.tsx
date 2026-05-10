@@ -22,6 +22,7 @@ import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { anonymizeName, redactResumeText } from "@/lib/anonymize";
+import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
 import { toast } from "sonner";
 
 type Detail = {
@@ -126,6 +127,7 @@ export default function JobCandidate() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [targetStage, setTargetStage] = useState("application");
   const [addingToJob, setAddingToJob] = useState(false);
+  const [redactOpen, setRedactOpen] = useState(false);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
@@ -462,8 +464,10 @@ export default function JobCandidate() {
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const hideForHM = detail.anonymized && isHM;
   const displayName = hideForHM ? anonymizeName(c.full_name) : c.full_name;
+  // If a recruiter has manually redacted the CV, show that exactly as-is.
+  // Otherwise fall back to the automated redaction over the original summary.
   const displaySummary = hideForHM
-    ? redactResumeText(anonymizedSummary ?? summary, c)
+    ? (anonymizedSummary ?? redactResumeText(summary, c))
     : summary;
   const isReviewStage = detail.stage === "reviewed";
 
@@ -528,14 +532,20 @@ export default function JobCandidate() {
         </div>
 
         {canMove && isReviewStage && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
-            <div>
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3 flex-wrap">
+            <div className="min-w-0">
               <div className="text-sm font-medium">Anonymise for hiring managers</div>
               <p className="text-xs text-muted-foreground">
-                Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
+                Hide identifiers in the header and show a redacted CV. Use <em>Customise redaction</em> to choose exactly
+                what to hide on the CV itself.
               </p>
             </div>
-            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="outline" onClick={() => setRedactOpen(true)} disabled={!summary && !anonymizedSummary}>
+                <Pencil className="h-3.5 w-3.5" /> Customise redaction
+              </Button>
+              <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+            </div>
           </div>
         )}
 
@@ -940,6 +950,14 @@ export default function JobCandidate() {
         </DialogContent>
       </Dialog>
 
+      <RedactCvDialog
+        open={redactOpen}
+        onOpenChange={setRedactOpen}
+        candidateId={detail.candidate_id}
+        originalSummary={summary}
+        currentRedacted={anonymizedSummary}
+        onSaved={(next) => setAnonymizedSummary(next)}
+      />
     </PageContainer>
   );
 }
