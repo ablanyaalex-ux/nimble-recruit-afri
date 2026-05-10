@@ -24,6 +24,7 @@ import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/li
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
 import { anonymizeName, redactResumeText } from "@/lib/anonymize";
+import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
 
 type Props = {
   jobCandidateId: string | null;
