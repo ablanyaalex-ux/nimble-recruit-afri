@@ -473,6 +473,15 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 </Card>
               </TabsContent>
             </Tabs>
+
+            <RedactCvDialog
+              open={redactOpen}
+              onOpenChange={setRedactOpen}
+              candidateId={detail.candidate_id}
+              originalSummary={detail.candidates.resume_summary}
+              currentRedacted={detail.candidates.anonymized_resume_summary}
+              onSaved={() => refresh()}
+            />
           </>
         )}
       </SheetContent>
