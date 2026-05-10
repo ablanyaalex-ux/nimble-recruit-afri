@@ -620,27 +620,41 @@ export default function JobCandidate() {
                 <div>
                   <div className="text-sm font-medium">Redacted CV</div>
                   <p className="text-xs text-muted-foreground">
-                    Personal details, LinkedIn, age, marital status, location and education identifiers are removed.
+                    The recruiter has hidden personal identifiers on this CV for unbiased review.
                   </p>
                 </div>
-                {!displaySummary && (
+                {!redactedCv && (
                   <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
                     <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
                   </Button>
                 )}
               </div>
-              {displaySummary ? (
+              {redactedCv ? (
                 <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-                  {displaySummary}
+                  {redactedCv}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  A redacted CV brief needs to be generated before hiring-manager review.
+                  A redacted CV needs to be generated before hiring-manager review.
                 </p>
               )}
             </Card>
           ) : (
             <Card className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <div className="text-sm font-medium">Original CV</div>
+                {canMove && isReviewStage && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRedactOpen(true)}
+                    disabled={!resumeFullText}
+                    title={resumeFullText ? "Customise what hiring managers see on this CV" : "Generate the AI summary first to extract the CV text"}
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Customise redaction
+                  </Button>
+                )}
+              </div>
               {resumeUrl && c.resume_path ? (
                 (() => {
                   const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
@@ -648,7 +662,7 @@ export default function JobCandidate() {
                   return (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="text-sm font-medium truncate">{fileName}</div>
+                        <div className="text-sm text-muted-foreground truncate">{fileName}</div>
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="outline" asChild>
                             <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
