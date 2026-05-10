@@ -97,7 +97,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     if (!jobCandidateId) return;
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, anonymized_resume_summary, notes)")
+      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, resume_full_text, anonymized_resume_summary, notes)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
