@@ -283,8 +283,10 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
+  // Prefer the recruiter's manually redacted version exactly as written.
   const redactedCv = hideForHM
-    ? redactResumeText(detail?.candidates.anonymized_resume_summary ?? detail?.candidates.resume_summary, detail?.candidates)
+    ? (detail?.candidates.anonymized_resume_summary
+        ?? redactResumeText(detail?.candidates.resume_summary, detail?.candidates))
     : null;
 
   return (
