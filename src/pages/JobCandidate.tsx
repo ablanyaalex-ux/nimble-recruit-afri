@@ -532,14 +532,20 @@ export default function JobCandidate() {
         </div>
 
         {canMove && isReviewStage && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
-            <div>
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3 flex-wrap">
+            <div className="min-w-0">
               <div className="text-sm font-medium">Anonymise for hiring managers</div>
               <p className="text-xs text-muted-foreground">
-                Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
+                Hide identifiers in the header and show a redacted CV. Use <em>Customise redaction</em> to choose exactly
+                what to hide on the CV itself.
               </p>
             </div>
-            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="outline" onClick={() => setRedactOpen(true)} disabled={!summary && !anonymizedSummary}>
+                <Pencil className="h-3.5 w-3.5" /> Customise redaction
+              </Button>
+              <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+            </div>
           </div>
         )}
 
