@@ -45,6 +45,7 @@ type Detail = {
     source: string | null;
     location: string | null;
     resume_summary: string | null;
+    resume_full_text: string | null;
     anonymized_resume_summary: string | null;
   };
 };
