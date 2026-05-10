@@ -402,12 +402,9 @@ export default function JobCandidate() {
       const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to generate summary";
       return toast.error(msg);
     }
-    if ((data as any)?.summary) {
-      setSummary((data as any).summary);
-    }
-    if ((data as any)?.anonymizedSummary) {
-      setAnonymizedSummary((data as any).anonymizedSummary);
-    }
+    if ((data as any)?.summary) setSummary((data as any).summary);
+    if ((data as any)?.resumeFullText) setResumeFullText((data as any).resumeFullText);
+    if ((data as any)?.anonymizedSummary) setAnonymizedSummary((data as any).anonymizedSummary);
     if ((data as any)?.summary || (data as any)?.anonymizedSummary) {
       if (!(data as any).cached) toast.success("Summary generated.");
     } else if ((data as any)?.error) {
