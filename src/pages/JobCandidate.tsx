@@ -464,11 +464,12 @@ export default function JobCandidate() {
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const hideForHM = detail.anonymized && isHM;
   const displayName = hideForHM ? anonymizeName(c.full_name) : c.full_name;
-  // If a recruiter has manually redacted the CV, show that exactly as-is.
-  // Otherwise fall back to the automated redaction over the original summary.
-  const displaySummary = hideForHM
-    ? (anonymizedSummary ?? redactResumeText(summary, c))
-    : summary;
+  // Summary is shown to everyone. For HMs we strip identifying details automatically.
+  const displaySummary = hideForHM ? redactResumeText(summary, c) : summary;
+  // The CV shown to HMs: prefer the recruiter's manually redacted version, otherwise an auto-redacted CV.
+  const redactedCv = hideForHM
+    ? (anonymizedSummary ?? redactResumeText(resumeFullText, c))
+    : null;
   const isReviewStage = detail.stage === "reviewed";
 
   return (
