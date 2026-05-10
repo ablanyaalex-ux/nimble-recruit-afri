@@ -324,14 +324,24 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
             </div>
 
             {canMove && isReviewStage && (
-              <Card className="mt-3 p-3 flex items-center justify-between gap-3">
-                <div>
+              <Card className="mt-3 p-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
                   <div className="text-sm font-medium">Anonymise for hiring managers</div>
                   <p className="text-xs text-muted-foreground">
-                    Redacts personal identifiers from the candidate header and CV while keeping reviewable experience visible.
+                    Use <em>Customise redaction</em> to choose exactly what to hide on the CV.
                   </p>
                 </div>
-                <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRedactOpen(true)}
+                    disabled={!detail.candidates.resume_summary && !detail.candidates.anonymized_resume_summary}
+                  >
+                    Customise redaction
+                  </Button>
+                  <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
+                </div>
               </Card>
             )}
 
