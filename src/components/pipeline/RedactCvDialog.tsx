@@ -11,7 +11,9 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   candidateId: string;
-  originalSummary: string | null;
+  /** The full CV text extracted by AI. This is what the recruiter redacts. */
+  originalCv: string | null;
+  /** The current redacted version that hiring managers see. */
   currentRedacted: string | null;
   onSaved: (next: string | null) => void;
 };
@@ -22,7 +24,7 @@ export function RedactCvDialog({
   open,
   onOpenChange,
   candidateId,
-  originalSummary,
+  originalCv,
   currentRedacted,
   onSaved,
 }: Props) {
@@ -32,9 +34,9 @@ export function RedactCvDialog({
 
   useEffect(() => {
     if (open) {
-      setValue(currentRedacted ?? originalSummary ?? "");
+      setValue(currentRedacted ?? originalCv ?? "");
     }
-  }, [open, currentRedacted, originalSummary]);
+  }, [open, currentRedacted, originalCv]);
 
   const redactSelection = () => {
     const ta = taRef.current;
@@ -55,7 +57,7 @@ export function RedactCvDialog({
   };
 
   const resetToOriginal = () => {
-    setValue(originalSummary ?? "");
+    setValue(originalCv ?? "");
   };
 
   const save = async () => {
@@ -100,8 +102,8 @@ export function RedactCvDialog({
             <Button size="sm" type="button" onClick={redactSelection} variant="secondary">
               <Eraser className="h-3.5 w-3.5" /> Redact selection
             </Button>
-            <Button size="sm" type="button" onClick={resetToOriginal} variant="ghost" disabled={!originalSummary}>
-              <RotateCcw className="h-3.5 w-3.5" /> Reset to original
+            <Button size="sm" type="button" onClick={resetToOriginal} variant="ghost" disabled={!originalCv}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reset to original CV
             </Button>
           </div>
           <div className="space-y-1">
@@ -110,9 +112,9 @@ export function RedactCvDialog({
               ref={taRef}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              rows={18}
+              rows={20}
               className="font-mono text-sm leading-relaxed"
-              placeholder={originalSummary ? "" : "Generate the AI summary first, then customise what hiring managers see."}
+              placeholder={originalCv ? "" : "Generate the AI summary first to extract the CV text, then customise what hiring managers see."}
             />
           </div>
         </div>
