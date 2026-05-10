@@ -45,6 +45,7 @@ type Detail = {
     source: string | null;
     location: string | null;
     resume_summary: string | null;
+    resume_full_text: string | null;
     anonymized_resume_summary: string | null;
   };
 };
@@ -106,6 +107,7 @@ export default function JobCandidate() {
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
   const [summary, setSummary] = useState<string | null>(null);
+  const [resumeFullText, setResumeFullText] = useState<string | null>(null);
   const [anonymizedSummary, setAnonymizedSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
@@ -143,12 +145,13 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, anonymized_resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
       setSummary((data.candidates as any)?.resume_summary ?? null);
+      setResumeFullText((data.candidates as any)?.resume_full_text ?? null);
       setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
@@ -399,12 +402,9 @@ export default function JobCandidate() {
       const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to generate summary";
       return toast.error(msg);
     }
-    if ((data as any)?.summary) {
-      setSummary((data as any).summary);
-    }
-    if ((data as any)?.anonymizedSummary) {
-      setAnonymizedSummary((data as any).anonymizedSummary);
-    }
+    if ((data as any)?.summary) setSummary((data as any).summary);
+    if ((data as any)?.resumeFullText) setResumeFullText((data as any).resumeFullText);
+    if ((data as any)?.anonymizedSummary) setAnonymizedSummary((data as any).anonymizedSummary);
     if ((data as any)?.summary || (data as any)?.anonymizedSummary) {
       if (!(data as any).cached) toast.success("Summary generated.");
     } else if ((data as any)?.error) {
@@ -464,11 +464,12 @@ export default function JobCandidate() {
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const hideForHM = detail.anonymized && isHM;
   const displayName = hideForHM ? anonymizeName(c.full_name) : c.full_name;
-  // If a recruiter has manually redacted the CV, show that exactly as-is.
-  // Otherwise fall back to the automated redaction over the original summary.
-  const displaySummary = hideForHM
-    ? (anonymizedSummary ?? redactResumeText(summary, c))
-    : summary;
+  // Summary is shown to everyone. For HMs we strip identifying details automatically.
+  const displaySummary = hideForHM ? redactResumeText(summary, c) : summary;
+  // The CV shown to HMs: prefer the recruiter's manually redacted version, otherwise an auto-redacted CV.
+  const redactedCv = hideForHM
+    ? (anonymizedSummary ?? redactResumeText(resumeFullText, c))
+    : null;
   const isReviewStage = detail.stage === "reviewed";
 
   return (
@@ -536,16 +537,11 @@ export default function JobCandidate() {
             <div className="min-w-0">
               <div className="text-sm font-medium">Anonymise for hiring managers</div>
               <p className="text-xs text-muted-foreground">
-                Hide identifiers in the header and show a redacted CV. Use <em>Customise redaction</em> to choose exactly
-                what to hide on the CV itself.
+                Hide identifiers in the header and show a redacted CV. Use the redaction tool in the Resume tab to choose
+                exactly what to hide on the CV itself.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button size="sm" variant="outline" onClick={() => setRedactOpen(true)} disabled={!summary && !anonymizedSummary}>
-                <Pencil className="h-3.5 w-3.5" /> Customise redaction
-              </Button>
-              <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
-            </div>
+            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
           </div>
         )}
 
@@ -624,27 +620,41 @@ export default function JobCandidate() {
                 <div>
                   <div className="text-sm font-medium">Redacted CV</div>
                   <p className="text-xs text-muted-foreground">
-                    Personal details, LinkedIn, age, marital status, location and education identifiers are removed.
+                    The recruiter has hidden personal identifiers on this CV for unbiased review.
                   </p>
                 </div>
-                {!displaySummary && (
+                {!redactedCv && (
                   <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
                     <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
                   </Button>
                 )}
               </div>
-              {displaySummary ? (
+              {redactedCv ? (
                 <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-                  {displaySummary}
+                  {redactedCv}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  A redacted CV brief needs to be generated before hiring-manager review.
+                  A redacted CV needs to be generated before hiring-manager review.
                 </p>
               )}
             </Card>
           ) : (
             <Card className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <div className="text-sm font-medium">Original CV</div>
+                {canMove && isReviewStage && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRedactOpen(true)}
+                    disabled={!resumeFullText}
+                    title={resumeFullText ? "Customise what hiring managers see on this CV" : "Generate the AI summary first to extract the CV text"}
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Customise redaction
+                  </Button>
+                )}
+              </div>
               {resumeUrl && c.resume_path ? (
                 (() => {
                   const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
@@ -652,7 +662,7 @@ export default function JobCandidate() {
                   return (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="text-sm font-medium truncate">{fileName}</div>
+                        <div className="text-sm text-muted-foreground truncate">{fileName}</div>
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="outline" asChild>
                             <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
@@ -954,7 +964,7 @@ export default function JobCandidate() {
         open={redactOpen}
         onOpenChange={setRedactOpen}
         candidateId={detail.candidate_id}
-        originalSummary={summary}
+        originalCv={resumeFullText}
         currentRedacted={anonymizedSummary}
         onSaved={(next) => setAnonymizedSummary(next)}
       />

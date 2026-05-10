@@ -46,6 +46,7 @@ type Detail = {
     linkedin_url: string | null;
     resume_path: string | null;
     resume_summary: string | null;
+    resume_full_text: string | null;
     anonymized_resume_summary: string | null;
     notes: string | null;
   };
@@ -96,7 +97,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     if (!jobCandidateId) return;
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, anonymized_resume_summary, notes)")
+      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, resume_full_text, anonymized_resume_summary, notes)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -283,10 +284,10 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
-  // Prefer the recruiter's manually redacted version exactly as written.
+  // Prefer the recruiter's manually redacted CV; fall back to auto-redacted full CV text.
   const redactedCv = hideForHM
     ? (detail?.candidates.anonymized_resume_summary
-        ?? redactResumeText(detail?.candidates.resume_summary, detail?.candidates))
+        ?? redactResumeText(detail?.candidates.resume_full_text, detail?.candidates))
     : null;
 
   return (
@@ -328,20 +329,10 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 <div className="min-w-0">
                   <div className="text-sm font-medium">Anonymise for hiring managers</div>
                   <p className="text-xs text-muted-foreground">
-                    Use <em>Customise redaction</em> to choose exactly what to hide on the CV.
+                    Customise what's hidden from the CV in the Profile tab.
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setRedactOpen(true)}
-                    disabled={!detail.candidates.resume_summary && !detail.candidates.anonymized_resume_summary}
-                  >
-                    Customise redaction
-                  </Button>
-                  <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
-                </div>
+                <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
               </Card>
             )}
 
@@ -468,6 +459,25 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
+                      {canMove && isReviewStage && (
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                          <div className="min-w-0">
+                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">CV redaction</Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Choose exactly what's hidden on the CV shown to hiring managers.
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setRedactOpen(true)}
+                            disabled={!detail.candidates.resume_full_text}
+                            title={detail.candidates.resume_full_text ? "" : "Generate the AI summary first to extract the CV text"}
+                          >
+                            Customise redaction
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                 </Card>
@@ -478,7 +488,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               open={redactOpen}
               onOpenChange={setRedactOpen}
               candidateId={detail.candidate_id}
-              originalSummary={detail.candidates.resume_summary}
+              originalCv={detail.candidates.resume_full_text}
               currentRedacted={detail.candidates.anonymized_resume_summary}
               onSaved={() => refresh()}
             />
