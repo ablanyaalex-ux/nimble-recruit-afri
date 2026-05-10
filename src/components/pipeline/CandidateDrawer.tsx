@@ -46,6 +46,7 @@ type Detail = {
     linkedin_url: string | null;
     resume_path: string | null;
     resume_summary: string | null;
+    resume_full_text: string | null;
     anonymized_resume_summary: string | null;
     notes: string | null;
   };
