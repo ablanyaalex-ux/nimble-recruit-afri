@@ -537,16 +537,11 @@ export default function JobCandidate() {
             <div className="min-w-0">
               <div className="text-sm font-medium">Anonymise for hiring managers</div>
               <p className="text-xs text-muted-foreground">
-                Hide identifiers in the header and show a redacted CV. Use <em>Customise redaction</em> to choose exactly
-                what to hide on the CV itself.
+                Hide identifiers in the header and show a redacted CV. Use the redaction tool in the Resume tab to choose
+                exactly what to hide on the CV itself.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button size="sm" variant="outline" onClick={() => setRedactOpen(true)} disabled={!summary && !anonymizedSummary}>
-                <Pencil className="h-3.5 w-3.5" /> Customise redaction
-              </Button>
-              <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
-            </div>
+            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
           </div>
         )}
 
