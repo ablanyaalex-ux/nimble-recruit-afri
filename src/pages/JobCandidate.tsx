@@ -22,6 +22,7 @@ import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { anonymizeName, redactResumeText } from "@/lib/anonymize";
+import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
 import { toast } from "sonner";
 
 type Detail = {
