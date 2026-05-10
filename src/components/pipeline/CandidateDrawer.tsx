@@ -83,6 +83,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const [redactOpen, setRedactOpen] = useState(false);
   const [fbForm, setFbForm] = useState({
     rating: "",
     recommendation: "",
