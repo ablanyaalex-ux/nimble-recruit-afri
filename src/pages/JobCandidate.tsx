@@ -107,6 +107,7 @@ export default function JobCandidate() {
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
   const [summary, setSummary] = useState<string | null>(null);
+  const [resumeFullText, setResumeFullText] = useState<string | null>(null);
   const [anonymizedSummary, setAnonymizedSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
