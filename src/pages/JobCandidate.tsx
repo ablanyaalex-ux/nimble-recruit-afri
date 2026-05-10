@@ -145,12 +145,13 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, anonymized_resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
       setSummary((data.candidates as any)?.resume_summary ?? null);
+      setResumeFullText((data.candidates as any)?.resume_full_text ?? null);
       setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
