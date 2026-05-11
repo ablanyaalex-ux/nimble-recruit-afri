@@ -145,14 +145,14 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
       setSummary((data.candidates as any)?.resume_summary ?? null);
-      setResumeFullText((data.candidates as any)?.resume_full_text ?? null);
-      setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
+      const rPath = (data.candidates as any)?.redacted_resume_path ?? null;
+      setRedactedPath(rPath);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
@@ -160,6 +160,12 @@ export default function JobCandidate() {
         setResumeUrl(signed?.signedUrl ?? null);
       } else {
         setResumeUrl(null);
+      }
+      if (rPath) {
+        const { data: rs } = await supabase.storage.from("resumes").createSignedUrl(rPath, 600);
+        setRedactedResumeUrl(rs?.signedUrl ?? null);
+      } else {
+        setRedactedResumeUrl(null);
       }
     }
 
