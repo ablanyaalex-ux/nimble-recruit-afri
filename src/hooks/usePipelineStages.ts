@@ -14,7 +14,7 @@ export function usePipelineStages(workspaceId: string | null | undefined) {
     setLoading(true);
     const { data } = await supabase
       .from("workspace_pipeline_stages" as any)
-      .select("key, label, position")
+      .select("id, key, label, position")
       .eq("workspace_id", workspaceId)
       .order("position");
     if (data && data.length > 0) {
