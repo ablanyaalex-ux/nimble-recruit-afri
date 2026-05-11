@@ -144,21 +144,47 @@ export function AnonymiseCvDialog({
     if (!pdfBytes || !resumePath) return;
     setSaving(true);
     try {
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const pages = pdfDoc.getPages();
-      for (const r of rects) {
-        const page = pages[r.page];
-        if (!page) continue;
-        const { width, height } = page.getSize();
-        const x = r.x * width;
-        const w = r.w * width;
-        const h = r.h * height;
-        // pdf-lib uses bottom-left origin
-        const yTop = r.y * height;
-        const yBottom = height - yTop - h;
-        page.drawRectangle({ x, y: yBottom, width: w, height: h, color: rgb(0, 0, 0), opacity: 1 });
+      // Rasterize each page with black boxes painted onto the bitmap so the
+      // original text is removed entirely (not just covered) — nothing under
+      // a redaction is selectable, copyable, or clickable in the output PDF.
+      const RENDER_DPI_SCALE = 2; // ~144 DPI for crisp output
+      const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice(0) });
+      const srcPdf = await loadingTask.promise;
+      const outDoc = await PDFDocument.create();
+
+      for (let i = 1; i <= srcPdf.numPages; i++) {
+        const page = await srcPdf.getPage(i);
+        const viewport = page.getViewport({ scale: RENDER_DPI_SCALE });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) continue;
+        await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+
+        // Burn rectangles onto the bitmap (normalised coords against page size)
+        ctx.fillStyle = "#000";
+        for (const r of rects.filter((rr) => rr.page === i - 1)) {
+          ctx.fillRect(
+            Math.floor(r.x * canvas.width),
+            Math.floor(r.y * canvas.height),
+            Math.ceil(r.w * canvas.width),
+            Math.ceil(r.h * canvas.height),
+          );
+        }
+
+        const blob: Blob = await new Promise((resolve, reject) =>
+          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("encode failed"))), "image/jpeg", 0.92),
+        );
+        const imgBytes = new Uint8Array(await blob.arrayBuffer());
+        const img = await outDoc.embedJpg(imgBytes);
+
+        const orig = page.getViewport({ scale: 1 });
+        const newPage = outDoc.addPage([orig.width, orig.height]);
+        newPage.drawImage(img, { x: 0, y: 0, width: orig.width, height: orig.height });
       }
-      const out = await pdfDoc.save();
+
+      const out = await outDoc.save();
       // Storage RLS requires path to start with the workspace_id folder.
       // Reuse the workspace folder from the original resume path.
       const workspaceFolder = resumePath.split("/")[0];
