@@ -434,57 +434,6 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
               <TabsContent value="profile" className="mt-4 space-y-3">
                 <Card className="p-4 space-y-3 text-sm">
-                  {hideForHM ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Contact details, LinkedIn, location, education and other personal identifiers are redacted during anonymous review.
-                      </p>
-                      {redactedCv && (
-                        <div>
-                          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Redacted CV</Label>
-                          <p className="mt-1 whitespace-pre-wrap">{redactedCv}</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
-                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
-                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
-                      <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
-                      {canMove && isReviewStage && (
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t">
-                          <div className="min-w-0">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">CV redaction</Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Choose exactly what's hidden on the CV shown to hiring managers.
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setRedactOpen(true)}
-                            disabled={!detail.candidates.resume_full_text}
-                            title={detail.candidates.resume_full_text ? "" : "Generate the AI summary first to extract the CV text"}
-                          >
-                            Customise redaction
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </Card>
-              </TabsContent>
-            </Tabs>
-
-            <RedactCvDialog
-              open={redactOpen}
-              onOpenChange={setRedactOpen}
-              candidateId={detail.candidate_id}
-              originalCv={detail.candidates.resume_full_text}
-              currentRedacted={detail.candidates.anonymized_resume_summary}
-              onSaved={() => refresh()}
-            />
           </>
         )}
       </SheetContent>
