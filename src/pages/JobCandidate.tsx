@@ -671,38 +671,8 @@ export default function JobCandidate() {
                     : "The original CV as uploaded."}
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {canMove && c.resume_path && /\.pdf($|\?)/i.test(c.resume_path) && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant={redactedPath ? "outline" : "default"}
-                      onClick={runRedactCv}
-                      disabled={redacting}
-                      title="Auto-detect personal details on the CV and black them out"
-                    >
-                      <ShieldOff className="h-3.5 w-3.5" />
-                      {redacting ? "Redacting…" : redactedPath ? "Re-redact CV" : "Redact CV"}
-                    </Button>
-                    {redactedPath && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPreviewRedacted((v) => !v)}
-                          title="Toggle between original and redacted CV"
-                        >
-                          {previewRedacted ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          {previewRedacted ? "Show original" : "Preview redacted"}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={clearRedaction} disabled={redacting}>
-                          Clear
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
+              <div className="flex items-center gap-2 flex-wrap" />
+
             </div>
             {cvUrlToShow && cvPathToShow ? (
               (() => {
