@@ -161,7 +161,7 @@ Be honest and evidence-based. Do not invent qualifications. Never include the ca
     let raw: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
     raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 
-    let parsed: { score?: number; verdict?: string; rationale?: string } = {};
+    let parsed: { score?: number; verdict?: string; rationale?: string; skills_matched?: unknown; gaps?: unknown; next_steps?: unknown } = {};
     try { parsed = JSON.parse(raw); } catch {
       console.error("Failed to parse AI JSON", raw);
       return new Response(JSON.stringify({ error: "AI returned invalid JSON" }), {
@@ -179,17 +179,26 @@ Be honest and evidence-based. Do not invent qualifications. Never include the ca
     }
     const rationale = (parsed.rationale ?? "").toString().trim() || "No rationale provided.";
 
+    const toStringArray = (v: unknown): string[] =>
+      Array.isArray(v) ? v.map((x) => String(x ?? "").trim()).filter(Boolean).slice(0, 10) : [];
+    const breakdown = {
+      skills_matched: toStringArray(parsed.skills_matched),
+      gaps: toStringArray(parsed.gaps),
+      next_steps: toStringArray(parsed.next_steps),
+    };
+
     await admin
       .from("job_candidates")
       .update({
         match_score: score,
         match_verdict: verdict,
         match_rationale: rationale,
+        match_breakdown: breakdown,
         match_generated_at: new Date().toISOString(),
       })
       .eq("id", jobCandidateId);
 
-    return new Response(JSON.stringify({ score, verdict, rationale, cached: false }), {
+    return new Response(JSON.stringify({ score, verdict, rationale, breakdown, cached: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
