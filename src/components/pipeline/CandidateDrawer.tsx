@@ -318,9 +318,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                   </SelectContent>
                 </Select>
               )}
-              {resumeUrl && !hideForHM && (
+              {resumeUrl && (
                 <Button size="sm" variant="outline" asChild>
-                  <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
+                  <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> {hideForHM ? "Redacted CV" : "Resume"}</a>
                 </Button>
               )}
             </div>
