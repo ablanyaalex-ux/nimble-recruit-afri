@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -22,7 +24,7 @@ import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { anonymizeName } from "@/lib/anonymize";
-import { Eye, EyeOff, ShieldOff } from "lucide-react";
+
 import { toast } from "sonner";
 
 type Detail = {
@@ -42,6 +44,7 @@ type Detail = {
     linkedin_url: string | null;
     resume_path: string | null;
     redacted_resume_path: string | null;
+    redaction_rects: any;
     notes: string | null;
     source: string | null;
     location: string | null;
@@ -108,8 +111,7 @@ export default function JobCandidate() {
   const [summary, setSummary] = useState<string | null>(null);
   const [redactedResumeUrl, setRedactedResumeUrl] = useState<string | null>(null);
   const [redactedPath, setRedactedPath] = useState<string | null>(null);
-  const [redacting, setRedacting] = useState(false);
-  const [previewRedacted, setPreviewRedacted] = useState(false);
+  const [anonymiseOpen, setAnonymiseOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
@@ -145,7 +147,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -416,39 +418,22 @@ export default function JobCandidate() {
     }
   };
 
-  const runRedactCv = async () => {
+  const removeAnonymisation = async () => {
     if (!detail) return;
-    setRedacting(true);
-    const { data, error } = await supabase.functions.invoke("redact-resume", {
-      body: { candidateId: detail.candidate_id },
-    });
-    setRedacting(false);
-    if (error) {
-      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to redact CV";
-      return toast.error(msg);
-    }
-    if ((data as any)?.error) return toast.error((data as any).error);
-    const path = (data as any)?.redactedPath as string | undefined;
-    const url = (data as any)?.redactedUrl as string | undefined;
-    if (path) setRedactedPath(path);
-    if (url) setRedactedResumeUrl(url);
-    setPreviewRedacted(true);
-    toast.success(`Redacted CV ready (${(data as any)?.regionsDrawn ?? 0} regions blacked out).`);
-  };
-
-  const clearRedaction = async () => {
-    if (!detail) return;
-    setRedacting(true);
-    const { error } = await supabase
+    const { error: cErr } = await supabase
       .from("candidates")
-      .update({ redacted_resume_path: null })
+      .update({ redacted_resume_path: null, redaction_rects: [] as any })
       .eq("id", detail.candidate_id);
-    setRedacting(false);
-    if (error) return toast.error(error.message);
+    if (cErr) return toast.error(cErr.message);
+    const { error: jErr } = await supabase
+      .from("job_candidates")
+      .update({ anonymized: false } as any)
+      .eq("id", detail.id);
+    if (jErr) return toast.error(jErr.message);
     setRedactedPath(null);
     setRedactedResumeUrl(null);
-    setPreviewRedacted(false);
-    toast.success("Redacted CV cleared.");
+    setDetail({ ...detail, anonymized: false, candidates: { ...detail.candidates, redacted_resume_path: null, redaction_rects: [] } });
+    toast.success("Anonymisation removed.");
   };
 
   const postComment = async () => {
@@ -501,14 +486,13 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
-  // The redacted view applies for HMs whenever the candidate is anonymised, OR
-  // for recruiters who turned on the "Preview redacted" toggle (so they can
-  // confirm what the HM will see without switching accounts).
-  const showRedactedView = (detail.anonymized && isHM) || (canMove && previewRedacted);
+  // Once a recruiter saves redactions, the candidate is anonymised — the redacted
+  // view applies to everyone (recruiters and HMs) so what you see is what HMs see.
+  const showRedactedView = !!detail.anonymized && !!redactedPath;
   const hideForHM = showRedactedView;
   const displayName = showRedactedView ? anonymizeName(c.full_name) : c.full_name;
   const displaySummary = summary;
-  const isReviewStage = detail.stage === "reviewed";
+  const isPdfResume = !!c.resume_path && /\.pdf($|\?)/i.test(c.resume_path);
   const cvUrlToShow = showRedactedView ? redactedResumeUrl : resumeUrl;
   const cvPathToShow = showRedactedView ? redactedPath : c.resume_path;
 
@@ -528,7 +512,7 @@ export default function JobCandidate() {
           <div className="flex items-center gap-2 flex-wrap">
             {detail.rejected && <Badge variant="destructive">Rejected</Badge>}
             <Badge variant="secondary">{currentStage}</Badge>
-            {detail.anonymized && <Badge variant="outline">Anonymised for HMs</Badge>}
+            {detail.anonymized && <Badge variant="outline">Anonymised</Badge>}
             {canMove && (
               <Select value={detail.stage} onValueChange={moveStage}>
                 <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
@@ -554,36 +538,55 @@ export default function JobCandidate() {
                 <Undo2 className="h-3.5 w-3.5" /> Un-reject
               </Button>
             )}
-            {canEdit && (
-              <>
-                <Button size="sm" variant="outline" onClick={openEditCandidate}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit candidate
-                </Button>
-                <Button size="sm" variant="outline" onClick={openAddToJob}>
-                  <Briefcase className="h-3.5 w-3.5" /> Add to job
-                </Button>
-              </>
-            )}
-              {resumeUrl && !hideForHM && (
-              <Button size="sm" variant="outline" asChild>
-                <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
-              </Button>
+
+            {(canEdit || canMove || resumeUrl) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <MoreHorizontal className="h-3.5 w-3.5" /> More actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Candidate</DropdownMenuLabel>
+                  {canEdit && (
+                    <>
+                      <DropdownMenuItem onClick={openEditCandidate}>
+                        <Pencil className="h-3.5 w-3.5" /> Edit candidate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={openAddToJob}>
+                        <Briefcase className="h-3.5 w-3.5" /> Add to job
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {resumeUrl && !hideForHM && (
+                    <DropdownMenuItem asChild>
+                      <a href={resumeUrl} target="_blank" rel="noreferrer">
+                        <Download className="h-3.5 w-3.5" /> Download resume
+                      </a>
+                    </DropdownMenuItem>
+                  )}
+                  {canMove && isPdfResume && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setAnonymiseOpen(true)}>
+                        <ShieldOff className="h-3.5 w-3.5" />
+                        {detail.anonymized ? "Edit anonymisation" : "Anonymise candidate"}
+                      </DropdownMenuItem>
+                      {detail.anonymized && (
+                        <DropdownMenuItem
+                          onClick={removeAnonymisation}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <X className="h-3.5 w-3.5" /> Remove anonymisation
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
-
-        {canMove && isReviewStage && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3 flex-wrap">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">Anonymise for hiring managers</div>
-              <p className="text-xs text-muted-foreground">
-                Hide identifiers in the header and show a redacted CV. Use the redaction tool in the Resume tab to choose
-                exactly what to hide on the CV itself.
-              </p>
-            </div>
-            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
-          </div>
-        )}
 
         {hideForHM ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -668,38 +671,8 @@ export default function JobCandidate() {
                     : "The original CV as uploaded."}
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {canMove && c.resume_path && /\.pdf($|\?)/i.test(c.resume_path) && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant={redactedPath ? "outline" : "default"}
-                      onClick={runRedactCv}
-                      disabled={redacting}
-                      title="Auto-detect personal details on the CV and black them out"
-                    >
-                      <ShieldOff className="h-3.5 w-3.5" />
-                      {redacting ? "Redacting…" : redactedPath ? "Re-redact CV" : "Redact CV"}
-                    </Button>
-                    {redactedPath && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPreviewRedacted((v) => !v)}
-                          title="Toggle between original and redacted CV"
-                        >
-                          {previewRedacted ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          {previewRedacted ? "Show original" : "Preview redacted"}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={clearRedaction} disabled={redacting}>
-                          Clear
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
+              <div className="flex items-center gap-2 flex-wrap" />
+
             </div>
             {cvUrlToShow && cvPathToShow ? (
               (() => {
@@ -1009,6 +982,26 @@ export default function JobCandidate() {
         </DialogContent>
       </Dialog>
 
+
+      <AnonymiseCvDialog
+        open={anonymiseOpen}
+        onOpenChange={setAnonymiseOpen}
+        candidateId={detail.candidate_id}
+        jobCandidateId={detail.id}
+        resumePath={c.resume_path}
+        initialRects={Array.isArray(c.redaction_rects) ? c.redaction_rects : []}
+        onSaved={({ redactedPath, anonymized }) => {
+          setDetail((prev) => prev ? { ...prev, anonymized, candidates: { ...prev.candidates, redacted_resume_path: redactedPath || null } } : prev);
+          if (redactedPath) {
+            setRedactedPath(redactedPath);
+            supabase.storage.from("resumes").createSignedUrl(redactedPath, 600).then(({ data }) => setRedactedResumeUrl(data?.signedUrl ?? null));
+          } else {
+            setRedactedPath(null);
+            setRedactedResumeUrl(null);
+          }
+          refresh();
+        }}
+      />
     </PageContainer>
   );
 }
