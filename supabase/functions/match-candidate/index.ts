@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     const { data: jc, error: jcErr } = await userClient
       .from("job_candidates")
-      .select("id, candidate_id, job_id, match_score, match_verdict, match_rationale, jobs(title, description, location, employment_type), candidates(full_name, headline, resume_path)")
+      .select("id, candidate_id, job_id, match_score, match_verdict, match_rationale, match_breakdown, jobs(title, description, location, employment_type), candidates(full_name, headline, resume_path)")
       .eq("id", jobCandidateId)
       .maybeSingle();
     if (jcErr || !jc) {
