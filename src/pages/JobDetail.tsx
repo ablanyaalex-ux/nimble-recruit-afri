@@ -72,6 +72,7 @@ import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
 import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
+import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { anonymizeName } from "@/lib/anonymize";
