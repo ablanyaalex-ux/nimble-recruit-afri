@@ -442,6 +442,8 @@ export default function JobCandidate() {
       if (!(data as any).cached) toast.success("Match score generated.");
     }
   };
+
+  const removeAnonymisation = async () => {
     if (!detail) return;
     const { error: cErr } = await supabase
       .from("candidates")
