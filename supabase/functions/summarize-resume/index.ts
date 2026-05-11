@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    const aiJson = await aiResp.json();
     let summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
     if (!summary) {
       return new Response(JSON.stringify({ error: "Empty summary" }), {
