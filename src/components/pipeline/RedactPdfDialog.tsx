@@ -52,7 +52,7 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function RedactPdfDialog({ open, onOpenChange, candidateId, resumePath, redactedResumePath, onSaved }: Props) {
+export function RedactPdfDialog({ open, onOpenChange, candidateId, workspaceId, resumePath, redactedResumePath, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [saving, setSaving] = useState(false);
