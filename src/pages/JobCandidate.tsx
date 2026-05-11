@@ -38,6 +38,7 @@ type Detail = {
   match_score: number | null;
   match_verdict: string | null;
   match_rationale: string | null;
+  match_breakdown: { skills_matched?: string[]; gaps?: string[]; next_steps?: string[] } | null;
   jobs: { workspace_id: string; client_id: string; title: string; description: string | null } | null;
   candidates: {
     full_name: string;
