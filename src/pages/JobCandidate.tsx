@@ -111,8 +111,7 @@ export default function JobCandidate() {
   const [summary, setSummary] = useState<string | null>(null);
   const [redactedResumeUrl, setRedactedResumeUrl] = useState<string | null>(null);
   const [redactedPath, setRedactedPath] = useState<string | null>(null);
-  const [redacting, setRedacting] = useState(false);
-  const [previewRedacted, setPreviewRedacted] = useState(false);
+  const [anonymiseOpen, setAnonymiseOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
