@@ -512,7 +512,7 @@ export default function JobCandidate() {
           <div className="flex items-center gap-2 flex-wrap">
             {detail.rejected && <Badge variant="destructive">Rejected</Badge>}
             <Badge variant="secondary">{currentStage}</Badge>
-            {detail.anonymized && <Badge variant="outline">Anonymised for HMs</Badge>}
+            {detail.anonymized && <Badge variant="outline">Anonymised</Badge>}
             {canMove && (
               <Select value={detail.stage} onValueChange={moveStage}>
                 <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
@@ -538,36 +538,55 @@ export default function JobCandidate() {
                 <Undo2 className="h-3.5 w-3.5" /> Un-reject
               </Button>
             )}
-            {canEdit && (
-              <>
-                <Button size="sm" variant="outline" onClick={openEditCandidate}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit candidate
-                </Button>
-                <Button size="sm" variant="outline" onClick={openAddToJob}>
-                  <Briefcase className="h-3.5 w-3.5" /> Add to job
-                </Button>
-              </>
-            )}
-              {resumeUrl && !hideForHM && (
-              <Button size="sm" variant="outline" asChild>
-                <a href={resumeUrl} target="_blank" rel="noreferrer"><Download className="h-3 w-3" /> Resume</a>
-              </Button>
+
+            {(canEdit || canMove || resumeUrl) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <MoreHorizontal className="h-3.5 w-3.5" /> More actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Candidate</DropdownMenuLabel>
+                  {canEdit && (
+                    <>
+                      <DropdownMenuItem onClick={openEditCandidate}>
+                        <Pencil className="h-3.5 w-3.5" /> Edit candidate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={openAddToJob}>
+                        <Briefcase className="h-3.5 w-3.5" /> Add to job
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {resumeUrl && !hideForHM && (
+                    <DropdownMenuItem asChild>
+                      <a href={resumeUrl} target="_blank" rel="noreferrer">
+                        <Download className="h-3.5 w-3.5" /> Download resume
+                      </a>
+                    </DropdownMenuItem>
+                  )}
+                  {canMove && isPdfResume && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setAnonymiseOpen(true)}>
+                        <ShieldOff className="h-3.5 w-3.5" />
+                        {detail.anonymized ? "Edit anonymisation" : "Anonymise candidate"}
+                      </DropdownMenuItem>
+                      {detail.anonymized && (
+                        <DropdownMenuItem
+                          onClick={removeAnonymisation}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <X className="h-3.5 w-3.5" /> Remove anonymisation
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
-
-        {canMove && isReviewStage && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3 flex-wrap">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">Anonymise for hiring managers</div>
-              <p className="text-xs text-muted-foreground">
-                Hide identifiers in the header and show a redacted CV. Use the redaction tool in the Resume tab to choose
-                exactly what to hide on the CV itself.
-              </p>
-            </div>
-            <Switch checked={!!detail.anonymized} onCheckedChange={toggleAnonymized} />
-          </div>
-        )}
 
         {hideForHM ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
