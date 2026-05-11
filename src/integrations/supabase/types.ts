@@ -59,6 +59,7 @@ export type Database = {
           location: string | null
           notes: string | null
           phone: string | null
+          redacted_resume_path: string | null
           referrer_name: string | null
           resume_full_text: string | null
           resume_path: string | null
@@ -80,6 +81,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           phone?: string | null
+          redacted_resume_path?: string | null
           referrer_name?: string | null
           resume_full_text?: string | null
           resume_path?: string | null
@@ -101,6 +103,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           phone?: string | null
+          redacted_resume_path?: string | null
           referrer_name?: string | null
           resume_full_text?: string | null
           resume_path?: string | null
