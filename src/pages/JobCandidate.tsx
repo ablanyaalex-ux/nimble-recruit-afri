@@ -681,6 +681,60 @@ export default function JobCandidate() {
             </Card>
           )}
 
+          {c.resume_path && detail.jobs?.description && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <div className="font-display text-base">AI job-fit score</div>
+                  {detail.match_verdict && (
+                    <Badge
+                      variant={detail.match_verdict === "good" ? "default" : detail.match_verdict === "cautious" ? "secondary" : "destructive"}
+                      className="capitalize"
+                    >
+                      {detail.match_verdict} match
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {detail.match_score != null ? (
+                    <Button size="sm" variant="ghost" onClick={() => generateMatch(true)} disabled={matchLoading}>
+                      <RefreshCw className={`h-3 w-3 ${matchLoading ? "animate-spin" : ""}`} /> Re-score
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => generateMatch(false)} disabled={matchLoading}>
+                      <Sparkles className="h-3 w-3" /> {matchLoading ? "Scoring…" : "Score match"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {matchLoading && detail.match_score == null ? (
+                <p className="text-sm text-muted-foreground">Comparing the CV to the job requirements… this can take ~10–20s.</p>
+              ) : detail.match_score != null ? (
+                <div className="space-y-3">
+                  <div className="flex items-baseline gap-2">
+                    <div className="font-display text-4xl tracking-tight">{detail.match_score}</div>
+                    <div className="text-sm text-muted-foreground">/ 100</div>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full transition-all ${detail.match_verdict === "good" ? "bg-primary" : detail.match_verdict === "cautious" ? "bg-amber-500" : "bg-destructive"}`}
+                      style={{ width: `${detail.match_score}%` }}
+                    />
+                  </div>
+                  {detail.match_rationale && (
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{detail.match_rationale}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Click <em>Score match</em> to have AI compare this CV to the job requirements and rate the fit out of 100.
+                </p>
+              )}
+            </Card>
+          )}
+
+
           <Card className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
               <div className="min-w-0">
