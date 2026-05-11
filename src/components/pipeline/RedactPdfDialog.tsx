@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Sparkles, Trash2, Plus, MousePointer2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
-// @ts-expect-error vite worker import
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { PDFDocument, rgb } from "pdf-lib";
 
