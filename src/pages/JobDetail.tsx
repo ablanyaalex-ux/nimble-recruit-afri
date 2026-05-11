@@ -16,6 +16,8 @@ import {
   ChevronRight,
   X,
   Undo2,
+  MoreVertical,
+  Zap,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
