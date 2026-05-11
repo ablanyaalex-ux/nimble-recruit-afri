@@ -22,7 +22,7 @@ import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { anonymizeName, redactResumeText } from "@/lib/anonymize";
-import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
+import { RedactPdfDialog } from "@/components/pipeline/RedactPdfDialog";
 import { toast } from "sonner";
 
 type Detail = {
@@ -41,6 +41,7 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
+    redacted_resume_path: string | null;
     notes: string | null;
     source: string | null;
     location: string | null;
@@ -145,7 +146,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -153,10 +154,17 @@ export default function JobCandidate() {
       setSummary((data.candidates as any)?.resume_summary ?? null);
       setResumeFullText((data.candidates as any)?.resume_full_text ?? null);
       setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
-      if (data.candidates?.resume_path) {
+      // Hiring managers viewing an anonymised candidate see the redacted PDF
+      // (if the recruiter has prepared one). Everyone else sees the original.
+      const cand = data.candidates as any;
+      const viewerIsHM = isHM && (data as any).anonymized;
+      const pathToShow = viewerIsHM
+        ? (cand?.redacted_resume_path ?? null)
+        : (cand?.resume_path ?? null);
+      if (pathToShow) {
         const { data: signed } = await supabase.storage
           .from("resumes")
-          .createSignedUrl(data.candidates.resume_path, 600);
+          .createSignedUrl(pathToShow, 600);
         setResumeUrl(signed?.signedUrl ?? null);
       } else {
         setResumeUrl(null);
