@@ -15,7 +15,7 @@ export const canMoveStages = (role: WorkspaceRole | null) =>
 // Stage keys that hiring managers may NOT see (they see from Review onward)
 export const HM_HIDDEN_STAGE_KEYS = new Set<string>(["application", "sourced", "contacted", "screened"]);
 
-export type PipelineStage = { key: string; label: string; position: number };
+export type PipelineStage = { id?: string; key: string; label: string; position: number };
 
 export const DEFAULT_STAGES: PipelineStage[] = [
   { key: "application", label: "Application", position: 1 },
