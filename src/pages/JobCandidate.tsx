@@ -106,8 +106,10 @@ export default function JobCandidate() {
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
   const [summary, setSummary] = useState<string | null>(null);
-  const [resumeFullText, setResumeFullText] = useState<string | null>(null);
-  const [anonymizedSummary, setAnonymizedSummary] = useState<string | null>(null);
+  const [redactedResumeUrl, setRedactedResumeUrl] = useState<string | null>(null);
+  const [redactedPath, setRedactedPath] = useState<string | null>(null);
+  const [redacting, setRedacting] = useState(false);
+  const [previewRedacted, setPreviewRedacted] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
@@ -128,7 +130,6 @@ export default function JobCandidate() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [targetStage, setTargetStage] = useState("application");
   const [addingToJob, setAddingToJob] = useState(false);
-  const [redactOpen, setRedactOpen] = useState(false);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
