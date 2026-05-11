@@ -174,7 +174,8 @@ Deno.serve(async (req) => {
     }
 
     const out = await pdfDoc.save();
-    const outPath = `redacted/${candidate.id}.pdf`;
+    const workspaceFolder = candidate.resume_path.split("/")[0];
+    const outPath = `${workspaceFolder}/${candidate.id}/redacted.pdf`;
     const { error: upErr } = await admin.storage
       .from("resumes")
       .upload(outPath, out, { contentType: "application/pdf", upsert: true });
