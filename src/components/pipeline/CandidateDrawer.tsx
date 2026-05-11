@@ -23,8 +23,8 @@ import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
-import { anonymizeName, redactResumeText } from "@/lib/anonymize";
-import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
+import { anonymizeName } from "@/lib/anonymize";
+import { RedactPdfDialog } from "@/components/pipeline/RedactPdfDialog";
 
 type Props = {
   jobCandidateId: string | null;
@@ -45,6 +45,7 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
+    redacted_resume_path: string | null;
     resume_summary: string | null;
     resume_full_text: string | null;
     anonymized_resume_summary: string | null;
@@ -97,15 +98,20 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     if (!jobCandidateId) return;
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, resume_full_text, anonymized_resume_summary, notes)")
+      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, resume_summary, resume_full_text, anonymized_resume_summary, notes)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
-      if (data.candidates?.resume_path) {
+      const cand = data.candidates as any;
+      const viewerIsHM = hm && (data as any).anonymized;
+      const pathToShow = viewerIsHM
+        ? (cand?.redacted_resume_path ?? null)
+        : (cand?.resume_path ?? null);
+      if (pathToShow) {
         const { data: signed } = await supabase.storage
           .from("resumes")
-          .createSignedUrl(data.candidates.resume_path, 600);
+          .createSignedUrl(pathToShow, 600);
         setResumeUrl(signed?.signedUrl ?? null);
       } else {
         setResumeUrl(null);
@@ -284,11 +290,6 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
-  // Prefer the recruiter's manually redacted CV; fall back to auto-redacted full CV text.
-  const redactedCv = hideForHM
-    ? (detail?.candidates.anonymized_resume_summary
-        ?? redactResumeText(detail?.candidates.resume_full_text, detail?.candidates))
-    : null;
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
