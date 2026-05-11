@@ -105,7 +105,10 @@ Schema:
 {
   "score": integer 0-100,
   "verdict": "good" | "cautious" | "bad",
-  "rationale": string (3-5 sentences, opinionated, mentions specific evidence from the CV vs. the job requirements; covers strengths, gaps, and what to probe in interview)
+  "rationale": string (3-5 sentences explaining the overall judgement),
+  "skills_matched": string[] (3-7 concrete strengths the CV demonstrates that map to the job's requirements; each item one short sentence with evidence, e.g. "5+ yrs React with shipped SaaS products"),
+  "gaps": string[] (2-6 missing or weak areas vs. the requirements; each one short sentence, honest, not invented),
+  "next_steps": string[] (2-5 suggested actions for the recruiter — interview probes, references, tests to run — each one short imperative sentence)
 }
 
 Scoring guide:
@@ -113,7 +116,7 @@ Scoring guide:
 - 50-79 = "cautious": partial fit; meaningful gaps, transferable but unproven, or seniority/domain mismatch.
 - 0-49  = "bad": fundamental mismatch on must-haves.
 
-Be honest and evidence-based. Do not invent qualifications. Never include the candidate's name in the rationale — refer to them as "the candidate" or "they". Output JSON only.`;
+Be honest and evidence-based. Do not invent qualifications. Never include the candidate's name anywhere — refer to them as "the candidate" or "they". Output JSON only.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
