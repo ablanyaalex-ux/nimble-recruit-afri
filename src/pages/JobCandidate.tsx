@@ -711,13 +711,37 @@ export default function JobCandidate() {
                 </div>
               </div>
               {!detail.jobs?.description ? (
-                <p className="text-sm text-muted-foreground">
-                  Add a job description (Edit job → Description) so AI can compare this candidate against the role's requirements.
-                </p>
+                <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                  <div className="rounded-full bg-muted p-3">
+                    <FileSearch className="h-6 w-6 text-muted-foreground" aria-hidden />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium">No job description yet</div>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      Add a job description to see a detailed match breakdown.
+                    </p>
+                  </div>
+                </div>
               ) : matchLoading && detail.match_score == null ? (
-                <p className="text-sm text-muted-foreground">Comparing the CV to the job requirements… this can take ~10–20s.</p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-2 w-full" />
+                  </div>
+                  <Skeleton className="h-16 w-full" />
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-5/6" />
+                        <Skeleton className="h-3 w-4/6" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : detail.match_score != null ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-baseline gap-2">
                     <div className="font-display text-4xl tracking-tight">{detail.match_score}</div>
                     <div className="text-sm text-muted-foreground">/ 100</div>
@@ -728,47 +752,99 @@ export default function JobCandidate() {
                       style={{ width: `${detail.match_score}%` }}
                     />
                   </div>
+
                   {detail.match_rationale && (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{detail.match_rationale}</p>
+                    <div
+                      className={`relative rounded-md border-l-4 bg-muted/40 p-4 pl-5 ${
+                        detail.match_verdict === "good"
+                          ? "border-l-primary"
+                          : detail.match_verdict === "cautious"
+                            ? "border-l-amber-500"
+                            : "border-l-destructive"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <Quote className="h-3.5 w-3.5" aria-hidden />
+                        Insight summary
+                      </div>
+                      <p className="text-sm italic leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                        {detail.match_rationale}
+                      </p>
+                    </div>
                   )}
-                  {detail.match_breakdown && (
+
+                  {detail.match_breakdown &&
                     (detail.match_breakdown.skills_matched?.length ||
                       detail.match_breakdown.gaps?.length ||
                       detail.match_breakdown.next_steps?.length) ? (
-                      <div className="grid gap-3 pt-2 sm:grid-cols-3">
-                        {detail.match_breakdown.skills_matched && detail.match_breakdown.skills_matched.length > 0 && (
-                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-primary">Skills matched</div>
-                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
-                              {detail.match_breakdown.skills_matched.map((s, i) => (
-                                <li key={i} className="flex gap-2"><span aria-hidden>✓</span><span>{s}</span></li>
-                              ))}
-                            </ul>
-                          </div>
+                    <div className="grid gap-3 pt-1 sm:grid-cols-3">
+                      <Card className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-500" aria-hidden />
+                          <div className="text-sm font-medium">Skills matched</div>
+                          <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                            {detail.match_breakdown.skills_matched?.length ?? 0}
+                          </Badge>
+                        </div>
+                        {detail.match_breakdown.skills_matched && detail.match_breakdown.skills_matched.length > 0 ? (
+                          <ul className="space-y-2 text-sm leading-snug text-foreground/90">
+                            {detail.match_breakdown.skills_matched.map((s, i) => (
+                              <li key={i} className="flex gap-2">
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-500 mt-0.5" aria-hidden />
+                                <span>{s}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">None identified.</p>
                         )}
-                        {detail.match_breakdown.gaps && detail.match_breakdown.gaps.length > 0 && (
-                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-600 dark:text-amber-500">Gaps</div>
-                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
-                              {detail.match_breakdown.gaps.map((s, i) => (
-                                <li key={i} className="flex gap-2"><span aria-hidden>!</span><span>{s}</span></li>
-                              ))}
-                            </ul>
-                          </div>
+                      </Card>
+
+                      <Card className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" aria-hidden />
+                          <div className="text-sm font-medium">Potential gaps</div>
+                          <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                            {detail.match_breakdown.gaps?.length ?? 0}
+                          </Badge>
+                        </div>
+                        {detail.match_breakdown.gaps && detail.match_breakdown.gaps.length > 0 ? (
+                          <ul className="space-y-2 text-sm leading-snug text-foreground/90">
+                            {detail.match_breakdown.gaps.map((s, i) => (
+                              <li key={i} className="flex gap-2">
+                                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500 mt-0.5" aria-hidden />
+                                <span>{s}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">None identified.</p>
                         )}
-                        {detail.match_breakdown.next_steps && detail.match_breakdown.next_steps.length > 0 && (
-                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground">Suggested next steps</div>
-                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
-                              {detail.match_breakdown.next_steps.map((s, i) => (
-                                <li key={i} className="flex gap-2"><span aria-hidden>→</span><span>{s}</span></li>
-                              ))}
-                            </ul>
-                          </div>
+                      </Card>
+
+                      <Card className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <ArrowRightCircle className="h-4 w-4 text-sky-600 dark:text-sky-400" aria-hidden />
+                          <div className="text-sm font-medium">Suggested next steps</div>
+                          <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                            {detail.match_breakdown.next_steps?.length ?? 0}
+                          </Badge>
+                        </div>
+                        {detail.match_breakdown.next_steps && detail.match_breakdown.next_steps.length > 0 ? (
+                          <ul className="space-y-2 text-sm leading-snug text-foreground/90">
+                            {detail.match_breakdown.next_steps.map((s, i) => (
+                              <li key={i} className="flex gap-2">
+                                <ArrowRightCircle className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400 mt-0.5" aria-hidden />
+                                <span>{s}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">None suggested.</p>
                         )}
-                      </div>
-                    ) : null
-                  )}
+                      </Card>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
