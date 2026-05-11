@@ -439,7 +439,7 @@ export default function JobCandidate() {
     const verdict = (data as any)?.verdict;
     const rationale = (data as any)?.rationale;
     if (typeof score === "number") {
-      setDetail({ ...detail, match_score: score, match_verdict: verdict ?? null, match_rationale: rationale ?? null });
+      setDetail({ ...detail, match_score: score, match_verdict: verdict ?? null, match_rationale: rationale ?? null, match_breakdown: (data as any)?.breakdown ?? null });
       if (!(data as any).cached) toast.success("Match score generated.");
     }
   };
