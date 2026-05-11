@@ -41,12 +41,11 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
+    redacted_resume_path: string | null;
     notes: string | null;
     source: string | null;
     location: string | null;
     resume_summary: string | null;
-    resume_full_text: string | null;
-    anonymized_resume_summary: string | null;
   };
 };
 
