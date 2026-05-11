@@ -116,6 +116,7 @@ export default function JobCandidate() {
   const [redactedPath, setRedactedPath] = useState<string | null>(null);
   const [anonymiseOpen, setAnonymiseOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
   const [editCandidateForm, setEditCandidateForm] = useState({
