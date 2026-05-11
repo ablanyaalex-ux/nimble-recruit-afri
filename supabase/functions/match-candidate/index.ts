@@ -52,9 +52,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!force && jc.match_score != null && jc.match_verdict) {
+    if (!force && jc.match_score != null && jc.match_verdict && jc.match_breakdown) {
       return new Response(JSON.stringify({
-        score: jc.match_score, verdict: jc.match_verdict, rationale: jc.match_rationale, cached: true,
+        score: jc.match_score, verdict: jc.match_verdict, rationale: jc.match_rationale, breakdown: jc.match_breakdown, cached: true,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
