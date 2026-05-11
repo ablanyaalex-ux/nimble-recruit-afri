@@ -445,13 +445,17 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                   {hideForHM ? (
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        Contact details, LinkedIn, location, education and other personal identifiers are redacted during anonymous review.
+                        Contact details, LinkedIn and other personal identifiers are redacted on the CV during anonymous review.
                       </p>
-                      {redactedCv && (
+                      {resumeUrl ? (
                         <div>
                           <Label className="text-xs uppercase tracking-wider text-muted-foreground">Redacted CV</Label>
-                          <p className="mt-1 whitespace-pre-wrap">{redactedCv}</p>
+                          <iframe src={resumeUrl} className="mt-2 w-full h-[60vh] rounded-md border" title="Redacted CV" />
                         </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          The recruiter hasn't prepared a redacted CV yet.
+                        </p>
                       )}
                     </div>
                   ) : (
@@ -460,22 +464,20 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</Label><p>{detail.candidates.phone ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
-                      {canMove && isReviewStage && (
+                      {canMove && isReviewStage && detail.candidates.resume_path && (
                         <div className="flex items-center justify-between gap-2 pt-2 border-t">
                           <div className="min-w-0">
                             <Label className="text-xs uppercase tracking-wider text-muted-foreground">CV redaction</Label>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Choose exactly what's hidden on the CV shown to hiring managers.
+                              Black out personal details on the CV before hiring managers see it.
                             </p>
                           </div>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => setRedactOpen(true)}
-                            disabled={!detail.candidates.resume_full_text}
-                            title={detail.candidates.resume_full_text ? "" : "Generate the AI summary first to extract the CV text"}
                           >
-                            Customise redaction
+                            {detail.candidates.redacted_resume_path ? "Edit redactions" : "Redact CV"}
                           </Button>
                         </div>
                       )}
@@ -485,12 +487,12 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               </TabsContent>
             </Tabs>
 
-            <RedactCvDialog
+            <RedactPdfDialog
               open={redactOpen}
               onOpenChange={setRedactOpen}
               candidateId={detail.candidate_id}
-              originalCv={detail.candidates.resume_full_text}
-              currentRedacted={detail.candidates.anonymized_resume_summary}
+              resumePath={detail.candidates.resume_path}
+              redactedResumePath={detail.candidates.redacted_resume_path}
               onSaved={() => refresh()}
             />
           </>
