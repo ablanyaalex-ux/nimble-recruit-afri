@@ -35,7 +35,10 @@ type Detail = {
   candidate_id: string;
   job_id: string;
   anonymized: boolean;
-  jobs: { workspace_id: string; client_id: string; title: string } | null;
+  match_score: number | null;
+  match_verdict: string | null;
+  match_rationale: string | null;
+  jobs: { workspace_id: string; client_id: string; title: string; description: string | null } | null;
   candidates: {
     full_name: string;
     email: string | null;
