@@ -44,6 +44,7 @@ type Detail = {
     linkedin_url: string | null;
     resume_path: string | null;
     redacted_resume_path: string | null;
+    redaction_rects: any;
     notes: string | null;
     source: string | null;
     location: string | null;
