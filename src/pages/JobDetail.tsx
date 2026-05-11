@@ -933,6 +933,17 @@ export default function JobDetail() {
         />
       )}
 
+      {canEdit && triggerDialog && (
+        <StageTriggersDialog
+          open={!!triggerDialog}
+          onOpenChange={(v) => { if (!v) setTriggerDialog(null); }}
+          workspaceId={job.workspace_id}
+          stageId={triggerDialog.stageId}
+          stageLabel={triggerDialog.label}
+          onChanged={refreshTriggerCounts}
+        />
+      )}
+
       {canEdit && (
         <EditJobDialog
           open={editOpen}
