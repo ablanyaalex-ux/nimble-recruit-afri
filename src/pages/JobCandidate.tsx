@@ -418,39 +418,22 @@ export default function JobCandidate() {
     }
   };
 
-  const runRedactCv = async () => {
+  const removeAnonymisation = async () => {
     if (!detail) return;
-    setRedacting(true);
-    const { data, error } = await supabase.functions.invoke("redact-resume", {
-      body: { candidateId: detail.candidate_id },
-    });
-    setRedacting(false);
-    if (error) {
-      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to redact CV";
-      return toast.error(msg);
-    }
-    if ((data as any)?.error) return toast.error((data as any).error);
-    const path = (data as any)?.redactedPath as string | undefined;
-    const url = (data as any)?.redactedUrl as string | undefined;
-    if (path) setRedactedPath(path);
-    if (url) setRedactedResumeUrl(url);
-    setPreviewRedacted(true);
-    toast.success(`Redacted CV ready (${(data as any)?.regionsDrawn ?? 0} regions blacked out).`);
-  };
-
-  const clearRedaction = async () => {
-    if (!detail) return;
-    setRedacting(true);
-    const { error } = await supabase
+    const { error: cErr } = await supabase
       .from("candidates")
-      .update({ redacted_resume_path: null })
+      .update({ redacted_resume_path: null, redaction_rects: [] as any })
       .eq("id", detail.candidate_id);
-    setRedacting(false);
-    if (error) return toast.error(error.message);
+    if (cErr) return toast.error(cErr.message);
+    const { error: jErr } = await supabase
+      .from("job_candidates")
+      .update({ anonymized: false } as any)
+      .eq("id", detail.id);
+    if (jErr) return toast.error(jErr.message);
     setRedactedPath(null);
     setRedactedResumeUrl(null);
-    setPreviewRedacted(false);
-    toast.success("Redacted CV cleared.");
+    setDetail({ ...detail, anonymized: false, candidates: { ...detail.candidates, redacted_resume_path: null, redaction_rects: [] } });
+    toast.success("Anonymisation removed.");
   };
 
   const postComment = async () => {
