@@ -1009,14 +1009,6 @@ export default function JobCandidate() {
         </DialogContent>
       </Dialog>
 
-      <RedactCvDialog
-        open={redactOpen}
-        onOpenChange={setRedactOpen}
-        candidateId={detail.candidate_id}
-        originalCv={resumeFullText}
-        currentRedacted={anonymizedSummary}
-        onSaved={(next) => setAnonymizedSummary(next)}
-      />
     </PageContainer>
   );
 }
