@@ -5,38 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function initials(fullName?: string | null) {
-  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0]?.toUpperCase() ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0]?.toUpperCase() ?? "" : "";
-  return last ? `${first}. ${last}.` : first ? `${first}.` : "Candidate";
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function redactText(text: string, candidate: { full_name?: string | null }) {
-  let redacted = text;
-  if (candidate.full_name?.trim()) {
-    redacted = redacted.replace(
-      new RegExp(escapeRegExp(candidate.full_name.trim()), "gi"),
-      initials(candidate.full_name),
-    );
-  }
-  return redacted
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email redacted]")
-    .replace(/(?:https?:\/\/|www\.)\S+/gi, "[link redacted]")
-    .replace(/\b(?:linkedin\.com\/in\/|linkedin profile|linkedin)\S*[^\n]*/gi, "[LinkedIn redacted]")
-    .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, "[phone redacted]")
-    .replace(/^\s*(?:age|date of birth|dob|birth date|born)\s*[:\-].*$/gim, "[age/date of birth redacted]")
-    .replace(/^\s*(?:marital status|civil status|spouse|children|family status)\s*[:\-].*$/gim, "[marital/family status redacted]")
-    .replace(/^\s*(?:gender|sex|pronouns|nationality|citizenship|address|location)\s*[:\-].*$/gim, "[personal identifier redacted]")
-    .trim();
-}
-
-const SECTION_DIVIDER = /---\s*FULL CV TEXT\s*---/i;
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -66,7 +34,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { candidateId, jobCandidateId, force } = await req.json();
+    const { candidateId, force } = await req.json();
     if (!candidateId) {
       return new Response(JSON.stringify({ error: "candidateId required" }), {
         status: 400,
@@ -78,7 +46,7 @@ Deno.serve(async (req) => {
 
     const { data: candidate, error: cErr } = await userClient
       .from("candidates")
-      .select("id, full_name, headline, resume_path, resume_summary, resume_full_text, anonymized_resume_summary")
+      .select("id, full_name, headline, resume_path, resume_summary")
       .eq("id", candidateId)
       .maybeSingle();
     if (cErr || !candidate) {
@@ -88,33 +56,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    let anonymizedForCaller = false;
-    if (jobCandidateId) {
-      const { data: jc } = await userClient
-        .from("job_candidates")
-        .select("anonymized, jobs(workspace_id)")
-        .eq("id", jobCandidateId)
-        .eq("candidate_id", candidateId)
-        .maybeSingle();
-      const workspaceId = (jc as any)?.jobs?.workspace_id;
-      if (jc?.anonymized && workspaceId) {
-        const { data: member } = await userClient
-          .from("workspace_members")
-          .select("role")
-          .eq("workspace_id", workspaceId)
-          .eq("user_id", userData.user.id)
-          .maybeSingle();
-        anonymizedForCaller = member?.role === "hiring_manager";
-      }
-    }
-
-    if (!force && candidate.resume_summary && candidate.resume_full_text) {
-      return new Response(JSON.stringify({
-        summary: anonymizedForCaller ? redactText(candidate.resume_summary, candidate) : candidate.resume_summary,
-        resumeFullText: anonymizedForCaller ? null : candidate.resume_full_text,
-        anonymizedSummary: candidate.anonymized_resume_summary,
-        cached: true,
-      }), {
+    if (!force && candidate.resume_summary) {
+      return new Response(JSON.stringify({ summary: candidate.resume_summary, cached: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -148,15 +91,7 @@ Deno.serve(async (req) => {
     else if (lower.endsWith(".doc")) mime = "application/msword";
     else if (lower.endsWith(".txt")) mime = "text/plain";
 
-    const systemPrompt = [
-      "You are an elite recruiting analyst. Read the attached CV/resume and produce TWO sections, separated by a single line containing exactly: ---FULL CV TEXT---",
-      "",
-      "SECTION 1 — EXECUTIVE BRIEF (this is what a busy recruiter reads first):",
-      "Write 2–3 short, punchy paragraphs (no bullet lists, no markdown headings) that give a sharp point of view on this candidate. Cover: who they are and the shape of their career, the most impressive achievements with concrete impact (numbers, scale, outcomes), what they are clearly strong at, and any caveats or things worth probing in an interview. Be opinionated and substantive — do NOT just restate the CV. Aim for ~120–200 words total.",
-      "",
-      "SECTION 2 — FULL CV TEXT:",
-      "After the divider, output a clean, faithful Markdown rendering of the full CV. Preserve all sections (contact info, summary, experience, education, skills, certifications, languages, projects, etc.) using markdown headings (## Section) and bullet lists. Include every role with company, title, dates, location and responsibilities/achievements verbatim or near-verbatim. Include education with institution, degree and dates. Do NOT redact anything in this section — the recruiter will redact it manually. Do not invent any information.",
-    ].join("\n");
+    const systemPrompt = "You are an elite recruiting analyst. Read the attached CV/resume and write 2–3 short, punchy paragraphs (no bullet lists, no markdown headings) giving a sharp point of view on this candidate. Cover: who they are and the shape of their career, the most impressive achievements with concrete impact (numbers, scale, outcomes), what they are clearly strong at, and any caveats or things worth probing in an interview. Be opinionated and substantive — do NOT just restate the CV. Aim for ~120–200 words total. Do not invent anything.";
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -197,38 +132,22 @@ Deno.serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const content: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!content) {
+    const summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
+    if (!summary) {
       return new Response(JSON.stringify({ error: "Empty summary" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const [briefRaw, fullCvRaw] = content.split(SECTION_DIVIDER).map((s) => s.trim());
-    const summary = briefRaw || content;
-    const resumeFullText = fullCvRaw || null;
-
-    // Auto-redact the FULL CV (not the summary) so HMs have something usable
-    // until the recruiter customises the redaction.
-    const autoRedactedCv = resumeFullText ? redactText(resumeFullText, candidate) : null;
-
     await admin
       .from("candidates")
       .update({
         resume_summary: summary,
-        resume_full_text: resumeFullText,
-        // Only seed the redacted CV if the recruiter hasn't customised one yet.
-        ...(candidate.anonymized_resume_summary && !force ? {} : { anonymized_resume_summary: autoRedactedCv }),
         resume_summary_generated_at: new Date().toISOString(),
       })
       .eq("id", candidateId);
 
-    return new Response(JSON.stringify({
-      summary: anonymizedForCaller ? redactText(summary, candidate) : summary,
-      resumeFullText: anonymizedForCaller ? null : resumeFullText,
-      anonymizedSummary: (candidate.anonymized_resume_summary && !force) ? candidate.anonymized_resume_summary : autoRedactedCv,
-      cached: false,
-    }), {
+    return new Response(JSON.stringify({ summary, cached: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
