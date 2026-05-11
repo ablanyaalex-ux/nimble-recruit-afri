@@ -139,13 +139,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const aiJson = await aiResp.json();
-    const summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
+    let summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
     if (!summary) {
       return new Response(JSON.stringify({ error: "Empty summary" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Safety net: scrub any name tokens that slipped through.
+    for (const t of nameTokens) {
+      const re = new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
+      summary = summary.replace(re, "the candidate");
+    }
+    summary = summary.replace(/\b(the candidate)(\s+the candidate)+\b/gi, "the candidate");
 
     await admin
       .from("candidates")
