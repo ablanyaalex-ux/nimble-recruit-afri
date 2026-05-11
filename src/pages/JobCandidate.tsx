@@ -409,13 +409,46 @@ export default function JobCandidate() {
       return toast.error(msg);
     }
     if ((data as any)?.summary) setSummary((data as any).summary);
-    if ((data as any)?.resumeFullText) setResumeFullText((data as any).resumeFullText);
-    if ((data as any)?.anonymizedSummary) setAnonymizedSummary((data as any).anonymizedSummary);
-    if ((data as any)?.summary || (data as any)?.anonymizedSummary) {
+    if ((data as any)?.summary) {
       if (!(data as any).cached) toast.success("Summary generated.");
     } else if ((data as any)?.error) {
       toast.error((data as any).error);
     }
+  };
+
+  const runRedactCv = async () => {
+    if (!detail) return;
+    setRedacting(true);
+    const { data, error } = await supabase.functions.invoke("redact-resume", {
+      body: { candidateId: detail.candidate_id },
+    });
+    setRedacting(false);
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to redact CV";
+      return toast.error(msg);
+    }
+    if ((data as any)?.error) return toast.error((data as any).error);
+    const path = (data as any)?.redactedPath as string | undefined;
+    const url = (data as any)?.redactedUrl as string | undefined;
+    if (path) setRedactedPath(path);
+    if (url) setRedactedResumeUrl(url);
+    setPreviewRedacted(true);
+    toast.success(`Redacted CV ready (${(data as any)?.regionsDrawn ?? 0} regions blacked out).`);
+  };
+
+  const clearRedaction = async () => {
+    if (!detail) return;
+    setRedacting(true);
+    const { error } = await supabase
+      .from("candidates")
+      .update({ redacted_resume_path: null })
+      .eq("id", detail.candidate_id);
+    setRedacting(false);
+    if (error) return toast.error(error.message);
+    setRedactedPath(null);
+    setRedactedResumeUrl(null);
+    setPreviewRedacted(false);
+    toast.success("Redacted CV cleared.");
   };
 
   const postComment = async () => {
