@@ -486,14 +486,13 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
-  // The redacted view applies for HMs whenever the candidate is anonymised, OR
-  // for recruiters who turned on the "Preview redacted" toggle (so they can
-  // confirm what the HM will see without switching accounts).
-  const showRedactedView = (detail.anonymized && isHM) || (canMove && previewRedacted);
+  // Once a recruiter saves redactions, the candidate is anonymised — the redacted
+  // view applies to everyone (recruiters and HMs) so what you see is what HMs see.
+  const showRedactedView = !!detail.anonymized && !!redactedPath;
   const hideForHM = showRedactedView;
   const displayName = showRedactedView ? anonymizeName(c.full_name) : c.full_name;
   const displaySummary = summary;
-  const isReviewStage = detail.stage === "reviewed";
+  const isPdfResume = !!c.resume_path && /\.pdf($|\?)/i.test(c.resume_path);
   const cvUrlToShow = showRedactedView ? redactedResumeUrl : resumeUrl;
   const cvPathToShow = showRedactedView ? redactedPath : c.resume_path;
 
