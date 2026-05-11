@@ -35,7 +35,10 @@ type Detail = {
   candidate_id: string;
   job_id: string;
   anonymized: boolean;
-  jobs: { workspace_id: string; client_id: string; title: string } | null;
+  match_score: number | null;
+  match_verdict: string | null;
+  match_rationale: string | null;
+  jobs: { workspace_id: string; client_id: string; title: string; description: string | null } | null;
   candidates: {
     full_name: string;
     email: string | null;
@@ -113,6 +116,7 @@ export default function JobCandidate() {
   const [redactedPath, setRedactedPath] = useState<string | null>(null);
   const [anonymiseOpen, setAnonymiseOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
   const [editCandidateForm, setEditCandidateForm] = useState({
@@ -147,7 +151,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, match_score, match_verdict, match_rationale, jobs(workspace_id, client_id, title, description), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -418,6 +422,27 @@ export default function JobCandidate() {
     }
   };
 
+  const generateMatch = async (force = false) => {
+    if (!detail) return;
+    setMatchLoading(true);
+    const { data, error } = await supabase.functions.invoke("match-candidate", {
+      body: { jobCandidateId: detail.id, force },
+    });
+    setMatchLoading(false);
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to score match";
+      return toast.error(msg);
+    }
+    if ((data as any)?.error) return toast.error((data as any).error);
+    const score = (data as any)?.score;
+    const verdict = (data as any)?.verdict;
+    const rationale = (data as any)?.rationale;
+    if (typeof score === "number") {
+      setDetail({ ...detail, match_score: score, match_verdict: verdict ?? null, match_rationale: rationale ?? null });
+      if (!(data as any).cached) toast.success("Match score generated.");
+    }
+  };
+
   const removeAnonymisation = async () => {
     if (!detail) return;
     const { error: cErr } = await supabase
@@ -655,6 +680,60 @@ export default function JobCandidate() {
               )}
             </Card>
           )}
+
+          {c.resume_path && detail.jobs?.description && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <div className="font-display text-base">AI job-fit score</div>
+                  {detail.match_verdict && (
+                    <Badge
+                      variant={detail.match_verdict === "good" ? "default" : detail.match_verdict === "cautious" ? "secondary" : "destructive"}
+                      className="capitalize"
+                    >
+                      {detail.match_verdict} match
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {detail.match_score != null ? (
+                    <Button size="sm" variant="ghost" onClick={() => generateMatch(true)} disabled={matchLoading}>
+                      <RefreshCw className={`h-3 w-3 ${matchLoading ? "animate-spin" : ""}`} /> Re-score
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => generateMatch(false)} disabled={matchLoading}>
+                      <Sparkles className="h-3 w-3" /> {matchLoading ? "Scoring…" : "Score match"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {matchLoading && detail.match_score == null ? (
+                <p className="text-sm text-muted-foreground">Comparing the CV to the job requirements… this can take ~10–20s.</p>
+              ) : detail.match_score != null ? (
+                <div className="space-y-3">
+                  <div className="flex items-baseline gap-2">
+                    <div className="font-display text-4xl tracking-tight">{detail.match_score}</div>
+                    <div className="text-sm text-muted-foreground">/ 100</div>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full transition-all ${detail.match_verdict === "good" ? "bg-primary" : detail.match_verdict === "cautious" ? "bg-amber-500" : "bg-destructive"}`}
+                      style={{ width: `${detail.match_score}%` }}
+                    />
+                  </div>
+                  {detail.match_rationale && (
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{detail.match_rationale}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Click <em>Score match</em> to have AI compare this CV to the job requirements and rate the fit out of 100.
+                </p>
+              )}
+            </Card>
+          )}
+
 
           <Card className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-3">

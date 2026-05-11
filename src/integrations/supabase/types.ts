@@ -304,6 +304,10 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          match_generated_at: string | null
+          match_rationale: string | null
+          match_score: number | null
+          match_verdict: string | null
           position: number
           rejected: boolean
           rejected_at: string | null
@@ -319,6 +323,10 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          match_generated_at?: string | null
+          match_rationale?: string | null
+          match_score?: number | null
+          match_verdict?: string | null
           position?: number
           rejected?: boolean
           rejected_at?: string | null
@@ -334,6 +342,10 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          match_generated_at?: string | null
+          match_rationale?: string | null
+          match_score?: number | null
+          match_verdict?: string | null
           position?: number
           rejected?: boolean
           rejected_at?: string | null
