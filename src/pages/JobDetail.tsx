@@ -448,6 +448,28 @@ export default function JobDetail() {
     clearSelection();
   };
 
+  const runStageTriggers = async (jobCandidateId: string, stageKey: string, candidateName: string) => {
+    if (!triggerCounts[stageKey]) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("execute-stage-trigger", {
+        body: { jobCandidateId, stageKey },
+      });
+      if (error) { toast.error(`Automation failed: ${error.message}`); return; }
+      const executed = (data as any)?.executed ?? [];
+      const skipped = (data as any)?.skipped ?? [];
+      for (const ex of executed) {
+        if (ex.type === "send_email") {
+          toast.success(`Automation triggered: Email sent to ${candidateName}.`);
+        }
+      }
+      if (skipped.length > 0 && executed.length === 0) {
+        toast.info(`Automation skipped: ${skipped[0]?.reason ?? "see logs"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Automation failed: ${err?.message ?? "unknown"}`);
+    }
+  };
+
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
     const newStage = String(e.over.id);
@@ -458,7 +480,9 @@ export default function JobDetail() {
     if (error) {
       toast.error(error.message);
       refresh();
+      return;
     }
+    runStageTriggers(entry.id, newStage, entry.candidates.full_name);
   };
 
   const progressEntry = async (entry: PipelineEntry) => {
@@ -472,6 +496,7 @@ export default function JobDetail() {
       .eq("id", entry.id);
     if (error) { toast.error(error.message); refresh(); return; }
     toast.success(`Moved to ${next.label}.`);
+    runStageTriggers(entry.id, next.key, entry.candidates.full_name);
   };
 
   const rejectCandidates = async (ids: string[], rawReason: string) => {
