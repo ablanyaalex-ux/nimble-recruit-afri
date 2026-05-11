@@ -24,7 +24,7 @@ import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { anonymizeName } from "@/lib/anonymize";
-import { Eye, EyeOff, ShieldOff } from "lucide-react";
+
 import { toast } from "sonner";
 
 type Detail = {
