@@ -982,6 +982,26 @@ export default function JobCandidate() {
         </DialogContent>
       </Dialog>
 
+
+      <AnonymiseCvDialog
+        open={anonymiseOpen}
+        onOpenChange={setAnonymiseOpen}
+        candidateId={detail.candidate_id}
+        jobCandidateId={detail.id}
+        resumePath={c.resume_path}
+        initialRects={Array.isArray(c.redaction_rects) ? c.redaction_rects : []}
+        onSaved={({ redactedPath, anonymized }) => {
+          setDetail((prev) => prev ? { ...prev, anonymized, candidates: { ...prev.candidates, redacted_resume_path: redactedPath || null } } : prev);
+          if (redactedPath) {
+            setRedactedPath(redactedPath);
+            supabase.storage.from("resumes").createSignedUrl(redactedPath, 600).then(({ data }) => setRedactedResumeUrl(data?.signedUrl ?? null));
+          } else {
+            setRedactedPath(null);
+            setRedactedResumeUrl(null);
+          }
+          refresh();
+        }}
+      />
     </PageContainer>
   );
 }
