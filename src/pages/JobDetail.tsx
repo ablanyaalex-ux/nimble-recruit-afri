@@ -16,6 +16,8 @@ import {
   ChevronRight,
   X,
   Undo2,
+  MoreVertical,
+  Zap,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -70,6 +72,7 @@ import { AddCandidateDialog } from "@/components/pipeline/AddCandidateDialog";
 import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog";
 import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
+import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { anonymizeName } from "@/lib/anonymize";
@@ -271,9 +274,31 @@ export default function JobDetail() {
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
   const [rejectedStageFilter, setRejectedStageFilter] = useState<string>("all");
   const [rejectedLocationFilter, setRejectedLocationFilter] = useState<string>("all");
+  const [triggerCounts, setTriggerCounts] = useState<Record<string, number>>({}); // by stage.key
+  const [triggerDialog, setTriggerDialog] = useState<{ stageId: string; key: string; label: string } | null>(null);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
+
+  const refreshTriggerCounts = async () => {
+    if (!job?.workspace_id) return;
+    const { data } = await supabase
+      .from("stage_triggers" as any)
+      .select("stage_id, enabled, workspace_pipeline_stages!inner(key)")
+      .eq("workspace_id", job.workspace_id)
+      .eq("enabled", true);
+    const counts: Record<string, number> = {};
+    for (const r of (data ?? []) as any[]) {
+      const k = r.workspace_pipeline_stages?.key;
+      if (k) counts[k] = (counts[k] ?? 0) + 1;
+    }
+    setTriggerCounts(counts);
+  };
+
+  useEffect(() => {
+    refreshTriggerCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.workspace_id]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -423,6 +448,28 @@ export default function JobDetail() {
     clearSelection();
   };
 
+  const runStageTriggers = async (jobCandidateId: string, stageKey: string, candidateName: string) => {
+    if (!triggerCounts[stageKey]) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("execute-stage-trigger", {
+        body: { jobCandidateId, stageKey },
+      });
+      if (error) { toast.error(`Automation failed: ${error.message}`); return; }
+      const executed = (data as any)?.executed ?? [];
+      const skipped = (data as any)?.skipped ?? [];
+      for (const ex of executed) {
+        if (ex.type === "send_email") {
+          toast.success(`Automation triggered: Email sent to ${candidateName}.`);
+        }
+      }
+      if (skipped.length > 0 && executed.length === 0) {
+        toast.info(`Automation skipped: ${skipped[0]?.reason ?? "see logs"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Automation failed: ${err?.message ?? "unknown"}`);
+    }
+  };
+
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over) return;
     const newStage = String(e.over.id);
@@ -433,7 +480,9 @@ export default function JobDetail() {
     if (error) {
       toast.error(error.message);
       refresh();
+      return;
     }
+    runStageTriggers(entry.id, newStage, entry.candidates.full_name);
   };
 
   const progressEntry = async (entry: PipelineEntry) => {
@@ -447,6 +496,7 @@ export default function JobDetail() {
       .eq("id", entry.id);
     if (error) { toast.error(error.message); refresh(); return; }
     toast.success(`Moved to ${next.label}.`);
+    runStageTriggers(entry.id, next.key, entry.candidates.full_name);
   };
 
   const rejectCandidates = async (ids: string[], rawReason: string) => {
@@ -770,11 +820,30 @@ export default function JobDetail() {
                           aria-label={`Select all in ${stage.label}`}
                         />
                       )}
-                      <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate">
+                      <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate flex items-center gap-1">
                         {stage.label}
+                        {triggerCounts[stage.key] > 0 && (
+                          <Zap className="h-3 w-3 text-primary" aria-label="Has automation" />
+                        )}
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-muted-foreground">{stageEntries.length}</span>
+                      {canEdit && stage.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setTriggerDialog({ stageId: stage.id!, key: stage.key, label: stage.label })}>
+                              <Zap className="h-4 w-4" /> Manage triggers
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2 min-h-[80px]">
                     {stageEntries.map((entry) => {
@@ -861,6 +930,17 @@ export default function JobDetail() {
           workspaceId={job.workspace_id}
           stages={allStages}
           onChanged={refreshStages}
+        />
+      )}
+
+      {canEdit && triggerDialog && (
+        <StageTriggersDialog
+          open={!!triggerDialog}
+          onOpenChange={(v) => { if (!v) setTriggerDialog(null); }}
+          workspaceId={job.workspace_id}
+          stageId={triggerDialog.stageId}
+          stageLabel={triggerDialog.label}
+          onChanged={refreshTriggerCounts}
         />
       )}
 
