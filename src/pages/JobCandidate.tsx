@@ -630,7 +630,7 @@ export default function JobCandidate() {
                   {hideForHM && <Badge variant="outline" className="text-[10px]">Anonymised</Badge>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {(!hideForHM && summary) || (hideForHM && anonymizedSummary) ? (
+                  {summary ? (
                     <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
                       <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
                     </Button>
@@ -647,86 +647,95 @@ export default function JobCandidate() {
                 <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{displaySummary}</div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {hideForHM
-                    ? "No summary available yet. The recruiter can generate one to share an anonymised brief."
-                    : <>Click <em>Generate summary</em> to get an AI-written brief of this resume.</>}
+                  <>Click <em>Generate summary</em> to get an AI-written brief of this resume.</>
                 </p>
               )}
             </Card>
           )}
-          {hideForHM ? (
-            <Card className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <div>
-                  <div className="text-sm font-medium">Redacted CV</div>
-                  <p className="text-xs text-muted-foreground">
-                    The recruiter has hidden personal identifiers on this CV for unbiased review.
-                  </p>
+
+          <Card className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">
+                  {showRedactedView ? "Redacted CV" : "CV"}
+                  {redactedPath && !showRedactedView && (
+                    <span className="ml-2 text-xs text-muted-foreground">(redacted version available)</span>
+                  )}
                 </div>
-                {!redactedCv && (
-                  <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
-                    <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
-                  </Button>
-                )}
-              </div>
-              {redactedCv ? (
-                <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-                  {redactedCv}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  A redacted CV needs to be generated before hiring-manager review.
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {showRedactedView
+                    ? "Personal identifiers have been blacked out directly on the CV."
+                    : "The original CV as uploaded."}
                 </p>
-              )}
-            </Card>
-          ) : (
-            <Card className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <div className="text-sm font-medium">Original CV</div>
-                {canMove && isReviewStage && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setRedactOpen(true)}
-                    disabled={!resumeFullText}
-                    title={resumeFullText ? "Customise what hiring managers see on this CV" : "Generate the AI summary first to extract the CV text"}
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Customise redaction
-                  </Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {canMove && c.resume_path && /\.pdf($|\?)/i.test(c.resume_path) && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={redactedPath ? "outline" : "default"}
+                      onClick={runRedactCv}
+                      disabled={redacting}
+                      title="Auto-detect personal details on the CV and black them out"
+                    >
+                      <ShieldOff className="h-3.5 w-3.5" />
+                      {redacting ? "Redacting…" : redactedPath ? "Re-redact CV" : "Redact CV"}
+                    </Button>
+                    {redactedPath && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPreviewRedacted((v) => !v)}
+                          title="Toggle between original and redacted CV"
+                        >
+                          {previewRedacted ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          {previewRedacted ? "Show original" : "Preview redacted"}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={clearRedaction} disabled={redacting}>
+                          Clear
+                        </Button>
+                      </>
+                    )}
+                  </>
                 )}
               </div>
-              {resumeUrl && c.resume_path ? (
-                (() => {
-                  const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
-                  const fileName = c.resume_path.split("/").pop() ?? "resume";
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="text-sm text-muted-foreground truncate">{fileName}</div>
-                        <div className="flex items-center gap-2">
+            </div>
+            {cvUrlToShow && cvPathToShow ? (
+              (() => {
+                const isPdf = /\.pdf($|\?)/i.test(cvPathToShow);
+                const fileName = (cvPathToShow.split("/").pop() ?? "resume").replace(/^[a-f0-9-]+\.pdf$/i, "resume.pdf");
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="text-sm text-muted-foreground truncate">{fileName}</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={cvUrlToShow} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                        </Button>
+                        {!showRedactedView && (
                           <Button size="sm" variant="outline" asChild>
-                            <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                            <a href={cvUrlToShow} download={fileName}><Download className="h-3 w-3" /> Download</a>
                           </Button>
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={resumeUrl} download={fileName}><Download className="h-3 w-3" /> Download</a>
-                          </Button>
-                        </div>
+                        )}
                       </div>
-                      {isPdf ? (
-                        <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
-                      ) : (
-                        <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                          Inline preview isn't available for this file type. Use "Open" or "Download" above to view it.
-                        </div>
-                      )}
                     </div>
-                  );
-                })()
-              ) : (
-                <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
-              )}
-            </Card>
-          )}
+                    {isPdf ? (
+                      <iframe src={cvUrlToShow} className="w-full h-[70vh] rounded-md border" title="Resume" />
+                    ) : (
+                      <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                        Inline preview isn't available for this file type. Use "Open" above to view it.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : showRedactedView && !redactedPath ? (
+              <p className="text-sm text-muted-foreground">A redacted CV hasn't been generated yet.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
+            )}
+          </Card>
         </TabsContent>
 
         <TabsContent value="cover" className="mt-4">
