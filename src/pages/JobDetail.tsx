@@ -280,6 +280,26 @@ export default function JobDetail() {
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
 
+  const refreshTriggerCounts = async () => {
+    if (!job?.workspace_id) return;
+    const { data } = await supabase
+      .from("stage_triggers" as any)
+      .select("stage_id, enabled, workspace_pipeline_stages!inner(key)")
+      .eq("workspace_id", job.workspace_id)
+      .eq("enabled", true);
+    const counts: Record<string, number> = {};
+    for (const r of (data ?? []) as any[]) {
+      const k = r.workspace_pipeline_stages?.key;
+      if (k) counts[k] = (counts[k] ?? 0) + 1;
+    }
+    setTriggerCounts(counts);
+  };
+
+  useEffect(() => {
+    refreshTriggerCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.workspace_id]);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const refresh = async () => {
