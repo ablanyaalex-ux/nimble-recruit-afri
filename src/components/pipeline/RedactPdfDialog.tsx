@@ -22,6 +22,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   candidateId: string;
+  workspaceId: string;
   /** Storage path of the original CV PDF in the `resumes` bucket. */
   resumePath: string | null;
   /** Storage path of the existing redacted PDF (if any). */
