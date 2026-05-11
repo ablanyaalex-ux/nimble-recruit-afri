@@ -969,6 +969,7 @@ export default function JobCandidate() {
         open={redactOpen}
         onOpenChange={setRedactOpen}
         candidateId={detail.candidate_id}
+        workspaceId={detail.jobs?.workspace_id ?? ""}
         resumePath={detail.candidates.resume_path}
         redactedResumePath={detail.candidates.redacted_resume_path}
         onSaved={() => refresh()}

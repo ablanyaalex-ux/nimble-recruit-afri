@@ -220,7 +220,7 @@ export function RedactPdfDialog({ open, onOpenChange, candidateId, workspaceId, 
       }
       const out = await pdfDoc.save();
 
-      const path = `redacted/${candidateId}.pdf`;
+      const path = `${workspaceId}/${candidateId}/redacted.pdf`;
       const { error: upErr } = await supabase.storage
         .from("resumes")
         .upload(path, new Blob([new Uint8Array(out)], { type: "application/pdf" }), {
