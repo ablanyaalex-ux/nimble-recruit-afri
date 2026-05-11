@@ -681,7 +681,7 @@ export default function JobCandidate() {
             </Card>
           )}
 
-          {c.resume_path && detail.jobs?.description && (
+          {c.resume_path && (
             <Card className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0">
@@ -698,17 +698,21 @@ export default function JobCandidate() {
                 </div>
                 <div className="flex items-center gap-2">
                   {detail.match_score != null ? (
-                    <Button size="sm" variant="ghost" onClick={() => generateMatch(true)} disabled={matchLoading}>
+                    <Button size="sm" variant="ghost" onClick={() => generateMatch(true)} disabled={matchLoading || !detail.jobs?.description}>
                       <RefreshCw className={`h-3 w-3 ${matchLoading ? "animate-spin" : ""}`} /> Re-score
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={() => generateMatch(false)} disabled={matchLoading}>
+                    <Button size="sm" onClick={() => generateMatch(false)} disabled={matchLoading || !detail.jobs?.description}>
                       <Sparkles className="h-3 w-3" /> {matchLoading ? "Scoring…" : "Score match"}
                     </Button>
                   )}
                 </div>
               </div>
-              {matchLoading && detail.match_score == null ? (
+              {!detail.jobs?.description ? (
+                <p className="text-sm text-muted-foreground">
+                  Add a job description (Edit job → Description) so AI can compare this candidate against the role's requirements.
+                </p>
+              ) : matchLoading && detail.match_score == null ? (
                 <p className="text-sm text-muted-foreground">Comparing the CV to the job requirements… this can take ~10–20s.</p>
               ) : detail.match_score != null ? (
                 <div className="space-y-3">
