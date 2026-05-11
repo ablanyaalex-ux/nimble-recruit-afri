@@ -539,7 +539,7 @@ export default function JobCandidate() {
               </Button>
             )}
 
-            {(canEdit || canMove || resumeUrl) && (
+            {!isHM && (canEdit || canMove || resumeUrl) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline">
