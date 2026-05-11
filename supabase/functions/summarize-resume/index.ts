@@ -56,7 +56,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!force && candidate.resume_summary) {
+    const nameTokens = (candidate.full_name || "")
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 2);
+    const cachedHasName = candidate.resume_summary
+      ? nameTokens.some((t) => new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(candidate.resume_summary!))
+      : false;
+
+    if (!force && candidate.resume_summary && !cachedHasName) {
       return new Response(JSON.stringify({ summary: candidate.resume_summary, cached: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -91,14 +99,14 @@ Deno.serve(async (req) => {
     else if (lower.endsWith(".doc")) mime = "application/msword";
     else if (lower.endsWith(".txt")) mime = "text/plain";
 
-    const systemPrompt = "You are an elite recruiting analyst. Read the attached CV/resume and write 2–3 short, punchy paragraphs (no bullet lists, no markdown headings) giving a sharp point of view on this candidate. Cover: who they are and the shape of their career, the most impressive achievements with concrete impact (numbers, scale, outcomes), what they are clearly strong at, and any caveats or things worth probing in an interview. Be opinionated and substantive — do NOT just restate the CV. Aim for ~120–200 words total. Do not invent anything.";
+    const systemPrompt = "You are an elite recruiting analyst. Read the attached CV/resume and write 2–3 short, punchy paragraphs (no bullet lists, no markdown headings) giving a sharp point of view on this candidate. Cover: who they are and the shape of their career, the most impressive achievements with concrete impact (numbers, scale, outcomes), what they are clearly strong at, and any caveats or things worth probing in an interview. Be opinionated and substantive — do NOT just restate the CV. Aim for ~120–200 words total. Do not invent anything. CRITICAL: Never mention the candidate's name or initials. Refer to them only as 'the candidate', 'they', or by role (e.g. 'this engineer'). Do not include email, phone, address, LinkedIn, or any other contact details.";
 
     const messages = [
       { role: "system", content: systemPrompt },
       {
         role: "user",
         content: [
-          { type: "text", text: `Process this resume for ${candidate.full_name}${candidate.headline ? ` (${candidate.headline})` : ""}.` },
+          { type: "text", text: `Summarise this CV. Do not use the candidate's name anywhere in your response.${candidate.headline ? ` Headline: ${candidate.headline}.` : ""}` },
           { type: "image_url", image_url: { url: `data:${mime};base64,${b64}` } },
         ],
       },
@@ -132,12 +140,18 @@ Deno.serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
+    let summary: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
     if (!summary) {
       return new Response(JSON.stringify({ error: "Empty summary" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Safety net: scrub any name tokens that slipped through.
+    for (const t of nameTokens) {
+      const re = new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
+      summary = summary.replace(re, "the candidate");
+    }
+    summary = summary.replace(/\b(the candidate)(\s+the candidate)+\b/gi, "the candidate");
 
     await admin
       .from("candidates")
