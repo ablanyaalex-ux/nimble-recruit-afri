@@ -274,6 +274,8 @@ export default function JobDetail() {
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
   const [rejectedStageFilter, setRejectedStageFilter] = useState<string>("all");
   const [rejectedLocationFilter, setRejectedLocationFilter] = useState<string>("all");
+  const [triggerCounts, setTriggerCounts] = useState<Record<string, number>>({}); // by stage.key
+  const [triggerDialog, setTriggerDialog] = useState<{ stageId: string; key: string; label: string } | null>(null);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
