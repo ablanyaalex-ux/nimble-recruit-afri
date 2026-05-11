@@ -1,0 +1,1 @@
+ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS redaction_rects JSONB NOT NULL DEFAULT '[]'::jsonb;

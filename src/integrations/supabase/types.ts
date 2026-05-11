@@ -60,6 +60,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           redacted_resume_path: string | null
+          redaction_rects: Json
           referrer_name: string | null
           resume_full_text: string | null
           resume_path: string | null
@@ -82,6 +83,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           redacted_resume_path?: string | null
+          redaction_rects?: Json
           referrer_name?: string | null
           resume_full_text?: string | null
           resume_path?: string | null
@@ -104,6 +106,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           redacted_resume_path?: string | null
+          redaction_rects?: Json
           referrer_name?: string | null
           resume_full_text?: string | null
           resume_path?: string | null
