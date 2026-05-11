@@ -282,11 +282,6 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
-  // Prefer the recruiter's manually redacted CV; fall back to auto-redacted full CV text.
-  const redactedCv = hideForHM
-    ? (detail?.candidates.anonymized_resume_summary
-        ?? redactResumeText(detail?.candidates.resume_full_text, detail?.candidates))
-    : null;
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
