@@ -159,7 +159,10 @@ export function AnonymiseCvDialog({
         page.drawRectangle({ x, y: yBottom, width: w, height: h, color: rgb(0, 0, 0), opacity: 1 });
       }
       const out = await pdfDoc.save();
-      const redactedPath = `redacted/${candidateId}.pdf`;
+      // Storage RLS requires path to start with the workspace_id folder.
+      // Reuse the workspace folder from the original resume path.
+      const workspaceFolder = resumePath.split("/")[0];
+      const redactedPath = `${workspaceFolder}/${candidateId}/redacted.pdf`;
       const { error: upErr } = await supabase.storage
         .from("resumes")
         .upload(redactedPath, new Blob([out as unknown as ArrayBuffer], { type: "application/pdf" }), {
