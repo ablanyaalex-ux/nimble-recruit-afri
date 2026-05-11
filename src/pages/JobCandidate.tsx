@@ -21,8 +21,8 @@ import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPop
 import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
-import { anonymizeName, redactResumeText } from "@/lib/anonymize";
-import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
+import { anonymizeName } from "@/lib/anonymize";
+import { Eye, EyeOff, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 type Detail = {
@@ -41,12 +41,11 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
+    redacted_resume_path: string | null;
     notes: string | null;
     source: string | null;
     location: string | null;
     resume_summary: string | null;
-    resume_full_text: string | null;
-    anonymized_resume_summary: string | null;
   };
 };
 
@@ -107,8 +106,10 @@ export default function JobCandidate() {
   const [posting, setPosting] = useState(false);
   const [fbForm, setFbForm] = useState({ rating: "", recommendation: "", strengths: "", concerns: "", notes: "" });
   const [summary, setSummary] = useState<string | null>(null);
-  const [resumeFullText, setResumeFullText] = useState<string | null>(null);
-  const [anonymizedSummary, setAnonymizedSummary] = useState<string | null>(null);
+  const [redactedResumeUrl, setRedactedResumeUrl] = useState<string | null>(null);
+  const [redactedPath, setRedactedPath] = useState<string | null>(null);
+  const [redacting, setRedacting] = useState(false);
+  const [previewRedacted, setPreviewRedacted] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [progressing, setProgressing] = useState(false);
   const [editCandidateOpen, setEditCandidateOpen] = useState(false);
@@ -129,7 +130,6 @@ export default function JobCandidate() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [targetStage, setTargetStage] = useState("application");
   const [addingToJob, setAddingToJob] = useState(false);
-  const [redactOpen, setRedactOpen] = useState(false);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
@@ -145,14 +145,14 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
       setDetail(data as unknown as Detail);
       setSummary((data.candidates as any)?.resume_summary ?? null);
-      setResumeFullText((data.candidates as any)?.resume_full_text ?? null);
-      setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
+      const rPath = (data.candidates as any)?.redacted_resume_path ?? null;
+      setRedactedPath(rPath);
       if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
@@ -160,6 +160,12 @@ export default function JobCandidate() {
         setResumeUrl(signed?.signedUrl ?? null);
       } else {
         setResumeUrl(null);
+      }
+      if (rPath) {
+        const { data: rs } = await supabase.storage.from("resumes").createSignedUrl(rPath, 600);
+        setRedactedResumeUrl(rs?.signedUrl ?? null);
+      } else {
+        setRedactedResumeUrl(null);
       }
     }
 
@@ -403,13 +409,46 @@ export default function JobCandidate() {
       return toast.error(msg);
     }
     if ((data as any)?.summary) setSummary((data as any).summary);
-    if ((data as any)?.resumeFullText) setResumeFullText((data as any).resumeFullText);
-    if ((data as any)?.anonymizedSummary) setAnonymizedSummary((data as any).anonymizedSummary);
-    if ((data as any)?.summary || (data as any)?.anonymizedSummary) {
+    if ((data as any)?.summary) {
       if (!(data as any).cached) toast.success("Summary generated.");
     } else if ((data as any)?.error) {
       toast.error((data as any).error);
     }
+  };
+
+  const runRedactCv = async () => {
+    if (!detail) return;
+    setRedacting(true);
+    const { data, error } = await supabase.functions.invoke("redact-resume", {
+      body: { candidateId: detail.candidate_id },
+    });
+    setRedacting(false);
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to redact CV";
+      return toast.error(msg);
+    }
+    if ((data as any)?.error) return toast.error((data as any).error);
+    const path = (data as any)?.redactedPath as string | undefined;
+    const url = (data as any)?.redactedUrl as string | undefined;
+    if (path) setRedactedPath(path);
+    if (url) setRedactedResumeUrl(url);
+    setPreviewRedacted(true);
+    toast.success(`Redacted CV ready (${(data as any)?.regionsDrawn ?? 0} regions blacked out).`);
+  };
+
+  const clearRedaction = async () => {
+    if (!detail) return;
+    setRedacting(true);
+    const { error } = await supabase
+      .from("candidates")
+      .update({ redacted_resume_path: null })
+      .eq("id", detail.candidate_id);
+    setRedacting(false);
+    if (error) return toast.error(error.message);
+    setRedactedPath(null);
+    setRedactedResumeUrl(null);
+    setPreviewRedacted(false);
+    toast.success("Redacted CV cleared.");
   };
 
   const postComment = async () => {
@@ -462,15 +501,16 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
-  const hideForHM = detail.anonymized && isHM;
-  const displayName = hideForHM ? anonymizeName(c.full_name) : c.full_name;
-  // Summary is shown to everyone. For HMs we strip identifying details automatically.
-  const displaySummary = hideForHM ? redactResumeText(summary, c) : summary;
-  // The CV shown to HMs: prefer the recruiter's manually redacted version, otherwise an auto-redacted CV.
-  const redactedCv = hideForHM
-    ? (anonymizedSummary ?? redactResumeText(resumeFullText, c))
-    : null;
+  // The redacted view applies for HMs whenever the candidate is anonymised, OR
+  // for recruiters who turned on the "Preview redacted" toggle (so they can
+  // confirm what the HM will see without switching accounts).
+  const showRedactedView = (detail.anonymized && isHM) || (canMove && previewRedacted);
+  const hideForHM = showRedactedView;
+  const displayName = showRedactedView ? anonymizeName(c.full_name) : c.full_name;
+  const displaySummary = summary;
   const isReviewStage = detail.stage === "reviewed";
+  const cvUrlToShow = showRedactedView ? redactedResumeUrl : resumeUrl;
+  const cvPathToShow = showRedactedView ? redactedPath : c.resume_path;
 
   return (
     <PageContainer>
@@ -590,7 +630,7 @@ export default function JobCandidate() {
                   {hideForHM && <Badge variant="outline" className="text-[10px]">Anonymised</Badge>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {(!hideForHM && summary) || (hideForHM && anonymizedSummary) ? (
+                  {summary ? (
                     <Button size="sm" variant="ghost" onClick={() => generateSummary(true)} disabled={summaryLoading}>
                       <RefreshCw className={`h-3 w-3 ${summaryLoading ? "animate-spin" : ""}`} /> Regenerate
                     </Button>
@@ -607,86 +647,95 @@ export default function JobCandidate() {
                 <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{displaySummary}</div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {hideForHM
-                    ? "No summary available yet. The recruiter can generate one to share an anonymised brief."
-                    : <>Click <em>Generate summary</em> to get an AI-written brief of this resume.</>}
+                  <>Click <em>Generate summary</em> to get an AI-written brief of this resume.</>
                 </p>
               )}
             </Card>
           )}
-          {hideForHM ? (
-            <Card className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <div>
-                  <div className="text-sm font-medium">Redacted CV</div>
-                  <p className="text-xs text-muted-foreground">
-                    The recruiter has hidden personal identifiers on this CV for unbiased review.
-                  </p>
+
+          <Card className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">
+                  {showRedactedView ? "Redacted CV" : "CV"}
+                  {redactedPath && !showRedactedView && (
+                    <span className="ml-2 text-xs text-muted-foreground">(redacted version available)</span>
+                  )}
                 </div>
-                {!redactedCv && (
-                  <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
-                    <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
-                  </Button>
-                )}
-              </div>
-              {redactedCv ? (
-                <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-                  {redactedCv}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  A redacted CV needs to be generated before hiring-manager review.
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {showRedactedView
+                    ? "Personal identifiers have been blacked out directly on the CV."
+                    : "The original CV as uploaded."}
                 </p>
-              )}
-            </Card>
-          ) : (
-            <Card className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <div className="text-sm font-medium">Original CV</div>
-                {canMove && isReviewStage && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setRedactOpen(true)}
-                    disabled={!resumeFullText}
-                    title={resumeFullText ? "Customise what hiring managers see on this CV" : "Generate the AI summary first to extract the CV text"}
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Customise redaction
-                  </Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {canMove && c.resume_path && /\.pdf($|\?)/i.test(c.resume_path) && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={redactedPath ? "outline" : "default"}
+                      onClick={runRedactCv}
+                      disabled={redacting}
+                      title="Auto-detect personal details on the CV and black them out"
+                    >
+                      <ShieldOff className="h-3.5 w-3.5" />
+                      {redacting ? "Redacting…" : redactedPath ? "Re-redact CV" : "Redact CV"}
+                    </Button>
+                    {redactedPath && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPreviewRedacted((v) => !v)}
+                          title="Toggle between original and redacted CV"
+                        >
+                          {previewRedacted ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          {previewRedacted ? "Show original" : "Preview redacted"}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={clearRedaction} disabled={redacting}>
+                          Clear
+                        </Button>
+                      </>
+                    )}
+                  </>
                 )}
               </div>
-              {resumeUrl && c.resume_path ? (
-                (() => {
-                  const isPdf = /\.pdf($|\?)/i.test(c.resume_path);
-                  const fileName = c.resume_path.split("/").pop() ?? "resume";
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="text-sm text-muted-foreground truncate">{fileName}</div>
-                        <div className="flex items-center gap-2">
+            </div>
+            {cvUrlToShow && cvPathToShow ? (
+              (() => {
+                const isPdf = /\.pdf($|\?)/i.test(cvPathToShow);
+                const fileName = (cvPathToShow.split("/").pop() ?? "resume").replace(/^[a-f0-9-]+\.pdf$/i, "resume.pdf");
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="text-sm text-muted-foreground truncate">{fileName}</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={cvUrlToShow} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                        </Button>
+                        {!showRedactedView && (
                           <Button size="sm" variant="outline" asChild>
-                            <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                            <a href={cvUrlToShow} download={fileName}><Download className="h-3 w-3" /> Download</a>
                           </Button>
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={resumeUrl} download={fileName}><Download className="h-3 w-3" /> Download</a>
-                          </Button>
-                        </div>
+                        )}
                       </div>
-                      {isPdf ? (
-                        <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Resume" />
-                      ) : (
-                        <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                          Inline preview isn't available for this file type. Use "Open" or "Download" above to view it.
-                        </div>
-                      )}
                     </div>
-                  );
-                })()
-              ) : (
-                <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
-              )}
-            </Card>
-          )}
+                    {isPdf ? (
+                      <iframe src={cvUrlToShow} className="w-full h-[70vh] rounded-md border" title="Resume" />
+                    ) : (
+                      <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                        Inline preview isn't available for this file type. Use "Open" above to view it.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : showRedactedView && !redactedPath ? (
+              <p className="text-sm text-muted-foreground">A redacted CV hasn't been generated yet.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
+            )}
+          </Card>
         </TabsContent>
 
         <TabsContent value="cover" className="mt-4">
@@ -960,14 +1009,6 @@ export default function JobCandidate() {
         </DialogContent>
       </Dialog>
 
-      <RedactCvDialog
-        open={redactOpen}
-        onOpenChange={setRedactOpen}
-        candidateId={detail.candidate_id}
-        originalCv={resumeFullText}
-        currentRedacted={anonymizedSummary}
-        onSaved={(next) => setAnonymizedSummary(next)}
-      />
     </PageContainer>
   );
 }

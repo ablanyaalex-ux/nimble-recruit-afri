@@ -23,8 +23,7 @@ import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
-import { anonymizeName, redactResumeText } from "@/lib/anonymize";
-import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
+import { anonymizeName } from "@/lib/anonymize";
 
 type Props = {
   jobCandidateId: string | null;
@@ -45,9 +44,8 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
+    redacted_resume_path: string | null;
     resume_summary: string | null;
-    resume_full_text: string | null;
-    anonymized_resume_summary: string | null;
     notes: string | null;
   };
 };
@@ -84,7 +82,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
-  const [redactOpen, setRedactOpen] = useState(false);
+  
   const [fbForm, setFbForm] = useState({
     rating: "",
     recommendation: "",
@@ -97,7 +95,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
     if (!jobCandidateId) return;
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, resume_summary, resume_full_text, anonymized_resume_summary, notes)")
+      .select("id, stage, candidate_id, anonymized, candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, resume_summary, notes)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -284,11 +282,6 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const candidateName = hideForHM
     ? anonymizeName(detail?.candidates.full_name)
     : detail?.candidates.full_name ?? "";
-  // Prefer the recruiter's manually redacted CV; fall back to auto-redacted full CV text.
-  const redactedCv = hideForHM
-    ? (detail?.candidates.anonymized_resume_summary
-        ?? redactResumeText(detail?.candidates.resume_full_text, detail?.candidates))
-    : null;
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
@@ -442,17 +435,9 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               <TabsContent value="profile" className="mt-4 space-y-3">
                 <Card className="p-4 space-y-3 text-sm">
                   {hideForHM ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Contact details, LinkedIn, location, education and other personal identifiers are redacted during anonymous review.
-                      </p>
-                      {redactedCv && (
-                        <div>
-                          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Redacted CV</Label>
-                          <p className="mt-1 whitespace-pre-wrap">{redactedCv}</p>
-                        </div>
-                      )}
-                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Contact details, LinkedIn, location and other personal identifiers are blacked out on the CV during anonymous review. Open the candidate's full page to view the redacted CV.
+                    </p>
                   ) : (
                     <>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label><p>{detail.candidates.email ?? "—"}</p></div>
@@ -460,22 +445,11 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">LinkedIn</Label><p className="truncate">{detail.candidates.linkedin_url ?? "—"}</p></div>
                       <div><Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label><p className="whitespace-pre-wrap">{detail.candidates.notes ?? "—"}</p></div>
                       {canMove && isReviewStage && (
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t">
-                          <div className="min-w-0">
-                            <Label className="text-xs uppercase tracking-wider text-muted-foreground">CV redaction</Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Choose exactly what's hidden on the CV shown to hiring managers.
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setRedactOpen(true)}
-                            disabled={!detail.candidates.resume_full_text}
-                            title={detail.candidates.resume_full_text ? "" : "Generate the AI summary first to extract the CV text"}
-                          >
-                            Customise redaction
-                          </Button>
+                        <div className="pt-2 border-t">
+                          <Label className="text-xs uppercase tracking-wider text-muted-foreground">CV redaction</Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Open the candidate's full page (Resume tab) to auto-redact personal details on the PDF CV with one click.
+                          </p>
                         </div>
                       )}
                     </>
@@ -483,15 +457,6 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 </Card>
               </TabsContent>
             </Tabs>
-
-            <RedactCvDialog
-              open={redactOpen}
-              onOpenChange={setRedactOpen}
-              candidateId={detail.candidate_id}
-              originalCv={detail.candidates.resume_full_text}
-              currentRedacted={detail.candidates.anonymized_resume_summary}
-              onSaved={() => refresh()}
-            />
           </>
         )}
       </SheetContent>
