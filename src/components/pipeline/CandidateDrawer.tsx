@@ -23,8 +23,7 @@ import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { Download, Send, Star } from "lucide-react";
 import { toast } from "sonner";
-import { anonymizeName, redactResumeText } from "@/lib/anonymize";
-import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
+import { anonymizeName } from "@/lib/anonymize";
 
 type Props = {
   jobCandidateId: string | null;
