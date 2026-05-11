@@ -820,11 +820,30 @@ export default function JobDetail() {
                           aria-label={`Select all in ${stage.label}`}
                         />
                       )}
-                      <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate">
+                      <div className="text-xs uppercase tracking-wider font-medium text-muted-foreground truncate flex items-center gap-1">
                         {stage.label}
+                        {triggerCounts[stage.key] > 0 && (
+                          <Zap className="h-3 w-3 text-primary" aria-label="Has automation" />
+                        )}
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground shrink-0">{stageEntries.length}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-muted-foreground">{stageEntries.length}</span>
+                      {canEdit && stage.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setTriggerDialog({ stageId: stage.id!, key: stage.key, label: stage.label })}>
+                              <Zap className="h-4 w-4" /> Manage triggers
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2 min-h-[80px]">
                     {stageEntries.map((entry) => {
