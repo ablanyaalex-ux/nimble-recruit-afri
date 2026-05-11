@@ -422,7 +422,26 @@ export default function JobCandidate() {
     }
   };
 
-  const removeAnonymisation = async () => {
+  const generateMatch = async (force = false) => {
+    if (!detail) return;
+    setMatchLoading(true);
+    const { data, error } = await supabase.functions.invoke("match-candidate", {
+      body: { jobCandidateId: detail.id, force },
+    });
+    setMatchLoading(false);
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || "Failed to score match";
+      return toast.error(msg);
+    }
+    if ((data as any)?.error) return toast.error((data as any).error);
+    const score = (data as any)?.score;
+    const verdict = (data as any)?.verdict;
+    const rationale = (data as any)?.rationale;
+    if (typeof score === "number") {
+      setDetail({ ...detail, match_score: score, match_verdict: verdict ?? null, match_rationale: rationale ?? null });
+      if (!(data as any).cached) toast.success("Match score generated.");
+    }
+  };
     if (!detail) return;
     const { error: cErr } = await supabase
       .from("candidates")
