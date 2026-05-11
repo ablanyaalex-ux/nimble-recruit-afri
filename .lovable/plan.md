@@ -1,64 +1,36 @@
 ## Goal
+Make it possible to add and test a Hiring Manager from the Team page without silently ending up with a user who can't see anything.
 
-Replace the markdown-based redaction flow with a true **PDF redaction** flow. The recruiter opens a candidate's CV in the Review stage, sees the PDF rendered page-by-page with **auto-detected black boxes** over PII, can adjust them (drag, resize, delete, draw new), and saves a new redacted PDF. Hiring managers see only that redacted PDF.
+## Changes
 
-## What "PII" means here
-Auto-detect and box: full name, email, phone, LinkedIn URL, location/address, age / date of birth, marital status, gender, nationality, photo. Recruiter can touch up anything we miss.
+### 1. Team page: hiring-manager-aware invite form (`src/pages/Team.tsx`)
+- When the role select is set to **Hiring manager**, reveal two extra fields:
+  - **Client** (required) — `Select` populated from `clients` in the current workspace.
+  - **Name** (required) — used to create the `client_contacts` row.
+  - Optional **Title**.
+- On submit for `hiring_manager`:
+  1. Insert a `client_contacts` row (`client_id`, `name`, `email`, `title`) so the trigger can link them on signup.
+  2. Insert the `workspace_invites` row with role `hiring_manager`.
+  3. Copy the invite link to clipboard (existing behavior).
+- For other roles, behavior is unchanged.
+- Add a short helper line under the role select explaining: "Hiring managers must be linked to a client to see its jobs and candidates."
 
-## Database
+### 2. Members list: surface linked client(s) for hiring managers
+- In the existing Members section, for any member whose role is `hiring_manager`, query `client_contacts` by `user_id` and render the linked client name(s) as small badges next to their name.
+- If a hiring manager has no linked contact, show a `destructive` badge "Not linked to a client" with a small "Link to client…" button that opens a popover to create the contact (same fields as above) for an existing workspace user. This recovers any HMs that were invited the wrong way previously.
 
-- Add `candidates.redacted_resume_path TEXT NULL` — storage path of the burned-in redacted PDF.
-- Keep `anonymized_resume_summary` (no longer used for this flow, but harmless).
-- Storage: reuse existing private `resumes` bucket. Redacted file stored at `redacted/<candidate_id>.pdf`.
+### 3. ClientDetail: make the existing "Invite as hiring manager" more discoverable
+- Move the action from the icon-only ghost button to a labeled `Button` ("Invite as hiring manager") and add a subtle helper sentence at the top of the Contacts section: "Invite a contact as a hiring manager to give them scoped access to this client's jobs."
+- No logic change — `inviteAsHM` already does the right thing.
 
-## Backend
+### 4. (Optional) AcceptInvite: better confirmation
+- After accepting a `hiring_manager` invite, show a one-line confirmation listing which clients they were linked to (read from `client_contacts` where `user_id = auth.uid()`). Helps verify the link worked.
 
-New edge function **`redact-resume-detect`** (`verify_jwt = false`, validates JWT in code):
-- Input: `{ candidateId }`.
-- Loads the original PDF from `resumes` bucket (service role).
-- Uses Lovable AI Gateway with `google/gemini-2.5-pro` (vision) to return, **per page**, a JSON array of bounding boxes for PII, normalized to 0–1 of page width/height, with a `kind` label.
-- Also passes the candidate's known full_name/email/phone/linkedin/location to anchor detection.
-- Returns `{ pages: [{ width, height, boxes: [{x,y,w,h,kind}] }] }`. Does **not** mutate storage.
+## Technical notes
+- No schema changes required. `link_contact_to_user` trigger already fires on new `auth.users` and matches by lowercased email.
+- RLS already allows workspace owners to insert `client_contacts` (via `can_edit_workspace`), and `workspace_invites` (via `has_workspace_role 'owner'`), so the new Team flow works with current policies.
+- For the "Link to client" recovery flow on existing members, we insert a `client_contacts` row with the member's email and `user_id` set directly (owner has insert permission). We'll fetch the member's email via a new lightweight server function — or simpler, store/display via `profiles.display_name` and require the owner to type the email. Pick the simpler option: ask owner to confirm email when linking.
 
-No edge function needed for save — the burn-in happens client-side with `pdf-lib`, then we upload via the standard storage client.
-
-## Frontend
-
-Install `pdfjs-dist` and `pdf-lib`.
-
-New component **`src/components/pipeline/RedactPdfDialog.tsx`**:
-- Opens from the existing "Customise redaction" button in Resume tab / Candidate Drawer (Review stage only).
-- Loads the original PDF with pdfjs-dist, renders each page to a `<canvas>`.
-- Calls `redact-resume-detect` once on open and overlays the returned boxes as semi-transparent black rectangles with handles.
-- Toolbar: **Draw box** (drag on page), **Select** (click box → drag/resize/delete), **Reset boxes**, **Re-run auto-detect**.
-- Save:
-  1. Load original PDF with pdf-lib.
-  2. For each box, draw an opaque black rectangle on the matching page.
-  3. Upload the resulting bytes to `resumes/redacted/<candidateId>.pdf` (upsert).
-  4. Update `candidates.redacted_resume_path`.
-- Clear: deletes the redacted file + nulls the column.
-
-Viewer changes (`JobCandidate.tsx`, `CandidateDrawer.tsx`):
-- When viewer is a hiring manager AND `job_candidates.anonymized = true`:
-  - Use `redacted_resume_path` for the signed URL. If missing, show "Recruiter hasn't prepared a redacted CV yet" instead of the original.
-- Recruiters/owners always see the original PDF and the "Customise redaction" button.
-
-Cleanup:
-- Remove the markdown redaction UI bits tied to `anonymized_resume_summary` from the CV display path. The `RedactCvDialog` component and the markdown-redaction code paths can be deleted.
-- `summarize-resume` reverts to a single-section executive brief (drop the `---FULL CV TEXT---` divider and `resume_full_text` extraction). The summary stays, but it is no longer the HM's CV view.
-
-## File-level changes
-
-- **Migration**: add `redacted_resume_path` to `candidates`.
-- **New edge function**: `supabase/functions/redact-resume-detect/index.ts`.
-- **Edit edge function**: `supabase/functions/summarize-resume/index.ts` — single brief, no full-text extraction.
-- **New component**: `src/components/pipeline/RedactPdfDialog.tsx`.
-- **Edit**: `src/pages/JobCandidate.tsx` — wire new dialog; HM sees redacted PDF.
-- **Edit**: `src/components/pipeline/CandidateDrawer.tsx` — same wiring on the drawer's Profile/Resume area.
-- **Delete**: `src/components/pipeline/RedactCvDialog.tsx` and its imports.
-
-## Notes / trade-offs
-
-- Auto-detect uses an LLM with vision; it is good but not perfect — that's exactly why the manual touch-up exists.
-- Burn-in is done client-side, so no extra server cost; a 50-page CV is fine.
-- The redacted PDF is a flat black-rectangle overlay, so removed text cannot be recovered by selecting/copying.
+## Out of scope
+- Changing the `hiring_manager` permission model.
+- Multi-client hiring managers UI beyond showing badges (already supported by data model).

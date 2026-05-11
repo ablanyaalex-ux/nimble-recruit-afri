@@ -22,7 +22,7 @@ import { MentionTextarea } from "@/components/pipeline/MentionTextarea";
 import { CommentBody } from "@/components/pipeline/CommentBody";
 import { parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
 import { anonymizeName, redactResumeText } from "@/lib/anonymize";
-import { RedactPdfDialog } from "@/components/pipeline/RedactPdfDialog";
+import { RedactCvDialog } from "@/components/pipeline/RedactCvDialog";
 import { toast } from "sonner";
 
 type Detail = {
@@ -41,7 +41,6 @@ type Detail = {
     headline: string | null;
     linkedin_url: string | null;
     resume_path: string | null;
-    redacted_resume_path: string | null;
     notes: string | null;
     source: string | null;
     location: string | null;
@@ -146,7 +145,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, jobs(workspace_id, client_id, title), candidates(full_name, email, phone, headline, linkedin_url, resume_path, notes, source, location, resume_summary, resume_full_text, anonymized_resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -154,17 +153,10 @@ export default function JobCandidate() {
       setSummary((data.candidates as any)?.resume_summary ?? null);
       setResumeFullText((data.candidates as any)?.resume_full_text ?? null);
       setAnonymizedSummary((data.candidates as any)?.anonymized_resume_summary ?? null);
-      // Hiring managers viewing an anonymised candidate see the redacted PDF
-      // (if the recruiter has prepared one). Everyone else sees the original.
-      const cand = data.candidates as any;
-      const viewerIsHM = isHM && (data as any).anonymized;
-      const pathToShow = viewerIsHM
-        ? (cand?.redacted_resume_path ?? null)
-        : (cand?.resume_path ?? null);
-      if (pathToShow) {
+      if (data.candidates?.resume_path) {
         const { data: signed } = await supabase.storage
           .from("resumes")
-          .createSignedUrl(pathToShow, 600);
+          .createSignedUrl(data.candidates.resume_path, 600);
         setResumeUrl(signed?.signedUrl ?? null);
       } else {
         setResumeUrl(null);
@@ -631,12 +623,19 @@ export default function JobCandidate() {
                     The recruiter has hidden personal identifiers on this CV for unbiased review.
                   </p>
                 </div>
+                {!redactedCv && (
+                  <Button size="sm" onClick={() => generateSummary(false)} disabled={summaryLoading || !c.resume_path}>
+                    <Sparkles className="h-3 w-3" /> {summaryLoading ? "Generating…" : "Generate redacted CV"}
+                  </Button>
+                )}
               </div>
-              {resumeUrl ? (
-                <iframe src={resumeUrl} className="w-full h-[70vh] rounded-md border" title="Redacted CV" />
+              {redactedCv ? (
+                <div className="rounded-md border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                  {redactedCv}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  The recruiter hasn't prepared a redacted CV yet.
+                  A redacted CV needs to be generated before hiring-manager review.
                 </p>
               )}
             </Card>
@@ -644,14 +643,15 @@ export default function JobCandidate() {
             <Card className="p-4">
               <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <div className="text-sm font-medium">Original CV</div>
-                {canMove && isReviewStage && c.resume_path && (
+                {canMove && isReviewStage && (
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => setRedactOpen(true)}
+                    disabled={!resumeFullText}
+                    title={resumeFullText ? "Customise what hiring managers see on this CV" : "Generate the AI summary first to extract the CV text"}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                    {c.redacted_resume_path ? "Edit redactions" : "Redact for hiring managers"}
+                    <Pencil className="h-3.5 w-3.5" /> Customise redaction
                   </Button>
                 )}
               </div>
@@ -662,12 +662,7 @@ export default function JobCandidate() {
                   return (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="text-sm text-muted-foreground truncate">
-                          {fileName}
-                          {c.redacted_resume_path && (
-                            <Badge variant="outline" className="ml-2 text-[10px]">Redacted version saved</Badge>
-                          )}
-                        </div>
+                        <div className="text-sm text-muted-foreground truncate">{fileName}</div>
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="outline" asChild>
                             <a href={resumeUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
@@ -965,14 +960,13 @@ export default function JobCandidate() {
         </DialogContent>
       </Dialog>
 
-      <RedactPdfDialog
+      <RedactCvDialog
         open={redactOpen}
         onOpenChange={setRedactOpen}
         candidateId={detail.candidate_id}
-        workspaceId={detail.jobs?.workspace_id ?? ""}
-        resumePath={detail.candidates.resume_path}
-        redactedResumePath={detail.candidates.redacted_resume_path}
-        onSaved={() => refresh()}
+        originalCv={resumeFullText}
+        currentRedacted={anonymizedSummary}
+        onSaved={(next) => setAnonymizedSummary(next)}
       />
     </PageContainer>
   );
