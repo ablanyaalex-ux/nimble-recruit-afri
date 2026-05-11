@@ -1,0 +1,1 @@
+ALTER TABLE public.job_candidates ADD COLUMN IF NOT EXISTS match_breakdown jsonb;

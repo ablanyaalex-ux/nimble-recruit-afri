@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     const { data: jc, error: jcErr } = await userClient
       .from("job_candidates")
-      .select("id, candidate_id, job_id, match_score, match_verdict, match_rationale, jobs(title, description, location, employment_type), candidates(full_name, headline, resume_path)")
+      .select("id, candidate_id, job_id, match_score, match_verdict, match_rationale, match_breakdown, jobs(title, description, location, employment_type), candidates(full_name, headline, resume_path)")
       .eq("id", jobCandidateId)
       .maybeSingle();
     if (jcErr || !jc) {
@@ -52,9 +52,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!force && jc.match_score != null && jc.match_verdict) {
+    if (!force && jc.match_score != null && jc.match_verdict && jc.match_breakdown) {
       return new Response(JSON.stringify({
-        score: jc.match_score, verdict: jc.match_verdict, rationale: jc.match_rationale, cached: true,
+        score: jc.match_score, verdict: jc.match_verdict, rationale: jc.match_rationale, breakdown: jc.match_breakdown, cached: true,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -105,7 +105,10 @@ Schema:
 {
   "score": integer 0-100,
   "verdict": "good" | "cautious" | "bad",
-  "rationale": string (3-5 sentences, opinionated, mentions specific evidence from the CV vs. the job requirements; covers strengths, gaps, and what to probe in interview)
+  "rationale": string (3-5 sentences explaining the overall judgement),
+  "skills_matched": string[] (3-7 concrete strengths the CV demonstrates that map to the job's requirements; each item one short sentence with evidence, e.g. "5+ yrs React with shipped SaaS products"),
+  "gaps": string[] (2-6 missing or weak areas vs. the requirements; each one short sentence, honest, not invented),
+  "next_steps": string[] (2-5 suggested actions for the recruiter — interview probes, references, tests to run — each one short imperative sentence)
 }
 
 Scoring guide:
@@ -113,7 +116,7 @@ Scoring guide:
 - 50-79 = "cautious": partial fit; meaningful gaps, transferable but unproven, or seniority/domain mismatch.
 - 0-49  = "bad": fundamental mismatch on must-haves.
 
-Be honest and evidence-based. Do not invent qualifications. Never include the candidate's name in the rationale — refer to them as "the candidate" or "they". Output JSON only.`;
+Be honest and evidence-based. Do not invent qualifications. Never include the candidate's name anywhere — refer to them as "the candidate" or "they". Output JSON only.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -158,7 +161,7 @@ Be honest and evidence-based. Do not invent qualifications. Never include the ca
     let raw: string = aiJson?.choices?.[0]?.message?.content?.trim() ?? "";
     raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 
-    let parsed: { score?: number; verdict?: string; rationale?: string } = {};
+    let parsed: { score?: number; verdict?: string; rationale?: string; skills_matched?: unknown; gaps?: unknown; next_steps?: unknown } = {};
     try { parsed = JSON.parse(raw); } catch {
       console.error("Failed to parse AI JSON", raw);
       return new Response(JSON.stringify({ error: "AI returned invalid JSON" }), {
@@ -176,17 +179,26 @@ Be honest and evidence-based. Do not invent qualifications. Never include the ca
     }
     const rationale = (parsed.rationale ?? "").toString().trim() || "No rationale provided.";
 
+    const toStringArray = (v: unknown): string[] =>
+      Array.isArray(v) ? v.map((x) => String(x ?? "").trim()).filter(Boolean).slice(0, 10) : [];
+    const breakdown = {
+      skills_matched: toStringArray(parsed.skills_matched),
+      gaps: toStringArray(parsed.gaps),
+      next_steps: toStringArray(parsed.next_steps),
+    };
+
     await admin
       .from("job_candidates")
       .update({
         match_score: score,
         match_verdict: verdict,
         match_rationale: rationale,
+        match_breakdown: breakdown,
         match_generated_at: new Date().toISOString(),
       })
       .eq("id", jobCandidateId);
 
-    return new Response(JSON.stringify({ score, verdict, rationale, cached: false }), {
+    return new Response(JSON.stringify({ score, verdict, rationale, breakdown, cached: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

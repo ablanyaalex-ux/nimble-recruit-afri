@@ -38,6 +38,7 @@ type Detail = {
   match_score: number | null;
   match_verdict: string | null;
   match_rationale: string | null;
+  match_breakdown: { skills_matched?: string[]; gaps?: string[]; next_steps?: string[] } | null;
   jobs: { workspace_id: string; client_id: string; title: string; description: string | null } | null;
   candidates: {
     full_name: string;
@@ -151,7 +152,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, match_score, match_verdict, match_rationale, jobs(workspace_id, client_id, title, description), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, match_score, match_verdict, match_rationale, match_breakdown, jobs(workspace_id, client_id, title, description), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -438,7 +439,7 @@ export default function JobCandidate() {
     const verdict = (data as any)?.verdict;
     const rationale = (data as any)?.rationale;
     if (typeof score === "number") {
-      setDetail({ ...detail, match_score: score, match_verdict: verdict ?? null, match_rationale: rationale ?? null });
+      setDetail({ ...detail, match_score: score, match_verdict: verdict ?? null, match_rationale: rationale ?? null, match_breakdown: (data as any)?.breakdown ?? null });
       if (!(data as any).cached) toast.success("Match score generated.");
     }
   };
@@ -728,6 +729,44 @@ export default function JobCandidate() {
                   </div>
                   {detail.match_rationale && (
                     <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{detail.match_rationale}</p>
+                  )}
+                  {detail.match_breakdown && (
+                    (detail.match_breakdown.skills_matched?.length ||
+                      detail.match_breakdown.gaps?.length ||
+                      detail.match_breakdown.next_steps?.length) ? (
+                      <div className="grid gap-3 pt-2 sm:grid-cols-3">
+                        {detail.match_breakdown.skills_matched && detail.match_breakdown.skills_matched.length > 0 && (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-primary">Skills matched</div>
+                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
+                              {detail.match_breakdown.skills_matched.map((s, i) => (
+                                <li key={i} className="flex gap-2"><span aria-hidden>✓</span><span>{s}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {detail.match_breakdown.gaps && detail.match_breakdown.gaps.length > 0 && (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-600 dark:text-amber-500">Gaps</div>
+                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
+                              {detail.match_breakdown.gaps.map((s, i) => (
+                                <li key={i} className="flex gap-2"><span aria-hidden>!</span><span>{s}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {detail.match_breakdown.next_steps && detail.match_breakdown.next_steps.length > 0 && (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground">Suggested next steps</div>
+                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
+                              {detail.match_breakdown.next_steps.map((s, i) => (
+                                <li key={i} className="flex gap-2"><span aria-hidden>→</span><span>{s}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ) : null
                   )}
                 </div>
               ) : (

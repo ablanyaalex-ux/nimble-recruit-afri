@@ -304,6 +304,7 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          match_breakdown: Json | null
           match_generated_at: string | null
           match_rationale: string | null
           match_score: number | null
@@ -323,6 +324,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          match_breakdown?: Json | null
           match_generated_at?: string | null
           match_rationale?: string | null
           match_score?: number | null
@@ -342,6 +344,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          match_breakdown?: Json | null
           match_generated_at?: string | null
           match_rationale?: string | null
           match_score?: number | null
