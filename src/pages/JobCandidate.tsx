@@ -730,6 +730,44 @@ export default function JobCandidate() {
                   {detail.match_rationale && (
                     <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{detail.match_rationale}</p>
                   )}
+                  {detail.match_breakdown && (
+                    (detail.match_breakdown.skills_matched?.length ||
+                      detail.match_breakdown.gaps?.length ||
+                      detail.match_breakdown.next_steps?.length) ? (
+                      <div className="grid gap-3 pt-2 sm:grid-cols-3">
+                        {detail.match_breakdown.skills_matched && detail.match_breakdown.skills_matched.length > 0 && (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-primary">Skills matched</div>
+                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
+                              {detail.match_breakdown.skills_matched.map((s, i) => (
+                                <li key={i} className="flex gap-2"><span aria-hidden>✓</span><span>{s}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {detail.match_breakdown.gaps && detail.match_breakdown.gaps.length > 0 && (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-600 dark:text-amber-500">Gaps</div>
+                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
+                              {detail.match_breakdown.gaps.map((s, i) => (
+                                <li key={i} className="flex gap-2"><span aria-hidden>!</span><span>{s}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {detail.match_breakdown.next_steps && detail.match_breakdown.next_steps.length > 0 && (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground">Suggested next steps</div>
+                            <ul className="space-y-1.5 text-sm leading-snug text-foreground/90">
+                              {detail.match_breakdown.next_steps.map((s, i) => (
+                                <li key={i} className="flex gap-2"><span aria-hidden>→</span><span>{s}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ) : null
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
