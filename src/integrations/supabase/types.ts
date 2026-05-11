@@ -524,6 +524,50 @@ export type Database = {
         }
         Relationships: []
       }
+      stage_triggers: {
+        Row: {
+          created_at: string
+          created_by: string
+          enabled: boolean
+          id: string
+          settings: Json
+          stage_id: string
+          trigger_type: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          enabled?: boolean
+          id?: string
+          settings?: Json
+          stage_id: string
+          trigger_type: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          id?: string
+          settings?: Json
+          stage_id?: string
+          trigger_type?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_triggers_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_invites: {
         Row: {
           accepted_at: string | null
