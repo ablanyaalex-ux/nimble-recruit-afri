@@ -500,7 +500,7 @@ export default function JobDetail() {
     }
     runStageTriggers(entry.id, newStage, entry.candidates.full_name);
     const stageMeta = stages.find((s) => s.key === newStage);
-    if (stageMeta && /interview/i.test(stageMeta.key) || /interview/i.test(stageMeta?.label ?? "")) {
+    if (stageMeta && (/interview/i.test(stageMeta.key) || /interview/i.test(stageMeta.label ?? ""))) {
       setScheduleFor({ jcId: entry.id, stageId: stageMeta?.id ?? null });
     }
   };
