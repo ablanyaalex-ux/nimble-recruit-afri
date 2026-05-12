@@ -290,6 +290,7 @@ export default function JobDetail() {
   const [approvalsOpen, setApprovalsOpen] = useState(false);
   const [questionsOpen, setQuestionsOpen] = useState(false);
   const [competenciesOpen, setCompetenciesOpen] = useState(false);
+  const [scheduleFor, setScheduleFor] = useState<{ jcId: string; stageId: string | null } | null>(null);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
