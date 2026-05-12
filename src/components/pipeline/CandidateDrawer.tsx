@@ -72,6 +72,7 @@ type Feedback = {
 };
 
 export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = DEFAULT_STAGES }: Props) {
+  const [interviewOpen, setInterviewOpen] = useState(false);
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
