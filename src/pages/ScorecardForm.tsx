@@ -85,7 +85,7 @@ export default function ScorecardForm() {
       <PageHeader
         eyebrow="Interview"
         title={`Scorecard — ${meta?.candidate ?? ""}`}
-        subtitle={meta?.job}
+        description={meta?.job}
       />
       <Card className="p-6 space-y-6">
         <div className="space-y-4">
