@@ -690,6 +690,13 @@ export default function JobDetail() {
         </div>
       </Card>
 
+      {/* Sequential approval progress */}
+      {job.approval_status && job.approval_status !== "approved" && (
+        <div className="mb-5">
+          <ApprovalProgressCard jobId={job.id} canEdit={canEdit} />
+        </div>
+      )}
+
       {/* View toggle: Active vs Rejected */}
       <div className="flex items-center gap-2 mb-4">
         <div className="inline-flex rounded-md border border-border p-0.5 bg-secondary/40">
