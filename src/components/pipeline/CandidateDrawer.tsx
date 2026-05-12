@@ -296,6 +296,14 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 <p className="text-sm text-muted-foreground">{detail.candidates.headline}</p>
               )}
             </SheetHeader>
+            {canMove && (
+              <div className="mt-3">
+                <Button size="sm" variant="outline" onClick={() => setInterviewOpen(true)}>
+                  <CalendarPlus className="h-4 w-4 mr-1.5" /> Interview panel
+                </Button>
+              </div>
+            )}
+            <InterviewPanelDialog open={interviewOpen} onOpenChange={setInterviewOpen} jobCandidateId={jobCandidateId} />
 
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{stages.find((s) => s.key === detail.stage)?.label ?? detail.stage}</Badge>
