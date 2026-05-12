@@ -78,6 +78,7 @@ import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
 import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
 import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
 import { JobCompetenciesDialog } from "@/components/interviews/JobCompetenciesDialog";
+import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { ApprovalProgressCard } from "@/components/jobs/ApprovalProgressCard";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
