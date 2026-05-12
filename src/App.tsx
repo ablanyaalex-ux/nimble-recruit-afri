@@ -22,6 +22,7 @@ import SettingsTemplates from "./pages/SettingsTemplates";
 import Placeholder from "./pages/Placeholder";
 import CareersPublic from "./pages/CareersPublic";
 import CareersJobPublic from "./pages/CareersJobPublic";
+import ApprovePublic from "./pages/ApprovePublic";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
