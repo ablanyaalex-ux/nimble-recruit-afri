@@ -289,6 +289,7 @@ export default function JobDetail() {
   const [triggerDialog, setTriggerDialog] = useState<{ stageId: string; key: string; label: string } | null>(null);
   const [approvalsOpen, setApprovalsOpen] = useState(false);
   const [questionsOpen, setQuestionsOpen] = useState(false);
+  const [competenciesOpen, setCompetenciesOpen] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
