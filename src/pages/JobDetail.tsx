@@ -77,6 +77,7 @@ import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPop
 import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
 import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
 import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
+import { JobCompetenciesDialog } from "@/components/interviews/JobCompetenciesDialog";
 import { ApprovalProgressCard } from "@/components/jobs/ApprovalProgressCard";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
