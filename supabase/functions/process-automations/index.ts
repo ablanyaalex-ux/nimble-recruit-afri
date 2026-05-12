@@ -128,10 +128,19 @@ Deno.serve(async (req) => {
           failed++; continue;
         }
         const html = `<div style="font-family:Inter,Arial,sans-serif;line-height:1.5;color:#111827;white-space:pre-wrap">${(payload.body ?? "").replace(/[<>]/g, (c) => c === "<" ? "&lt;" : "&gt;")}</div>`;
+        const ics = (payload as any).ics as string | undefined;
+        const emailBody: any = { from, to: [payload.to], subject: payload.subject, html };
+        if (ics) {
+          emailBody.attachments = [{
+            filename: "invite.ics",
+            content: btoa(unescape(encodeURIComponent(ics))),
+            content_type: "text/calendar; method=REQUEST",
+          }];
+        }
         const resp = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from, to: [payload.to], subject: payload.subject, html }),
+          body: JSON.stringify(emailBody),
         });
         if (resp.ok) {
           await admin.from("outbound_email_queue").update({
