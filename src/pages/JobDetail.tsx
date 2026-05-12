@@ -18,6 +18,8 @@ import {
   Undo2,
   MoreVertical,
   Zap,
+  CheckCircle2,
+  HelpCircle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -608,6 +610,12 @@ export default function JobDetail() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStagesOpen(true)}>
                   <Settings2 className="h-4 w-4" /> Customise stages
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setApprovalsOpen(true)}>
+                  <CheckCircle2 className="h-4 w-4" /> Approvals
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setQuestionsOpen(true)}>
+                  <HelpCircle className="h-4 w-4" /> Application questions
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
