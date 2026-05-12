@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useWorkspace } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
+import { UpcomingInterviewsWidget } from "@/components/interviews/UpcomingInterviewsWidget";
 
 const allNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true, hideForHM: false },
@@ -81,6 +82,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <UpcomingInterviewsWidget collapsed={collapsed} />
       </SidebarContent>
     </Sidebar>
   );

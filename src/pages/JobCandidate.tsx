@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote } from "lucide-react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus } from "lucide-react";
+import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
+import { CandidateInterviewsTab } from "@/components/interviews/CandidateInterviewsTab";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
@@ -97,9 +99,13 @@ function HeaderField({ icon, label, value }: { icon: React.ReactNode; label: str
 
 export default function JobCandidate() {
   const { jobId, jobCandidateId } = useParams<{ jobId: string; jobCandidateId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [interviewsRefresh, setInterviewsRefresh] = useState(0);
+  const initialTab = searchParams.get("tab") === "interviews" ? "interviews" : "resume";
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
@@ -550,6 +556,9 @@ export default function JobCandidate() {
             )}
             {canMove && !detail.rejected && (
               <>
+                <Button size="sm" variant="outline" onClick={() => setScheduleOpen(true)}>
+                  <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
+                </Button>
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
                   <ChevronRight className="h-3.5 w-3.5" /> Progress
                 </Button>
@@ -640,11 +649,12 @@ export default function JobCandidate() {
         )}
       </Card>
 
-      <Tabs defaultValue="resume">
+      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "resume" ? {} : { tab: v }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
           <TabsTrigger value="cover">Cover letter</TabsTrigger>
-          <TabsTrigger value="interviews"><ClipboardList className="h-3.5 w-3.5" /> Interviews ({feedback.length})</TabsTrigger>
+          <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
+          <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
           <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
           <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
         </TabsList>
@@ -916,7 +926,15 @@ export default function JobCandidate() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="interviews" className="mt-4 space-y-3">
+        <TabsContent value="interviews" className="mt-4">
+          <CandidateInterviewsTab
+            key={interviewsRefresh}
+            jobCandidateId={jobCandidateId!}
+            onSchedule={() => setScheduleOpen(true)}
+          />
+        </TabsContent>
+
+        <TabsContent value="feedback" className="mt-4 space-y-3">
           {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it from the Scorecard tab.</p>}
           {feedback.map((f) => (
             <Card key={f.id} className="p-4">
@@ -1041,6 +1059,13 @@ export default function JobCandidate() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <ScheduleInterviewDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        jobCandidateId={jobCandidateId ?? null}
+        onCreated={() => { setInterviewsRefresh((n) => n + 1); setSearchParams({ tab: "interviews" }, { replace: true }); }}
+      />
 
       <Dialog open={editCandidateOpen} onOpenChange={setEditCandidateOpen}>
         <DialogContent className="max-w-lg">

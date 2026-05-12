@@ -47,7 +47,29 @@ export default function Dashboard() {
   const [candidatesCount, setCandidatesCount] = useState<number | null>(null);
   const [stageCounts, setStageCounts] = useState<StageCount[]>([]);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [interviewsThisWeek, setInterviewsThisWeek] = useState<number | null>(null);
+  const [interviewsLastWeek, setInterviewsLastWeek] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentWorkspaceId) return;
+    (async () => {
+      const now = new Date();
+      const startOfWeek = new Date(now); startOfWeek.setHours(0, 0, 0, 0); startOfWeek.setDate(now.getDate() - now.getDay());
+      const endOfWeek = new Date(startOfWeek.getTime() + 7 * 86400_000);
+      const startLast = new Date(startOfWeek.getTime() - 7 * 86400_000);
+      const [thisW, lastW] = await Promise.all([
+        supabase.from("interview_schedules").select("id", { count: "exact", head: true })
+          .eq("workspace_id", currentWorkspaceId).eq("status", "scheduled")
+          .gte("scheduled_at", startOfWeek.toISOString()).lt("scheduled_at", endOfWeek.toISOString()),
+        supabase.from("interview_schedules").select("id", { count: "exact", head: true })
+          .eq("workspace_id", currentWorkspaceId).eq("status", "scheduled")
+          .gte("scheduled_at", startLast.toISOString()).lt("scheduled_at", startOfWeek.toISOString()),
+      ]);
+      setInterviewsThisWeek(thisW.count ?? 0);
+      setInterviewsLastWeek(lastW.count ?? 0);
+    })();
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     if (!currentWorkspaceId) return;
@@ -161,7 +183,7 @@ export default function Dashboard() {
         }
       />
 
-      <div className="grid gap-4 md:gap-6 md:grid-cols-3 mb-6">
+      <div className="grid gap-4 md:gap-6 md:grid-cols-4 mb-6">
         <StatCard
           to="/jobs"
           icon={<Briefcase className="h-4 w-4" />}
@@ -193,6 +215,18 @@ export default function Dashboard() {
           value={loading ? null : interviewCount}
           loading={loading}
           hint="Candidates currently in any interview stage."
+        />
+        <StatCard
+          to="/interviews"
+          icon={<CalendarClock className="h-4 w-4" />}
+          title="Interviews this week"
+          value={interviewsThisWeek}
+          loading={interviewsThisWeek === null}
+          hint={
+            interviewsThisWeek !== null && interviewsLastWeek !== null
+              ? `${interviewsThisWeek - interviewsLastWeek >= 0 ? "+" : ""}${interviewsThisWeek - interviewsLastWeek} from last week`
+              : "Scheduled interviews this calendar week."
+          }
         />
       </div>
 
