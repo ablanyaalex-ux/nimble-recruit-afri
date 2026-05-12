@@ -73,6 +73,8 @@ import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog
 import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
 import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
+import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
+import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { anonymizeName } from "@/lib/anonymize";
@@ -90,6 +92,11 @@ type Job = {
   employment_type: string | null;
   created_at: string;
   created_by: string;
+  approval_status?: string;
+  approved_by?: string | null;
+  approval_requested_from?: string | null;
+  approval_decided_at?: string | null;
+  approval_note?: string | null;
   clients: { name: string } | null;
 };
 
