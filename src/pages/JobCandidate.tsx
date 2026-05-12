@@ -1060,6 +1060,13 @@ export default function JobCandidate() {
         </TabsContent>
       </Tabs>
 
+      <ScheduleInterviewDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        jobCandidateId={jobCandidateId ?? null}
+        onCreated={() => { setInterviewsRefresh((n) => n + 1); setSearchParams({ tab: "interviews" }, { replace: true }); }}
+      />
+
       <Dialog open={editCandidateOpen} onOpenChange={setEditCandidateOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Edit candidate</DialogTitle></DialogHeader>
