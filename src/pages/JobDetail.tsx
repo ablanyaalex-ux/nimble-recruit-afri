@@ -317,7 +317,7 @@ export default function JobDetail() {
     const [jobRes, entRes] = await Promise.all([
       supabase
         .from("jobs")
-        .select("id, title, status, client_id, workspace_id, location, description, reference, employment_type, created_at, created_by, clients(name)")
+        .select("id, title, status, client_id, workspace_id, location, description, reference, employment_type, created_at, created_by, approval_status, approved_by, approval_requested_from, approval_decided_at, approval_note, clients(name)")
         .eq("id", id)
         .single(),
       supabase
