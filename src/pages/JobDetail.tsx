@@ -588,6 +588,9 @@ export default function JobDetail() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={jobStatusBadgeClass(job.status)}>{STATUS_LABELS[job.status]}</Badge>
+          {job.approval_status && job.approval_status !== "approved" && (
+            <Badge variant="outline" className="capitalize">{job.approval_status}</Badge>
+          )}
           {canEdit && (
             <PostJobDialog
               job={job}
@@ -958,6 +961,24 @@ export default function JobDetail() {
           stageId={triggerDialog.stageId}
           stageLabel={triggerDialog.label}
           onChanged={refreshTriggerCounts}
+        />
+      )}
+
+      {canEdit && (
+        <JobApprovalsDialog
+          open={approvalsOpen}
+          onOpenChange={setApprovalsOpen}
+          job={job}
+          onChanged={refresh}
+        />
+      )}
+
+      {canEdit && (
+        <JobQuestionsDialog
+          open={questionsOpen}
+          onOpenChange={setQuestionsOpen}
+          jobId={job.id}
+          workspaceId={job.workspace_id}
         />
       )}
 
