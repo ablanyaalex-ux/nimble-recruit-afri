@@ -1,107 +1,120 @@
-## Recruitment Automation & Governance — Implementation Plan
+## Sequential Approvals, Dynamic Forms & One-Click UX
 
-Big multi-part feature. Building it in **4 phases**, each independently testable. Phases 3 and 4 layer onto a shared `outbound_email_queue` + `process-automations` edge function.
-
----
-
-### Phase 1 — Templates with Live Preview
-
-**DB (`templates`)**
-- `id`, `workspace_id`, `type` ('email' | 'job_description' | 'offer_letter'), `name`, `content` (text), `created_by`, `created_at`, `updated_at`
-- RLS: SELECT = workspace members, INSERT/UPDATE/DELETE = `can_edit_workspace`
-
-**UI: `/settings/templates`**
-- New page `src/pages/SettingsTemplates.tsx`, route added in `App.tsx`, nav entry under settings/sidebar
-- Layout: left list of templates (filter by type tabs), right editor pane
-- Editor: name input, type select, content `Textarea` (plain text/markdown for v1; HTML if email)
-- **Preview toggle (Switch)**: when on, runs `content.replace(/\{\{(\w+)\}\}/g, ...)` against mock data `{ candidate_name: "John Doe", job_title: "Software Engineer", company_name: "Acme Corp", stage: "Interview" }`. Rendered in a styled card.
-- Helper text listing supported placeholders.
+Big feature — splitting into 4 layered phases on top of the existing `jobs.approval_status`, `job_application_questions`, `outbound_email_queue`, and `process-automations` infrastructure.
 
 ---
 
-### Phase 2 — Job Approval Workflow
+### Phase 1 — Schema
 
-**DB (`jobs` extension)**
-- Add `approval_status` text default `'approved'` (so existing jobs don't disappear) check in (`'draft','pending','approved','rejected'`)
-- Add `approved_by` uuid, `approval_requested_from` uuid, `approval_decided_at` timestamptz, `approval_note` text
+**New table `job_approval_steps`**
+- `id`, `job_id` (FK jobs), `approver_id` (FK profiles/auth user), `step_order` int, `status` text default `'waiting'` (`waiting` | `pending` | `approved` | `rejected`), `token` text unique nullable, `token_expires_at` timestamptz nullable, `decided_at`, `note`, `created_at`
+- Index on `(job_id, step_order)`, unique `(job_id, step_order)`, unique `token`
+- RLS:
+  - SELECT: workspace members of the parent job
+  - INSERT/UPDATE/DELETE: `can_edit_workspace` on parent job's workspace
+  - Public SELECT (anon) only via dedicated edge function using service role + token (no RLS exposure)
 
-**Public careers gate**
-- `CareersPublic.tsx` and `CareersJobPublic.tsx`: filter `.eq('approval_status','approved').eq('status','open')`. Detail page returns NotFound when not approved.
+**`jobs` extension**
+- Add `status` value default — keep existing `job_status` enum, but on wizard save set `status='draft'`, `approval_status='pending'`.
+- Existing `approval_requested_from`, `approved_by`, `approval_decided_at` repurposed to track the *current* step's approver and final decision.
 
-**JobDetail "Approvals" tab**
-- New tab between existing tabs. Visible to recruiters/owners only.
-- Recruiter view: select workspace owner from dropdown → "Request approval" button → sets `approval_status='pending'`, `approval_requested_from=<owner>`. Status badge.
-- Owner view (when `approval_requested_from = me` or owner role): "Approve" / "Reject" buttons + optional note. Sets `approval_status` accordingly + `approved_by`, `approval_decided_at`.
-- Read-only history line ("Approved by X on …").
-
----
-
-### Phase 3 — Shared Email Queue + `process-automations` edge function
-
-**DB (`outbound_email_queue`)**
-- `id`, `workspace_id`, `candidate_id` (nullable), `job_candidate_id` (nullable), `template_id` (nullable), `payload` jsonb (`{ to, subject, body }` already-rendered), `scheduled_at` timestamptz, `status` ('pending'|'sent'|'failed'|'cancelled'), `attempts` int default 0, `last_error` text, `sent_at`, `created_by`, `created_at`
-- RLS: SELECT/INSERT/UPDATE/DELETE = `can_edit_workspace` scoped via workspace_id; INSERT also allowed via service-role (edge functions).
-- Index on `(status, scheduled_at)`
-
-**Edge function `process-automations`**
-- Two modes (single function, `mode` in body):
-  - `enqueue`: render a template with provided vars + insert into queue at `scheduled_at`
-  - `drain`: pulls `pending` rows where `scheduled_at <= now()`, sends via Resend (reuse `RESEND_API_KEY` + `INVITE_EMAIL_FROM` like `execute-stage-trigger`), marks sent/failed
-- Drain triggered manually via a small "Run queue" admin button on Settings → Automations (good enough for v1; cron is out of scope unless requested).
-- Validates auth + workspace edit rights for `enqueue` calls.
+**Already exists** — `job_application_questions` (id, job_id, position, question_text, options[], is_knockout, fail_value, rejection_template_id). Keep, extend `fail_value` semantics to support multiple fails by reusing the existing TEXT column with comma-separated values (documented in code; avoids schema churn).
 
 ---
 
-### Phase 4 — Knockout Questions + Stage Triggers (template-aware)
+### Phase 2 — Job Creation Wizard
 
-**DB (`job_application_questions`)**
-- `id`, `job_id`, `position` int, `question_text`, `options` text[] (nullable for free-text), `is_knockout` bool, `fail_value` text (the option that disqualifies), `rejection_template_id` uuid → templates(id)
-- RLS: SELECT public for approved+open jobs (so the public form works), full edit via `can_edit_workspace`.
+**New component `src/components/jobs/JobWizardDialog.tsx`** (replaces inline create flow on `Jobs.tsx`)
+- shadcn `Dialog` + custom Stepper header (Step 1 / 2 / 3 with check icons)
+- **Step 1 — Job Details**: title, client (Select), description (Textarea), location, employment_type, salary_min/max
+- **Step 2 — Application Builder**: list of questions; each row has type (Short Text / Multiple Choice), question text, options (for MC), `is_knockout` checkbox, and when knockout → multi-select of fail options. "Add question" / drag-to-reorder (simple up/down buttons for v1).
+- **Step 3 — Approval Chain**: ordered list of workspace members (fetched via `workspace_members` join `profiles`); add/remove/reorder. Empty chain = job goes straight to `approved` (escape hatch documented).
+- "Back" / "Next" / final "Submit for approval" button. On submit:
+  1. Insert job (`status='draft'`, `approval_status='pending'` if chain present, else `'approved'` + `status='open'`)
+  2. Bulk insert `job_application_questions`
+  3. Bulk insert `job_approval_steps` with `step_order` and `status='waiting'`
+  4. Call `process-automations` `mode='advance_approval'` with `job_id` → kicks off step 1 (sets it to `pending`, generates token, enqueues email)
 
-**JobDetail "Application form" sub-section** (in existing settings/edit area)
-- CRUD UI for questions; mark knockout + select rejection template.
+**`Jobs.tsx`** — replace existing "New job" trigger with the wizard.
 
-**Public application form (`CareersJobPublic`)**
-- Render questions, on submit:
-  1. Insert candidate + `job_candidates` row as today
-  2. If any knockout failed → set `job_candidates.rejected=true, rejection_reason='Knockout question'`, then call `process-automations` with `mode=enqueue`, scheduled_at = `now() + 24h`, payload rendered from `rejection_template_id`.
-  3. Otherwise create normally.
+---
 
-**Stage Triggers — extend existing `stage_triggers`**
-- Add columns: `template_id` uuid (nullable, replaces inline subject/body when set), `delay_minutes` int default 0
-- `StageTriggersDialog`: when adding a trigger, allow choosing **template** (preferred) or inline subject/body (existing). Add "Send delay" select (immediate / 1h / 24h).
-- Update `execute-stage-trigger`: instead of sending directly, call `process-automations enqueue` with `scheduled_at = now() + delay_minutes`. Existing immediate path still works (delay=0 still goes through queue, but `drain` picks it up).
-  - **Compromise:** keep the immediate Resend send for delay=0 to preserve current toast UX; only enqueue when delay>0. (Documented in code.)
+### Phase 3 — Sequential Approval Engine
+
+**`process-automations` extension** — add new mode `advance_approval`:
+- Body: `{ mode: 'advance_approval', job_id, after_step? }`
+- Logic:
+  1. Find the next `waiting` step (lowest `step_order`)
+  2. If none → set `jobs.approval_status='approved'`, `status='open'`, return
+  3. Update that step: `status='pending'`, `token=crypto.randomUUID()`, `token_expires_at=now()+7d`
+  4. Resolve approver email via `auth.users` (service role)
+  5. Render approval email (subject + HTML body with deep link `${PUBLIC_URL}/approve/<token>`) and insert into `outbound_email_queue` with `scheduled_at=now()`
+  6. Update `jobs.approval_requested_from = approver_id`
+
+**New mode `decide_approval`** (called by the public approve route handler):
+- Body: `{ token, decision: 'approved'|'rejected', note? }`
+- Validates token + expiry, updates the step row (`status`, `decided_at`, `note`)
+- If `approved` → call `advance_approval` recursively for next step
+- If `rejected` → set `jobs.approval_status='rejected'`, `approval_decided_at=now()`, leave remaining steps `waiting` (history preserved)
+- Returns `{ ok, job: { title, client_name }, decision }` (no auth needed; token is the auth)
+
+**New mode `nudge_approval`**: re-enqueue the email for the currently `pending` step (rate-limited to 1/min via `attempts` field check).
+
+---
+
+### Phase 4 — Public Approve Route
+
+**New page `src/pages/ApprovePublic.tsx`** at route `/approve/:token`
+- Fetches job summary via a small new edge function `approve-step-info` (`mode='info'` on `process-automations`) — returns job title, client, description preview, approver name, expiry status, current decision (so revisits show "Already approved")
+- Two big buttons: **Approve** / **Reject** (Reject opens textarea for note)
+- Calls `process-automations decide_approval`. Shows confirmation card with check/x icon.
+- Token-only auth — no Supabase session required. Add route in `App.tsx` outside the auth layout.
+
+**Public Careers gate** — already filters `approval_status='approved'` in `CareersPublic.tsx`/`CareersJobPublic.tsx`. Re-verify and ensure detail page returns the existing "Position no longer available" 404 view when not approved.
+
+---
+
+### Phase 5 — Recruiter Visibility
+
+**New component `src/components/jobs/ApprovalProgressCard.tsx`** rendered on `JobDetail.tsx`:
+- Vertical step list with status icons:
+  - ✅ approved → green check
+  - ⏳ pending → amber clock + "Nudge" button (calls `process-automations nudge_approval`, shows toast)
+  - ⚪ waiting → grey circle
+  - ❌ rejected → red X + note tooltip
+- Shows approver name + decided_at timestamp
+- Visible only to recruiters/owners
+
+**Application form & knockout** (already in `CareersJobPublic.tsx`) — fix the v1 `mailto` hack:
+- Properly insert candidate via a new mode `submit_application` on `process-automations` (anon-callable, validates job is approved+open, creates candidate + job_candidate, evaluates knockout server-side, enqueues 24h rejection email when failed using `rejection_template_id`).
+- Knockout fail check now supports multi-value `fail_value` (split on `,`).
 
 ---
 
 ### Files
 
 **New**
-- `supabase/migrations/<ts>_templates_approvals_queue_questions.sql` (single migration covers all four schema changes)
-- `supabase/functions/process-automations/index.ts`
-- `src/pages/SettingsTemplates.tsx`
-- `src/components/automations/TemplatePicker.tsx` (reused by stage triggers + questions)
-- `src/components/jobs/JobApprovalsTab.tsx`
-- `src/components/jobs/JobQuestionsEditor.tsx`
+- Migration: `job_approval_steps` table + RLS
+- `src/components/jobs/JobWizardDialog.tsx`
+- `src/components/jobs/ApprovalProgressCard.tsx`
+- `src/pages/ApprovePublic.tsx`
 
 **Edited**
-- `src/App.tsx` — route for `/settings/templates`
-- `src/components/app/AppSidebar.tsx` — Templates nav link
-- `src/pages/JobDetail.tsx` — Approvals tab, questions editor entry, pass templates into `StageTriggersDialog`
-- `src/pages/CareersPublic.tsx`, `src/pages/CareersJobPublic.tsx` — approval gate + render application questions + knockout flow
-- `src/components/pipeline/StageTriggersDialog.tsx` — template + delay
-- `supabase/functions/execute-stage-trigger/index.ts` — route delayed sends through queue
+- `src/App.tsx` — `/approve/:token` route
+- `src/pages/Jobs.tsx` — open wizard
+- `src/pages/JobDetail.tsx` — render `ApprovalProgressCard`
+- `src/pages/CareersJobPublic.tsx` — real submission via edge function, multi-value knockout
+- `supabase/functions/process-automations/index.ts` — add `advance_approval`, `decide_approval`, `nudge_approval`, `submit_application`, `info` modes
 
 ---
 
 ### Out of scope (v1)
-- Cron-based queue draining (manual "Run queue" button instead — can add pg_cron later)
-- Rich HTML editor (plain text + `{{placeholders}}`)
-- Approval email notifications (in-app only)
-- Editing knockout questions after candidates have applied gracefully (we just keep history)
+- Editing the approval chain after submission (must reject & resubmit)
+- Drag-and-drop reorder (use up/down buttons)
+- Email templates for approval emails (hardcoded inline copy with `{{job_title}}` / `{{approver_name}}`)
+- `JobApprovalsDialog` removal — leave existing dialog untouched, new flow supersedes it; will deprecate later
 
 ---
 
-### Migration approval
-Schema changes are large (1 templates table, 4 columns on jobs, 1 queue table, 1 questions table, 2 columns on stage_triggers). I'll submit them as **one migration** for atomicity — please approve.
+### Migration approval needed
+Single new table `job_approval_steps` with RLS. Submitting now.
