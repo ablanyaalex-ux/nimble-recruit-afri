@@ -29,6 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { JobWizardDialog } from "@/components/jobs/JobWizardDialog";
 
 type Job = {
   id: string;
