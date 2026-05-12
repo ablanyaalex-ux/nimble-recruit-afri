@@ -1005,6 +1005,14 @@ export default function JobDetail() {
         <JobCompetenciesDialog open={competenciesOpen} onOpenChange={setCompetenciesOpen} jobId={job.id} />
       )}
 
+      <ScheduleInterviewDialog
+        open={!!scheduleFor}
+        onOpenChange={(v) => { if (!v) setScheduleFor(null); }}
+        jobCandidateId={scheduleFor?.jcId ?? null}
+        defaultStageId={scheduleFor?.stageId ?? null}
+        onCreated={refresh}
+      />
+
       {canEdit && (
         <EditJobDialog
           open={editOpen}
