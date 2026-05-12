@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Briefcase, Users, Building2, CalendarDays, UserPlus } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, Building2, CalendarDays, UserPlus, FileText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ const allNavItems = [
   { title: "Clients", url: "/clients", icon: Building2, hideForHM: true },
   { title: "Interviews", url: "/interviews", icon: CalendarDays, hideForHM: false },
   { title: "Team", url: "/team", icon: UserPlus, hideForHM: true },
+  { title: "Templates", url: "/settings/templates", icon: FileText, hideForHM: true },
 ];
 
 export function useNavItems() {
