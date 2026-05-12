@@ -996,6 +996,10 @@ export default function JobDetail() {
       )}
 
       {canEdit && (
+        <JobCompetenciesDialog open={competenciesOpen} onOpenChange={setCompetenciesOpen} jobId={job.id} />
+      )}
+
+      {canEdit && (
         <EditJobDialog
           open={editOpen}
           onOpenChange={setEditOpen}
