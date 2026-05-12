@@ -296,6 +296,53 @@ export type Database = {
           },
         ]
       }
+      job_application_questions: {
+        Row: {
+          created_at: string
+          fail_value: string | null
+          id: string
+          is_knockout: boolean
+          job_id: string
+          options: string[] | null
+          position: number
+          question_text: string
+          rejection_template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fail_value?: string | null
+          id?: string
+          is_knockout?: boolean
+          job_id: string
+          options?: string[] | null
+          position?: number
+          question_text: string
+          rejection_template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fail_value?: string | null
+          id?: string
+          is_knockout?: boolean
+          job_id?: string
+          options?: string[] | null
+          position?: number
+          question_text?: string
+          rejection_template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_application_questions_rejection_template_id_fkey"
+            columns: ["rejection_template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_candidates: {
         Row: {
           added_by: string
@@ -409,6 +456,11 @@ export type Database = {
       }
       jobs: {
         Row: {
+          approval_decided_at: string | null
+          approval_note: string | null
+          approval_requested_from: string | null
+          approval_status: string
+          approved_by: string | null
           client_id: string
           created_at: string
           created_by: string
@@ -425,6 +477,11 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          approval_decided_at?: string | null
+          approval_note?: string | null
+          approval_requested_from?: string | null
+          approval_status?: string
+          approved_by?: string | null
           client_id: string
           created_at?: string
           created_by: string
@@ -441,6 +498,11 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          approval_decided_at?: string | null
+          approval_note?: string | null
+          approval_requested_from?: string | null
+          approval_status?: string
+          approved_by?: string | null
           client_id?: string
           created_at?: string
           created_by?: string
@@ -500,6 +562,62 @@ export type Database = {
         }
         Relationships: []
       }
+      outbound_email_queue: {
+        Row: {
+          attempts: number
+          candidate_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          job_candidate_id: string | null
+          last_error: string | null
+          payload: Json
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          attempts?: number
+          candidate_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_candidate_id?: string | null
+          last_error?: string | null
+          payload?: Json
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          attempts?: number
+          candidate_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_candidate_id?: string | null
+          last_error?: string | null
+          payload?: Json
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_email_queue_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -528,10 +646,12 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          delay_minutes: number
           enabled: boolean
           id: string
           settings: Json
           stage_id: string
+          template_id: string | null
           trigger_type: string
           updated_at: string
           workspace_id: string
@@ -539,10 +659,12 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          delay_minutes?: number
           enabled?: boolean
           id?: string
           settings?: Json
           stage_id: string
+          template_id?: string | null
           trigger_type: string
           updated_at?: string
           workspace_id: string
@@ -550,10 +672,12 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          delay_minutes?: number
           enabled?: boolean
           id?: string
           settings?: Json
           stage_id?: string
+          template_id?: string | null
           trigger_type?: string
           updated_at?: string
           workspace_id?: string
@@ -566,7 +690,47 @@ export type Database = {
             referencedRelation: "workspace_pipeline_stages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stage_triggers_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      templates: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       workspace_invites: {
         Row: {
