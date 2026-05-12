@@ -78,6 +78,7 @@ import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
 import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
 import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
 import { JobCompetenciesDialog } from "@/components/interviews/JobCompetenciesDialog";
+import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { ApprovalProgressCard } from "@/components/jobs/ApprovalProgressCard";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
@@ -290,6 +291,7 @@ export default function JobDetail() {
   const [approvalsOpen, setApprovalsOpen] = useState(false);
   const [questionsOpen, setQuestionsOpen] = useState(false);
   const [competenciesOpen, setCompetenciesOpen] = useState(false);
+  const [scheduleFor, setScheduleFor] = useState<{ jcId: string; stageId: string | null } | null>(null);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -497,6 +499,10 @@ export default function JobDetail() {
       return;
     }
     runStageTriggers(entry.id, newStage, entry.candidates.full_name);
+    const stageMeta = stages.find((s) => s.key === newStage);
+    if (stageMeta && (/interview/i.test(stageMeta.key) || /interview/i.test(stageMeta.label ?? ""))) {
+      setScheduleFor({ jcId: entry.id, stageId: stageMeta?.id ?? null });
+    }
   };
 
   const progressEntry = async (entry: PipelineEntry) => {
@@ -998,6 +1004,14 @@ export default function JobDetail() {
       {canEdit && (
         <JobCompetenciesDialog open={competenciesOpen} onOpenChange={setCompetenciesOpen} jobId={job.id} />
       )}
+
+      <ScheduleInterviewDialog
+        open={!!scheduleFor}
+        onOpenChange={(v) => { if (!v) setScheduleFor(null); }}
+        jobCandidateId={scheduleFor?.jcId ?? null}
+        defaultStageId={scheduleFor?.stageId ?? null}
+        onCreated={refresh}
+      />
 
       {canEdit && (
         <EditJobDialog

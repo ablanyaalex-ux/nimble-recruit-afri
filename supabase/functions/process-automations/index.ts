@@ -114,7 +114,17 @@ Deno.serve(async (req) => {
 
       let sent = 0, failed = 0;
       for (const row of rows ?? []) {
-        const payload = (row.payload ?? {}) as { to?: string; subject?: string; body?: string };
+        const payload = (row.payload ?? {}) as { to?: string; subject?: string; body?: string; interviewer_user_id?: string };
+        // Resolve interviewer email from user_id if needed
+        if (!payload.to && payload.interviewer_user_id) {
+          try {
+            const { data: u2 } = await admin.auth.admin.getUserById(payload.interviewer_user_id);
+            if (u2?.user?.email) {
+              payload.to = u2.user.email;
+              await admin.from("outbound_email_queue").update({ payload }).eq("id", row.id);
+            }
+          } catch (_) { /* fall through */ }
+        }
         if (!payload.to || !payload.subject) {
           await admin.from("outbound_email_queue").update({
             status: "failed", last_error: "missing to/subject", attempts: (row.attempts ?? 0) + 1,
