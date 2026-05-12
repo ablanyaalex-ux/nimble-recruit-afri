@@ -132,7 +132,7 @@ export function JobWizardDialog({ open, onOpenChange, workspaceId, onCreated }: 
         description: description.trim() || null,
         location: location.trim() || null,
         employment_type: employmentType,
-        status: hasChain ? "draft" : "open",
+        status: hasChain ? "on_hold" : "open",
         approval_status: hasChain ? "pending" : "approved",
         created_by: user.id,
       }).select("id").single();
