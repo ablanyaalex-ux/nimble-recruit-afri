@@ -343,6 +343,45 @@ export type Database = {
           },
         ]
       }
+      job_approval_steps: {
+        Row: {
+          approver_id: string
+          created_at: string
+          decided_at: string | null
+          id: string
+          job_id: string
+          note: string | null
+          status: string
+          step_order: number
+          token: string | null
+          token_expires_at: string | null
+        }
+        Insert: {
+          approver_id: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          job_id: string
+          note?: string | null
+          status?: string
+          step_order: number
+          token?: string | null
+          token_expires_at?: string | null
+        }
+        Update: {
+          approver_id?: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          job_id?: string
+          note?: string | null
+          status?: string
+          step_order?: number
+          token?: string | null
+          token_expires_at?: string | null
+        }
+        Relationships: []
+      }
       job_candidates: {
         Row: {
           added_by: string

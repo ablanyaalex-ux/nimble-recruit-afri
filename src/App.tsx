@@ -22,6 +22,7 @@ import SettingsTemplates from "./pages/SettingsTemplates";
 import Placeholder from "./pages/Placeholder";
 import CareersPublic from "./pages/CareersPublic";
 import CareersJobPublic from "./pages/CareersJobPublic";
+import ApprovePublic from "./pages/ApprovePublic";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route path="/careers/:workspaceId" element={<CareersPublic />} />
               <Route path="/careers/:workspaceId/:jobId" element={<CareersJobPublic />} />
+              <Route path="/approve/:token" element={<ApprovePublic />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/jobs" element={<Jobs />} />
