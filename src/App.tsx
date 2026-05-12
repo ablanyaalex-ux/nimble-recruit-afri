@@ -18,6 +18,7 @@ import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import JobCandidate from "./pages/JobCandidate";
 import Candidates from "./pages/Candidates";
+import SettingsTemplates from "./pages/SettingsTemplates";
 import Placeholder from "./pages/Placeholder";
 import CareersPublic from "./pages/CareersPublic";
 import CareersJobPublic from "./pages/CareersJobPublic";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/clients/:id" element={<ClientDetail />} />
                 <Route path="/interviews" element={<Placeholder eyebrow="Schedule" title="Interviews" />} />
                 <Route path="/team" element={<Team />} />
+                <Route path="/settings/templates" element={<SettingsTemplates />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

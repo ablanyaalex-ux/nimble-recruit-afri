@@ -18,6 +18,8 @@ import {
   Undo2,
   MoreVertical,
   Zap,
+  CheckCircle2,
+  HelpCircle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -73,6 +75,8 @@ import { PipelineStagesDialog } from "@/components/pipeline/PipelineStagesDialog
 import { EditJobDialog } from "@/components/pipeline/EditJobDialog";
 import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPopover";
 import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
+import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
+import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
 import { anonymizeName } from "@/lib/anonymize";
@@ -90,6 +94,11 @@ type Job = {
   employment_type: string | null;
   created_at: string;
   created_by: string;
+  approval_status?: string;
+  approved_by?: string | null;
+  approval_requested_from?: string | null;
+  approval_decided_at?: string | null;
+  approval_note?: string | null;
   clients: { name: string } | null;
 };
 
@@ -276,6 +285,8 @@ export default function JobDetail() {
   const [rejectedLocationFilter, setRejectedLocationFilter] = useState<string>("all");
   const [triggerCounts, setTriggerCounts] = useState<Record<string, number>>({}); // by stage.key
   const [triggerDialog, setTriggerDialog] = useState<{ stageId: string; key: string; label: string } | null>(null);
+  const [approvalsOpen, setApprovalsOpen] = useState(false);
+  const [questionsOpen, setQuestionsOpen] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -308,7 +319,7 @@ export default function JobDetail() {
     const [jobRes, entRes] = await Promise.all([
       supabase
         .from("jobs")
-        .select("id, title, status, client_id, workspace_id, location, description, reference, employment_type, created_at, created_by, clients(name)")
+        .select("id, title, status, client_id, workspace_id, location, description, reference, employment_type, created_at, created_by, approval_status, approved_by, approval_requested_from, approval_decided_at, approval_note, clients(name)")
         .eq("id", id)
         .single(),
       supabase
@@ -577,6 +588,9 @@ export default function JobDetail() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={jobStatusBadgeClass(job.status)}>{STATUS_LABELS[job.status]}</Badge>
+          {job.approval_status && job.approval_status !== "approved" && (
+            <Badge variant="outline" className="capitalize">{job.approval_status}</Badge>
+          )}
           {canEdit && (
             <PostJobDialog
               job={job}
@@ -599,6 +613,12 @@ export default function JobDetail() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStagesOpen(true)}>
                   <Settings2 className="h-4 w-4" /> Customise stages
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setApprovalsOpen(true)}>
+                  <CheckCircle2 className="h-4 w-4" /> Approvals
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setQuestionsOpen(true)}>
+                  <HelpCircle className="h-4 w-4" /> Application questions
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
@@ -941,6 +961,24 @@ export default function JobDetail() {
           stageId={triggerDialog.stageId}
           stageLabel={triggerDialog.label}
           onChanged={refreshTriggerCounts}
+        />
+      )}
+
+      {canEdit && (
+        <JobApprovalsDialog
+          open={approvalsOpen}
+          onOpenChange={setApprovalsOpen}
+          job={job}
+          onChanged={refresh}
+        />
+      )}
+
+      {canEdit && (
+        <JobQuestionsDialog
+          open={questionsOpen}
+          onOpenChange={setQuestionsOpen}
+          jobId={job.id}
+          workspaceId={job.workspace_id}
         />
       )}
 

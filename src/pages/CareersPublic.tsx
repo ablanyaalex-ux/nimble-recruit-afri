@@ -26,6 +26,7 @@ export default function CareersPublic() {
         .select("id, title, location, employment_type, clients(name)")
         .eq("workspace_id", workspaceId)
         .eq("status", "open")
+        .eq("approval_status", "approved")
         .order("created_at", { ascending: false });
       setJobs((data ?? []) as unknown as Job[]);
       setLoading(false);

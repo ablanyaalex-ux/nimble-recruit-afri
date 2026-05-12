@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
     const { data: triggers } = await admin
       .from("stage_triggers")
-      .select("id, trigger_type, settings, enabled")
+      .select("id, trigger_type, settings, enabled, template_id, delay_minutes")
       .eq("stage_id", stage.id)
       .eq("enabled", true);
 
@@ -101,12 +101,40 @@ Deno.serve(async (req) => {
     for (const t of triggers ?? []) {
       if (t.trigger_type === "send_email") {
         if (!candidate?.email) { skipped.push({ id: t.id, reason: "candidate has no email" }); continue; }
-        if (!RESEND_API_KEY) { skipped.push({ id: t.id, reason: "RESEND_API_KEY not configured" }); continue; }
-        const settings = (t.settings ?? {}) as Record<string, string>;
-        const subject = render(settings.subject ?? `Update on your application for {{job_title}}`, vars);
-        const bodyText = render(settings.body ?? `Hi {{candidate_name}},\n\nYour application has moved to: {{stage}}.\n`, vars);
-        const html = `<div style="font-family:Inter,Arial,sans-serif;line-height:1.5;color:#111827;white-space:pre-wrap">${bodyText.replace(/[<>]/g, (c) => c === "<" ? "&lt;" : "&gt;")}</div>`;
 
+        // Resolve subject/body: template overrides inline settings
+        let subject = (t.settings as any)?.subject ?? `Update on your application for {{job_title}}`;
+        let bodyText = (t.settings as any)?.body ?? `Hi {{candidate_name}},\n\nYour application has moved to: {{stage}}.\n`;
+        if (t.template_id) {
+          const { data: tpl } = await admin.from("templates").select("name, content").eq("id", t.template_id).maybeSingle();
+          if (tpl) { subject = tpl.name; bodyText = tpl.content; }
+        }
+        subject = render(subject, vars);
+        bodyText = render(bodyText, vars);
+
+        const delayMin = Number(t.delay_minutes ?? 0);
+
+        if (delayMin > 0) {
+          // Enqueue for later processing
+          const scheduledAt = new Date(Date.now() + delayMin * 60_000).toISOString();
+          const { error: insErr } = await admin.from("outbound_email_queue").insert({
+            workspace_id: workspaceId,
+            candidate_id: jc.candidate_id,
+            job_candidate_id: jc.id,
+            template_id: t.template_id ?? null,
+            scheduled_at: scheduledAt,
+            payload: { to: candidate.email, subject, body: bodyText },
+            status: "pending",
+            created_by: userData.user.id,
+          });
+          if (insErr) skipped.push({ id: t.id, reason: `enqueue failed: ${insErr.message}` });
+          else executed.push({ id: t.id, type: "send_email", recipient: candidate.email, delayed: true, scheduled_at: scheduledAt });
+          continue;
+        }
+
+        // Immediate send via Resend (preserves current toast UX)
+        if (!RESEND_API_KEY) { skipped.push({ id: t.id, reason: "RESEND_API_KEY not configured" }); continue; }
+        const html = `<div style="font-family:Inter,Arial,sans-serif;line-height:1.5;color:#111827;white-space:pre-wrap">${bodyText.replace(/[<>]/g, (c) => c === "<" ? "&lt;" : "&gt;")}</div>`;
         const resp = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
