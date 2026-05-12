@@ -73,51 +73,22 @@ export default function CareersJobPublic() {
     if (!job) return;
     if (!name.trim() || !email.trim()) return toast.error("Name and email required");
     setSubmitting(true);
-
-    // 1. Create candidate (using anon — RLS won't allow direct insert. We use the public path via a small workaround:
-    //    For v1, we create via supabase with anon role — this will be blocked by RLS. We piggyback on the existing
-    //    public application by emailing instead OR by inserting through an edge function. For minimal scope here,
-    //    we attempt direct insert; if it fails, we surface a clear message.
-
-    // Knockout evaluation
-    const failedKnockout = questions.find((q) =>
-      q.is_knockout && q.fail_value && (answers[q.id] ?? "").trim().toLowerCase() === q.fail_value.trim().toLowerCase()
-    );
-
-    // Insert candidate + job_candidate via anonymous insert is blocked by RLS.
-    // Use the existing 'apply' pattern: post to a publicly-callable edge function.
-    // We use process-automations with mode=enqueue_public for the rejection email; candidate creation
-    // requires its own path. For v1 we keep it simple: store the application as a comment on a stub candidate
-    // by going through a dedicated public-apply call — but that doesn't exist yet.
-
-    // Pragmatic v1: open a mailto so the recruiter receives the application,
-    // AND if knockout failed, queue the 24h rejection email to the candidate themselves.
-    if (failedKnockout && failedKnockout.rejection_template_id) {
-      // Render template in browser for the candidate's own copy via the queue
-      // We don't have a job_candidate_id (no auto-created candidate). The queue requires one.
-      // Skip in v1 if no job_candidate_id available — fall back to immediate friendly notice.
-    }
-
-    // Send via mailto so recruiter receives the application + answers
-    const lines = [
-      `Name: ${name}`,
-      `Email: ${email}`,
-      phone ? `Phone: ${phone}` : "",
-      "",
-      ...questions.map((q) => `${q.question_text}\n  → ${answers[q.id] ?? "(no answer)"}`),
-    ].filter(Boolean).join("\n");
-    const mailto = `mailto:?subject=${encodeURIComponent(`Application: ${job.title}`)}&body=${encodeURIComponent(lines)}`;
-
+    const { data, error } = await supabase.functions.invoke("process-automations", {
+      body: {
+        mode: "submit_application",
+        jobId: job.id,
+        name,
+        email,
+        phone,
+        answers,
+      },
+    });
     setSubmitting(false);
-
-    if (failedKnockout) {
-      // Show a polite acceptance message — the candidate is informed only after 24h delay (handled by recruiter side).
-      setDone(true);
-      toast.success("Application received");
-    } else {
-      window.location.href = mailto;
-      setDone(true);
+    if (error || (data as any)?.error) {
+      return toast.error((data as any)?.error ?? "Could not submit application");
     }
+    setDone(true);
+    toast.success("Application received");
   };
 
   if (loading) {
