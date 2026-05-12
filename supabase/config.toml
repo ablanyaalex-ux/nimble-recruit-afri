@@ -2,3 +2,6 @@ project_id = "ijupaiytzdqfbdoetqwt"
 
 [functions.process-automations]
 verify_jwt = false
+
+[functions.interview-scheduling]
+verify_jwt = false

@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/select";
 import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
-import { Download, Send, Star } from "lucide-react";
+import { Download, Send, Star, CalendarPlus } from "lucide-react";
+import { InterviewPanelDialog } from "@/components/interviews/InterviewPanelDialog";
 import { toast } from "sonner";
 import { anonymizeName } from "@/lib/anonymize";
 
@@ -71,6 +72,7 @@ type Feedback = {
 };
 
 export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = DEFAULT_STAGES }: Props) {
+  const [interviewOpen, setInterviewOpen] = useState(false);
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const canMove = canMoveStages(currentRole);
@@ -294,6 +296,14 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
                 <p className="text-sm text-muted-foreground">{detail.candidates.headline}</p>
               )}
             </SheetHeader>
+            {canMove && (
+              <div className="mt-3">
+                <Button size="sm" variant="outline" onClick={() => setInterviewOpen(true)}>
+                  <CalendarPlus className="h-4 w-4 mr-1.5" /> Interview panel
+                </Button>
+              </div>
+            )}
+            <InterviewPanelDialog open={interviewOpen} onOpenChange={setInterviewOpen} jobCandidateId={jobCandidateId} />
 
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{stages.find((s) => s.key === detail.stage)?.label ?? detail.stage}</Badge>

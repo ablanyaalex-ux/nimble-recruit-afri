@@ -296,6 +296,172 @@ export type Database = {
           },
         ]
       }
+      interview_recordings: {
+        Row: {
+          ai_summary: Json | null
+          created_at: string
+          created_by: string
+          id: string
+          interview_id: string
+          transcript: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          ai_summary?: Json | null
+          created_at?: string
+          created_by: string
+          id?: string
+          interview_id: string
+          transcript?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          ai_summary?: Json | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          interview_id?: string
+          transcript?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_recordings_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interview_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_schedules: {
+        Row: {
+          created_at: string
+          created_by: string
+          duration_minutes: number
+          id: string
+          interviewer_ids: string[]
+          job_candidate_id: string
+          schedule_token: string
+          scheduled_at: string | null
+          stage_id: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          duration_minutes?: number
+          id?: string
+          interviewer_ids?: string[]
+          job_candidate_id: string
+          schedule_token?: string
+          scheduled_at?: string | null
+          stage_id?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          duration_minutes?: number
+          id?: string
+          interviewer_ids?: string[]
+          job_candidate_id?: string
+          schedule_token?: string
+          scheduled_at?: string | null
+          stage_id?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      interview_scorecards: {
+        Row: {
+          created_at: string
+          id: string
+          interview_id: string
+          interviewer_id: string
+          notes: string | null
+          overall_recommendation: string | null
+          ratings: Json
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interview_id: string
+          interviewer_id: string
+          notes?: string | null
+          overall_recommendation?: string | null
+          ratings?: Json
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interview_id?: string
+          interviewer_id?: string
+          notes?: string | null
+          overall_recommendation?: string | null
+          ratings?: Json
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_scorecards_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interview_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interviewer_availability: {
+        Row: {
+          buffer_minutes: number
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          start_time: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          buffer_minutes?: number
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          start_time: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          buffer_minutes?: number
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       job_application_questions: {
         Row: {
           created_at: string
@@ -506,6 +672,7 @@ export type Database = {
           description: string | null
           employment_type: string | null
           id: string
+          interview_competencies: Json
           location: string | null
           reference: string | null
           salary_max: number | null
@@ -527,6 +694,7 @@ export type Database = {
           description?: string | null
           employment_type?: string | null
           id?: string
+          interview_competencies?: Json
           location?: string | null
           reference?: string | null
           salary_max?: number | null
@@ -548,6 +716,7 @@ export type Database = {
           description?: string | null
           employment_type?: string | null
           id?: string
+          interview_competencies?: Json
           location?: string | null
           reference?: string | null
           salary_max?: number | null

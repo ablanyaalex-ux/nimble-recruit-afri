@@ -1,120 +1,69 @@
-## Sequential Approvals, Dynamic Forms & One-Click UX
+## Interviews Module — Implementation Plan
 
-Big feature — splitting into 4 layered phases on top of the existing `jobs.approval_status`, `job_application_questions`, `outbound_email_queue`, and `process-automations` infrastructure.
+A complete self-scheduling, scorecard, and AI-insights module for interviews.
 
----
+### Phase 1 — Database Schema
 
-### Phase 1 — Schema
+New tables (all RLS-scoped to workspace via parent job):
 
-**New table `job_approval_steps`**
-- `id`, `job_id` (FK jobs), `approver_id` (FK profiles/auth user), `step_order` int, `status` text default `'waiting'` (`waiting` | `pending` | `approved` | `rejected`), `token` text unique nullable, `token_expires_at` timestamptz nullable, `decided_at`, `note`, `created_at`
-- Index on `(job_id, step_order)`, unique `(job_id, step_order)`, unique `token`
-- RLS:
-  - SELECT: workspace members of the parent job
-  - INSERT/UPDATE/DELETE: `can_edit_workspace` on parent job's workspace
-  - Public SELECT (anon) only via dedicated edge function using service role + token (no RLS exposure)
+- **`interviewer_availability`**: `user_id`, `workspace_id`, `day_of_week` (0-6), `start_time`, `end_time`, `buffer_minutes` (default 15). RLS: user manages own rows; workspace members can read.
+- **`interview_schedules`**: `job_candidate_id`, `stage_id`, `workspace_id`, `interviewer_ids` (uuid[]), `status` (pending_scheduling/scheduled/completed/cancelled), `scheduled_at`, `duration_minutes` (default 45), `schedule_token` (unique, for public self-scheduling), `created_by`. RLS: workspace members read; recruiters edit.
+- **`interview_scorecards`**: `interview_id` (FK), `interviewer_id`, `ratings` (jsonb), `overall_recommendation` (strong_hire/hire/no_hire/strong_no_hire), `notes`, `submitted_at`. Unique (interview_id, interviewer_id). RLS: scoped via parent interview's workspace.
+- **`interview_recordings`**: `interview_id`, `transcript`, `ai_summary` (jsonb), `video_url`, `created_by`. RLS: workspace members read; recruiters edit.
+- **`jobs` extension**: `interview_competencies` (jsonb array of `{key, label}`) for per-job scorecard rating dimensions.
 
-**`jobs` extension**
-- Add `status` value default — keep existing `job_status` enum, but on wizard save set `status='draft'`, `approval_status='pending'`.
-- Existing `approval_requested_from`, `approved_by`, `approval_decided_at` repurposed to track the *current* step's approver and final decision.
+### Phase 2 — Self-Scheduling Engine
 
-**Already exists** — `job_application_questions` (id, job_id, position, question_text, options[], is_knockout, fail_value, rejection_template_id). Keep, extend `fail_value` semantics to support multiple fails by reusing the existing TEXT column with comma-separated values (documented in code; avoids schema churn).
+- **Edge function `interview-scheduling`** (verify_jwt=false) with modes:
+  - `slots(token)` → public: load interview, fetch each interviewer's `interviewer_availability` + existing `interview_schedules`, generate 30-min increments for next 14 days, intersect availability, subtract booked slots + buffer (15 min default).
+  - `book(token, slot)` → public: update schedule to `scheduled`, insert pending scorecards, enqueue confirmation emails (candidate + each interviewer with `.ics` attachment), enqueue 24h reminder, enqueue post-interview feedback prompt at `scheduled_at + duration + 5min`.
+  - `.ics` builder: simple VCALENDAR string in payload; drain function attaches it.
+- **Stage-trigger integration**: extend `execute-stage-trigger` to detect "Interview" stages and create a pending `interview_schedules` row; emit candidate email containing `/schedule/:token` link.
 
----
+### Phase 3 — Frontend
 
-### Phase 2 — Job Creation Wizard
+New routes in `App.tsx`:
+- `/schedule/:token` (public) → `SchedulePublic.tsx` calendar grid of available slots, confirm dialog, success state.
+- `/interviews` (auth) → `MyInterviews.tsx` "My Interviews" upcoming list, scorecard CTA.
+- `/interviews/:id/scorecard/:interviewerId` (auth) → `ScorecardForm.tsx` with star-rated competencies + recommendation toggle.
 
-**New component `src/components/jobs/JobWizardDialog.tsx`** (replaces inline create flow on `Jobs.tsx`)
-- shadcn `Dialog` + custom Stepper header (Step 1 / 2 / 3 with check icons)
-- **Step 1 — Job Details**: title, client (Select), description (Textarea), location, employment_type, salary_min/max
-- **Step 2 — Application Builder**: list of questions; each row has type (Short Text / Multiple Choice), question text, options (for MC), `is_knockout` checkbox, and when knockout → multi-select of fail options. "Add question" / drag-to-reorder (simple up/down buttons for v1).
-- **Step 3 — Approval Chain**: ordered list of workspace members (fetched via `workspace_members` join `profiles`); add/remove/reorder. Empty chain = job goes straight to `approved` (escape hatch documented).
-- "Back" / "Next" / final "Submit for approval" button. On submit:
-  1. Insert job (`status='draft'`, `approval_status='pending'` if chain present, else `'approved'` + `status='open'`)
-  2. Bulk insert `job_application_questions`
-  3. Bulk insert `job_approval_steps` with `step_order` and `status='waiting'`
-  4. Call `process-automations` `mode='advance_approval'` with `job_id` → kicks off step 1 (sets it to `pending`, generates token, enqueues email)
+New components:
+- **`InterviewerAvailabilityDialog`** (Settings or Team page): weekly grid editor for current user's availability.
+- **`JobCompetenciesDialog`** (JobDetail settings menu): edit job-level competency list.
+- **`InterviewPanelDialog`** (CandidateDrawer): assign interviewers to a candidate's interview stage, create `interview_schedules` row, copy link, "Record Interview" upload to storage bucket.
 
-**`Jobs.tsx`** — replace existing "New job" trigger with the wizard.
+Replace existing `Placeholder` `/interviews` route with `MyInterviews`.
 
----
+### Phase 4 — AI Insights
 
-### Phase 3 — Sequential Approval Engine
+- **Edge function `summarize-interview`** (verify_jwt=true): accepts `interview_id`. Fetches transcript + job description + `candidates.full_name` (scrubbed if `anonymized` flag on `job_candidates`). Calls Lovable AI Gateway `google/gemini-3-flash-preview` (gemini-2.0-pro not available; use closest supported reasoning model; document rationale). System prompt as specified, JSON-only response. Stores in `interview_recordings.ai_summary`.
+- UI: "Generate AI Summary" button on recording card; renders the 5 sections.
 
-**`process-automations` extension** — add new mode `advance_approval`:
-- Body: `{ mode: 'advance_approval', job_id, after_step? }`
-- Logic:
-  1. Find the next `waiting` step (lowest `step_order`)
-  2. If none → set `jobs.approval_status='approved'`, `status='open'`, return
-  3. Update that step: `status='pending'`, `token=crypto.randomUUID()`, `token_expires_at=now()+7d`
-  4. Resolve approver email via `auth.users` (service role)
-  5. Render approval email (subject + HTML body with deep link `${PUBLIC_URL}/approve/<token>`) and insert into `outbound_email_queue` with `scheduled_at=now()`
-  6. Update `jobs.approval_requested_from = approver_id`
+### Phase 5 — Templates & Communication
 
-**New mode `decide_approval`** (called by the public approve route handler):
-- Body: `{ token, decision: 'approved'|'rejected', note? }`
-- Validates token + expiry, updates the step row (`status`, `decided_at`, `note`)
-- If `approved` → call `advance_approval` recursively for next step
-- If `rejected` → set `jobs.approval_status='rejected'`, `approval_decided_at=now()`, leave remaining steps `waiting` (history preserved)
-- Returns `{ ok, job: { title, client_name }, decision }` (no auth needed; token is the auth)
+- Reuse existing `templates` table; add `interview_invite` and `interview_reminder` to type union (text column, no enum change needed).
+- Settings → Templates page already exists; placeholders supported: `{{candidate_name}}`, `{{job_title}}`, `{{interview_time}}`, `{{schedule_link}}`.
+- Reminder enqueue handled in `book` mode (24h before).
+- Drain function (`process-automations` mode `drain`) already sends; extend to attach `.ics` when payload contains `ics` field.
 
-**New mode `nudge_approval`**: re-enqueue the email for the currently `pending` step (rate-limited to 1/min via `attempts` field check).
+### Out of Scope (v1)
 
----
+- Real video conferencing integration (Zoom/Teams) — placeholder upload only
+- Audio transcription (assume transcript provided as text)
+- Cross-timezone handling (assume workspace TZ = browser TZ)
+- Calendar OAuth sync
+- Drag-to-reschedule
 
-### Phase 4 — Public Approve Route
+### Key Files
 
-**New page `src/pages/ApprovePublic.tsx`** at route `/approve/:token`
-- Fetches job summary via a small new edge function `approve-step-info` (`mode='info'` on `process-automations`) — returns job title, client, description preview, approver name, expiry status, current decision (so revisits show "Already approved")
-- Two big buttons: **Approve** / **Reject** (Reject opens textarea for note)
-- Calls `process-automations decide_approval`. Shows confirmation card with check/x icon.
-- Token-only auth — no Supabase session required. Add route in `App.tsx` outside the auth layout.
+**New migrations:** 1 file with all 4 tables + jobs column.
 
-**Public Careers gate** — already filters `approval_status='approved'` in `CareersPublic.tsx`/`CareersJobPublic.tsx`. Re-verify and ensure detail page returns the existing "Position no longer available" 404 view when not approved.
+**New edge functions:** `interview-scheduling`, `summarize-interview`.
 
----
+**Edited edge function:** `process-automations` (.ics attachment support), `execute-stage-trigger` (auto-create interview row).
 
-### Phase 5 — Recruiter Visibility
+**New pages:** `SchedulePublic.tsx`, `MyInterviews.tsx`, `ScorecardForm.tsx`.
 
-**New component `src/components/jobs/ApprovalProgressCard.tsx`** rendered on `JobDetail.tsx`:
-- Vertical step list with status icons:
-  - ✅ approved → green check
-  - ⏳ pending → amber clock + "Nudge" button (calls `process-automations nudge_approval`, shows toast)
-  - ⚪ waiting → grey circle
-  - ❌ rejected → red X + note tooltip
-- Shows approver name + decided_at timestamp
-- Visible only to recruiters/owners
+**New components:** `InterviewerAvailabilityDialog.tsx`, `JobCompetenciesDialog.tsx`, `InterviewPanelDialog.tsx`.
 
-**Application form & knockout** (already in `CareersJobPublic.tsx`) — fix the v1 `mailto` hack:
-- Properly insert candidate via a new mode `submit_application` on `process-automations` (anon-callable, validates job is approved+open, creates candidate + job_candidate, evaluates knockout server-side, enqueues 24h rejection email when failed using `rejection_template_id`).
-- Knockout fail check now supports multi-value `fail_value` (split on `,`).
-
----
-
-### Files
-
-**New**
-- Migration: `job_approval_steps` table + RLS
-- `src/components/jobs/JobWizardDialog.tsx`
-- `src/components/jobs/ApprovalProgressCard.tsx`
-- `src/pages/ApprovePublic.tsx`
-
-**Edited**
-- `src/App.tsx` — `/approve/:token` route
-- `src/pages/Jobs.tsx` — open wizard
-- `src/pages/JobDetail.tsx` — render `ApprovalProgressCard`
-- `src/pages/CareersJobPublic.tsx` — real submission via edge function, multi-value knockout
-- `supabase/functions/process-automations/index.ts` — add `advance_approval`, `decide_approval`, `nudge_approval`, `submit_application`, `info` modes
-
----
-
-### Out of scope (v1)
-- Editing the approval chain after submission (must reject & resubmit)
-- Drag-and-drop reorder (use up/down buttons)
-- Email templates for approval emails (hardcoded inline copy with `{{job_title}}` / `{{approver_name}}`)
-- `JobApprovalsDialog` removal — leave existing dialog untouched, new flow supersedes it; will deprecate later
-
----
-
-### Migration approval needed
-Single new table `job_approval_steps` with RLS. Submitting now.
+**Edited:** `App.tsx`, `JobDetail.tsx`, `CandidateDrawer.tsx`, `AppSidebar.tsx`.

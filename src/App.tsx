@@ -23,6 +23,9 @@ import Placeholder from "./pages/Placeholder";
 import CareersPublic from "./pages/CareersPublic";
 import CareersJobPublic from "./pages/CareersJobPublic";
 import ApprovePublic from "./pages/ApprovePublic";
+import SchedulePublic from "./pages/SchedulePublic";
+import MyInterviews from "./pages/MyInterviews";
+import ScorecardForm from "./pages/ScorecardForm";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -43,6 +46,7 @@ const App = () => (
               <Route path="/careers/:workspaceId" element={<CareersPublic />} />
               <Route path="/careers/:workspaceId/:jobId" element={<CareersJobPublic />} />
               <Route path="/approve/:token" element={<ApprovePublic />} />
+              <Route path="/schedule/:token" element={<SchedulePublic />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/jobs" element={<Jobs />} />
@@ -51,7 +55,8 @@ const App = () => (
                 <Route path="/candidates" element={<Candidates />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />
-                <Route path="/interviews" element={<Placeholder eyebrow="Schedule" title="Interviews" />} />
+                <Route path="/interviews" element={<MyInterviews />} />
+                <Route path="/interviews/:interviewId/scorecard/:interviewerId" element={<ScorecardForm />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/settings/templates" element={<SettingsTemplates />} />
               </Route>

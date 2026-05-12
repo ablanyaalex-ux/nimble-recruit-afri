@@ -77,6 +77,7 @@ import { RejectionReasonPopover } from "@/components/pipeline/RejectionReasonPop
 import { StageTriggersDialog } from "@/components/pipeline/StageTriggersDialog";
 import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
 import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
+import { JobCompetenciesDialog } from "@/components/interviews/JobCompetenciesDialog";
 import { ApprovalProgressCard } from "@/components/jobs/ApprovalProgressCard";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
@@ -288,6 +289,7 @@ export default function JobDetail() {
   const [triggerDialog, setTriggerDialog] = useState<{ stageId: string; key: string; label: string } | null>(null);
   const [approvalsOpen, setApprovalsOpen] = useState(false);
   const [questionsOpen, setQuestionsOpen] = useState(false);
+  const [competenciesOpen, setCompetenciesOpen] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -620,6 +622,9 @@ export default function JobDetail() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setQuestionsOpen(true)}>
                   <HelpCircle className="h-4 w-4" /> Application questions
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setCompetenciesOpen(true)}>
+                  <Settings2 className="h-4 w-4" /> Scorecard competencies
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
@@ -988,6 +993,10 @@ export default function JobDetail() {
           jobId={job.id}
           workspaceId={job.workspace_id}
         />
+      )}
+
+      {canEdit && (
+        <JobCompetenciesDialog open={competenciesOpen} onOpenChange={setCompetenciesOpen} jobId={job.id} />
       )}
 
       {canEdit && (
