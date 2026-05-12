@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/select";
 import { MentionPicker } from "@/components/pipeline/MentionPicker";
 import { appendMention, parseMentionedUserIds, type MentionableUser } from "@/lib/mentions";
-import { Download, Send, Star } from "lucide-react";
+import { Download, Send, Star, CalendarPlus } from "lucide-react";
+import { InterviewPanelDialog } from "@/components/interviews/InterviewPanelDialog";
 import { toast } from "sonner";
 import { anonymizeName } from "@/lib/anonymize";
 
