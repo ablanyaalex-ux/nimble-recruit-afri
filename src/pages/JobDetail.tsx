@@ -623,6 +623,9 @@ export default function JobDetail() {
                 <DropdownMenuItem onClick={() => setQuestionsOpen(true)}>
                   <HelpCircle className="h-4 w-4" /> Application questions
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setCompetenciesOpen(true)}>
+                  <Settings2 className="h-4 w-4" /> Scorecard competencies
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => updateStatus("open")} disabled={job.status === "open"}>
                   Mark as open
