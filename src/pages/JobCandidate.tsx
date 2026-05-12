@@ -556,6 +556,9 @@ export default function JobCandidate() {
             )}
             {canMove && !detail.rejected && (
               <>
+                <Button size="sm" variant="outline" onClick={() => setScheduleOpen(true)}>
+                  <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
+                </Button>
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
                   <ChevronRight className="h-3.5 w-3.5" /> Progress
                 </Button>
@@ -646,11 +649,12 @@ export default function JobCandidate() {
         )}
       </Card>
 
-      <Tabs defaultValue="resume">
+      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "resume" ? {} : { tab: v }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
           <TabsTrigger value="cover">Cover letter</TabsTrigger>
-          <TabsTrigger value="interviews"><ClipboardList className="h-3.5 w-3.5" /> Interviews ({feedback.length})</TabsTrigger>
+          <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
+          <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
           <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
           <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
         </TabsList>
@@ -922,7 +926,15 @@ export default function JobCandidate() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="interviews" className="mt-4 space-y-3">
+        <TabsContent value="interviews" className="mt-4">
+          <CandidateInterviewsTab
+            key={interviewsRefresh}
+            jobCandidateId={jobCandidateId!}
+            onSchedule={() => setScheduleOpen(true)}
+          />
+        </TabsContent>
+
+        <TabsContent value="feedback" className="mt-4 space-y-3">
           {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it from the Scorecard tab.</p>}
           {feedback.map((f) => (
             <Card key={f.id} className="p-4">
