@@ -59,7 +59,7 @@ export default function Inbox() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(params.get("t"));
+  const [activeId, setActiveId] = useState<string | null>(params.get("t") ?? params.get("thread"));
   const [messages, setMessages] = useState<Message[]>([]);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
