@@ -11,18 +11,16 @@ export const MILESTONES: { key: MilestoneKey; label: string }[] = [
 ];
 
 const RULES: { key: MilestoneKey; match: RegExp }[] = [
-  { key: "closing", label: /offer|accepted|hired|closed|filled/i } as any,
-  { key: "interviews", label: /interview|panel|onsite|final/i } as any,
-  { key: "assessment", label: /assess|test|portfolio|task|exercise|challenge/i } as any,
-  { key: "screen", label: /screen|recruiter call|chat|phone/i } as any,
-  { key: "application", label: /appl|cv|resume|review|new/i } as any,
+  { key: "closing", match: /offer|accepted|hired|closed|filled/i },
+  { key: "interviews", match: /interview|panel|onsite|final/i },
+  { key: "assessment", match: /assess|test|portfolio|task|exercise|challenge/i },
+  { key: "screen", match: /screen|recruiter call|chat|phone/i },
+  { key: "application", match: /appl|cv|resume|review|new/i },
 ];
 
 export function milestoneForStage(stage: Pick<PipelineStage, "key" | "label">): MilestoneKey {
   const hay = `${stage.key} ${stage.label}`.toLowerCase();
-  for (const r of RULES) {
-    if ((r as any).label.test(hay)) return r.key;
-  }
+  for (const r of RULES) if (r.match.test(hay)) return r.key;
   return "application";
 }
 
