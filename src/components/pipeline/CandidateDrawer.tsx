@@ -346,6 +346,30 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               {detail.anonymized && (
                 <Badge variant="outline">Anonymised for HMs</Badge>
               )}
+              {interviewSummary && (() => {
+                const i = interviewSummary;
+                const now = Date.now();
+                const ts = i.scheduled_at ? new Date(i.scheduled_at).getTime() : null;
+                if (i.status === "pending_scheduling") {
+                  return <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Awaiting candidate booking</Badge>;
+                }
+                if (i.status === "cancelled") {
+                  return <Badge variant="outline">Interview cancelled</Badge>;
+                }
+                if (ts && ts > now) {
+                  const fmt = new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                  return <Badge variant="outline" className="border-primary/40 text-primary">Interview {fmt}</Badge>;
+                }
+                if (ts && ts <= now) {
+                  if (i.submitted_scorecards >= i.interviewer_count && i.interviewer_count > 0) {
+                    return <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Interview complete</Badge>;
+                  }
+                  return <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    Awaiting scorecard ({i.submitted_scorecards}/{i.interviewer_count})
+                  </Badge>;
+                }
+                return null;
+              })()}
               {canMove && (
                 <Select value={detail.stage} onValueChange={moveStage}>
                   <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
