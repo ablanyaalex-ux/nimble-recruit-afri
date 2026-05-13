@@ -59,11 +59,13 @@ export function CandidateDocuments({
   candidateId,
   workspaceId,
   canEdit,
+  onDocCountChange,
 }: {
   jobCandidateId: string;
   candidateId: string;
   workspaceId: string;
   canEdit: boolean;
+  onDocCountChange?: (count: number) => void;
 }) {
   const { user } = useAuth();
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -81,8 +83,10 @@ export function CandidateDocuments({
       .select("*")
       .eq("job_candidate_id", jobCandidateId)
       .order("created_at", { ascending: false });
-    setDocs((data ?? []) as unknown as Doc[]);
+    const list = (data ?? []) as unknown as Doc[];
+    setDocs(list);
     setLoading(false);
+    onDocCountChange?.(list.length);
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus, History } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus, History, ChevronDown } from "lucide-react";
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { CandidateInterviewsTab } from "@/components/interviews/CandidateInterviewsTab";
 import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
@@ -9,8 +9,9 @@ import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFe
 import { CandidateDocuments } from "@/components/pipeline/CandidateDocuments";
 import { SendEmailDialog } from "@/components/pipeline/SendEmailDialog";
 import { OffersSection } from "@/components/pipeline/OffersSection";
-import { Activity, GitBranch, ClipboardCheck } from "lucide-react";
+import { Activity, GitBranch, ClipboardCheck, FolderOpen, MessageCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,6 +155,8 @@ export default function JobCandidate() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [targetStage, setTargetStage] = useState("application");
   const [addingToJob, setAddingToJob] = useState(false);
+  const [docCount, setDocCount] = useState(0);
+  const [cvOpen, setCvOpen] = useState(true);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
@@ -687,6 +690,12 @@ export default function JobCandidate() {
           <TabsTrigger value="summary"><FileText className="h-3.5 w-3.5" /> Summary</TabsTrigger>
           <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
           <TabsTrigger value="evaluation"><ClipboardCheck className="h-3.5 w-3.5" /> Evaluation</TabsTrigger>
+          <TabsTrigger value="documents">
+            <FolderOpen className="h-3.5 w-3.5" /> Documents{c.resume_path || docCount > 0 ? ` (${(c.resume_path ? 1 : 0) + docCount})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="comments">
+            <MessageCircle className="h-3.5 w-3.5" /> Comments{comments.length > 0 ? ` (${comments.length})` : ""}
+          </TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-3.5 w-3.5" /> Activity</TabsTrigger>
         </TabsList>
 
@@ -897,116 +906,8 @@ export default function JobCandidate() {
 
 
           <Card className="p-4">
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium">
-                  {showRedactedView ? "Redacted CV" : "CV"}
-                  {redactedPath && !showRedactedView && (
-                    <span className="ml-2 text-xs text-muted-foreground">(redacted version available)</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {showRedactedView
-                    ? "Personal identifiers have been blacked out directly on the CV."
-                    : "The original CV as uploaded."}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap" />
-
-            </div>
-            {cvUrlToShow && cvPathToShow ? (
-              (() => {
-                const isPdf = /\.pdf($|\?)/i.test(cvPathToShow);
-                const fileName = (cvPathToShow.split("/").pop() ?? "resume").replace(/^[a-f0-9-]+\.pdf$/i, "resume.pdf");
-                return (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="text-sm text-muted-foreground truncate">{fileName}</div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={cvUrlToShow} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
-                        </Button>
-                        {!showRedactedView && (
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={cvUrlToShow} download={fileName}><Download className="h-3 w-3" /> Download</a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {isPdf ? (
-                      <iframe src={cvUrlToShow} className="w-full h-[70vh] rounded-md border" title="Resume" />
-                    ) : (
-                      <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                        Inline preview isn't available for this file type. Use "Open" above to view it.
-                      </div>
-                    )}
-                  </div>
-                );
-              })()
-            ) : showRedactedView && !redactedPath ? (
-              <p className="text-sm text-muted-foreground">A redacted CV hasn't been generated yet.</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
-            )}
-          </Card>
-
-          {detail.jobs && (
-            <CandidateDocuments
-              jobCandidateId={detail.id}
-              candidateId={detail.candidate_id}
-              workspaceId={detail.jobs.workspace_id}
-              canEdit={canEdit}
-            />
-          )}
-
-          <Card className="p-4">
             <div className="font-display text-base mb-2">Cover letter</div>
             <p className="text-sm text-muted-foreground">No cover letter on file.</p>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-display text-base flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-primary" /> Comments ({comments.length})
-              </div>
-            </div>
-            <div className="space-y-3">
-              {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
-              {comments.map((c) => {
-                const mine = c.author_id === user?.id;
-                const initials = (c.author?.display_name ?? "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-                return (
-                  <div key={c.id} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-                    <div className="h-7 w-7 shrink-0 rounded-full bg-muted grid place-items-center text-[10px] font-semibold text-muted-foreground">
-                      {initials || "·"}
-                    </div>
-                    <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 ${mine ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
-                      <div className={`text-[11px] mb-0.5 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                        {c.author?.display_name ?? "Someone"} · {new Date(c.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                      </div>
-                      <div className="text-sm">
-                        <CommentBody text={c.body} users={mentionables} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="space-y-2 pt-3 border-t">
-                <MentionTextarea
-                  value={newComment}
-                  onChange={setNewComment}
-                  users={mentionables}
-                  placeholder="Write a comment… type @ to mention"
-                  rows={3}
-                  disabled={posting}
-                />
-                <div className="flex items-center justify-end">
-                  <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
-                    <Send className="h-3 w-3" /> Post
-                  </Button>
-                </div>
-              </div>
-            </div>
           </Card>
         </TabsContent>
 
@@ -1159,6 +1060,128 @@ export default function JobCandidate() {
               </div>
               <Button type="submit" size="sm">Submit feedback</Button>
             </form>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-4 space-y-4">
+          {c.resume_path && (
+            <Collapsible open={cvOpen} onOpenChange={setCvOpen}>
+              <Card className="p-4">
+                <CollapsibleTrigger asChild>
+                  <button className="flex items-center justify-between w-full text-left">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">
+                        {showRedactedView ? "Redacted CV" : "CV / Resume"}
+                        {redactedPath && !showRedactedView && (
+                          <span className="ml-2 text-xs text-muted-foreground">(redacted version available)</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {showRedactedView
+                          ? "Personal identifiers have been blacked out directly on the CV."
+                          : "The original CV as uploaded."}
+                      </p>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${cvOpen ? "" : "-rotate-90"}`} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-3 pt-3 border-t">
+                    {cvUrlToShow && cvPathToShow ? (
+                      (() => {
+                        const isPdf = /\.pdf($|\?)/i.test(cvPathToShow);
+                        const fileName = (cvPathToShow.split("/").pop() ?? "resume").replace(/^[a-f0-9-]+\.pdf$/i, "resume.pdf");
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="text-sm text-muted-foreground truncate">{fileName}</div>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" asChild>
+                                  <a href={cvUrlToShow} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                                </Button>
+                                {!showRedactedView && (
+                                  <Button size="sm" variant="outline" asChild>
+                                    <a href={cvUrlToShow} download={fileName}><Download className="h-3 w-3" /> Download</a>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            {isPdf ? (
+                              <iframe src={cvUrlToShow} className="w-full h-[70vh] rounded-md border" title="Resume" />
+                            ) : (
+                              <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                                Inline preview isn't available for this file type. Use "Open" above to view it.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
+                    ) : showRedactedView && !redactedPath ? (
+                      <p className="text-sm text-muted-foreground">A redacted CV hasn't been generated yet.</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
+          {detail.jobs && (
+            <CandidateDocuments
+              jobCandidateId={detail.id}
+              candidateId={detail.candidate_id}
+              workspaceId={detail.jobs.workspace_id}
+              canEdit={canEdit}
+              onDocCountChange={setDocCount}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="comments" className="mt-4 space-y-4">
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-base flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" /> Comments ({comments.length})
+              </div>
+            </div>
+            <div className="space-y-3">
+              {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
+              {comments.map((c) => {
+                const mine = c.author_id === user?.id;
+                const initials = (c.author?.display_name ?? "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+                return (
+                  <div key={c.id} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
+                    <div className="h-7 w-7 shrink-0 rounded-full bg-muted grid place-items-center text-[10px] font-semibold text-muted-foreground">
+                      {initials || "·"}
+                    </div>
+                    <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 ${mine ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
+                      <div className={`text-[11px] mb-0.5 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        {c.author?.display_name ?? "Someone"} · {new Date(c.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </div>
+                      <div className="text-sm">
+                        <CommentBody text={c.body} users={mentionables} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="space-y-2 pt-3 border-t">
+                <MentionTextarea
+                  value={newComment}
+                  onChange={setNewComment}
+                  users={mentionables}
+                  placeholder="Write a comment… type @ to mention"
+                  rows={3}
+                  disabled={posting}
+                />
+                <div className="flex items-center justify-end">
+                  <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
+                    <Send className="h-3 w-3" /> Post
+                  </Button>
+                </div>
+              </div>
+            </div>
           </Card>
         </TabsContent>
 
