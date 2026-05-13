@@ -110,7 +110,8 @@ export default function JobCandidate() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [rescheduleInterviewId, setRescheduleInterviewId] = useState<string | null>(null);
   const [interviewsRefresh, setInterviewsRefresh] = useState(0);
-  const initialTab = searchParams.get("tab") === "interviews" ? "interviews" : "resume";
+  const tabParam = searchParams.get("tab");
+  const initialTab = tabParam ?? "resume";
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
