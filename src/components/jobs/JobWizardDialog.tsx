@@ -288,9 +288,73 @@ export function JobWizardDialog({ open, onOpenChange, workspaceId, onCreated }: 
 
         {/* Step 2 */}
         {step === 1 && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <Card className="p-4 space-y-3">
+              <div>
+                <div className="text-sm font-medium">Standard application fields</div>
+                <p className="text-xs text-muted-foreground">Toggle which fields candidates see and whether each is required.</p>
+              </div>
+              <div className="space-y-2">
+                {(Object.keys(formConfig.standard_fields) as (keyof FormConfig["standard_fields"])[]).map((key) => {
+                  const f = formConfig.standard_fields[key];
+                  const lockEnabled = key === "full_name" || key === "email";
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Checkbox
+                          id={`sf-${key}`}
+                          checked={f.enabled}
+                          disabled={lockEnabled}
+                          onCheckedChange={(v) => setFormConfig((c) => ({
+                            ...c,
+                            standard_fields: { ...c.standard_fields, [key]: { enabled: !!v, required: !!v && f.required } },
+                          }))}
+                        />
+                        <Label htmlFor={`sf-${key}`} className="text-sm font-normal cursor-pointer truncate">
+                          {STD_FIELD_LABELS[key]}
+                          {lockEnabled && <span className="ml-2 text-xs text-muted-foreground">(always on)</span>}
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Checkbox
+                          id={`sfr-${key}`}
+                          checked={f.required}
+                          disabled={!f.enabled || (key === "full_name" || key === "email")}
+                          onCheckedChange={(v) => setFormConfig((c) => ({
+                            ...c,
+                            standard_fields: { ...c.standard_fields, [key]: { ...c.standard_fields[key], required: !!v } },
+                          }))}
+                        />
+                        <Label htmlFor={`sfr-${key}`} className="text-xs text-muted-foreground cursor-pointer">Required</Label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="require-cv"
+                    checked={formConfig.require_cv}
+                    onCheckedChange={(v) => setFormConfig((c) => ({ ...c, require_cv: !!v }))}
+                  />
+                  <Label htmlFor="require-cv" className="text-sm font-normal cursor-pointer">Require CV upload</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="cv-parse"
+                    checked={formConfig.allow_cv_parsing}
+                    onCheckedChange={(v) => setFormConfig((c) => ({ ...c, allow_cv_parsing: !!v }))}
+                  />
+                  <Label htmlFor="cv-parse" className="text-sm font-normal cursor-pointer">
+                    Auto-fill name / email / phone / location from uploaded CV
+                  </Label>
+                </div>
+              </div>
+            </Card>
+
             <p className="text-sm text-muted-foreground">
-              Standard fields (name, email, phone) are always collected. Add custom questions below — mark any as knockout to auto-reject candidates choosing a "fail" answer.
+              Add custom questions below — mark any as knockout to auto-reject candidates choosing a "fail" answer.
             </p>
             {questions.map((q, idx) => (
               <Card key={q.uid} className="p-4 space-y-3">
