@@ -12,13 +12,13 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, FileText, Mail, FileSignature } from "lucide-react";
+import { Plus, Trash2, FileText, Mail, FileSignature, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 type Template = {
   id: string;
   workspace_id: string;
-  type: "email" | "job_description" | "offer_letter";
+  type: "email" | "job_description" | "offer_letter" | "survey";
   name: string;
   content: string;
 };
@@ -34,6 +34,7 @@ const TYPE_META: Record<Template["type"], { label: string; icon: any }> = {
   email: { label: "Email", icon: Mail },
   job_description: { label: "Job description", icon: FileText },
   offer_letter: { label: "Offer letter", icon: FileSignature },
+  survey: { label: "Survey", icon: ClipboardList },
 };
 
 function renderPreview(text: string) {
