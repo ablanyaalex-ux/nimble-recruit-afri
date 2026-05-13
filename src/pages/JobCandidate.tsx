@@ -1039,6 +1039,20 @@ export default function JobCandidate() {
             />
           </Card>
 
+          {detail.jobs && (
+            <OffersSection
+              workspaceId={detail.jobs.workspace_id}
+              jobId={detail.job_id}
+              jobCandidateId={detail.id}
+              candidateId={detail.candidate_id}
+              canEdit={canEdit}
+              onOfferAccepted={() => {
+                toast.success("🎉 Offer accepted! Candidate moved to Hired.");
+                refresh();
+              }}
+            />
+          )}
+
           <Card className="p-4">
             <div className="font-display text-base mb-3 flex items-center gap-2">
               <History className="h-4 w-4 text-primary" /> Interview timeline
