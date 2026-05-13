@@ -135,6 +135,7 @@ export default function SettingsTemplates() {
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="survey">Survey</TabsTrigger>
           <TabsTrigger value="job_description">Job description</TabsTrigger>
           <TabsTrigger value="offer_letter">Offer letter</TabsTrigger>
         </TabsList>
