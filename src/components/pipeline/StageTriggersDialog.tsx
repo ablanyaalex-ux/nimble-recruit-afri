@@ -17,7 +17,7 @@ export type StageTrigger = {
   id: string;
   stage_id: string;
   workspace_id: string;
-  trigger_type: "send_email" | "slack_notification" | "create_task";
+  trigger_type: "send_email" | "send_survey" | "slack_notification" | "create_task";
   settings: any;
   enabled: boolean;
   template_id: string | null;
