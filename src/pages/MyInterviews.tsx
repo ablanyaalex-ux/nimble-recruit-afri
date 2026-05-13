@@ -169,7 +169,7 @@ export default function MyInterviews() {
                       )}
                       {r.job_candidates?.job_id && (
                         <Button asChild size="sm" variant="ghost">
-                          <Link to={`/jobs/${r.job_candidates.job_id}/candidates/${r.job_candidate_id}?tab=interviews`}>Open</Link>
+                          <Link to={`/app/jobs/${r.job_candidates.job_id}/candidates/${r.job_candidate_id}?tab=interviews`}>Open</Link>
                         </Button>
                       )}
                     </div>

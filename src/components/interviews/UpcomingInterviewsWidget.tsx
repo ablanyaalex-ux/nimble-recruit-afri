@@ -48,7 +48,7 @@ export function UpcomingInterviewsWidget({ collapsed }: { collapsed: boolean }) 
           const hh = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
           const cand = r.job_candidates?.candidates?.full_name ?? "Candidate";
           const jobId = r.job_candidates?.job_id;
-          const target = jobId ? `/jobs/${jobId}/candidates/${r.job_candidate_id}?tab=interviews` : "/interviews";
+          const target = jobId ? `/app/jobs/${jobId}/candidates/${r.job_candidate_id}?tab=interviews` : "/interviews";
           const isToday = start.toDateString() === new Date().toDateString();
           return (
             <Link

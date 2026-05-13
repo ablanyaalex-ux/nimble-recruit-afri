@@ -185,7 +185,7 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:gap-6 md:grid-cols-4 mb-6">
         <StatCard
-          to="/jobs"
+          to="/app/jobs"
           icon={<Briefcase className="h-4 w-4" />}
           title="Open jobs"
           value={openJobs}
@@ -209,7 +209,7 @@ export default function Dashboard() {
           }
         />
         <StatCard
-          to="/jobs"
+          to="/app/jobs"
           icon={<CalendarClock className="h-4 w-4" />}
           title="In interviews"
           value={loading ? null : interviewCount}
@@ -288,7 +288,7 @@ export default function Dashboard() {
                 {recentJobs.map((j) => (
                   <Link
                     key={j.id}
-                    to={`/jobs/${j.id}`}
+                    to={`/app/jobs/${j.id}`}
                     className="flex items-center justify-between gap-3 py-2.5 group"
                   >
                     <div className="min-w-0">

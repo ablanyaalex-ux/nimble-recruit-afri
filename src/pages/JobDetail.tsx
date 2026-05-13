@@ -391,7 +391,7 @@ export default function JobDetail() {
   useEffect(() => {
     const jc = searchParams.get("jc");
     if (jc && id) {
-      navigate(`/jobs/${id}/candidates/${jc}`, { replace: true });
+      navigate(`/app/jobs/${id}/candidates/${jc}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -595,7 +595,7 @@ export default function JobDetail() {
     const { error } = await supabase.from("jobs").delete().eq("id", job.id);
     if (error) return toast.error(error.message);
     toast.success("Job deleted.");
-    navigate("/jobs");
+    navigate("/app/jobs");
   };
 
   if (loading) return <PageContainer><p className="text-sm text-muted-foreground">Loading…</p></PageContainer>;
@@ -606,7 +606,7 @@ export default function JobDetail() {
 
   return (
     <PageContainer>
-      <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <Link to="/app/jobs" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> Jobs
       </Link>
 
@@ -925,7 +925,7 @@ export default function JobDetail() {
                           selected={selected.has(entry.id)}
                           selectMode={selectMode}
                           onToggleSelect={() => toggleSelect(entry.id)}
-                          onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
+                          onClick={() => navigate(`/app/jobs/${job.id}/candidates/${entry.id}`)}
                           onProgress={(e) => { e.stopPropagation(); progressEntry(entry); }}
                           onReject={(reason) => rejectCandidates([entry.id], reason)}
                           onReinstate={(e) => { e.stopPropagation(); reinstateEntry(entry); }}
@@ -948,7 +948,7 @@ export default function JobDetail() {
               <div
                 key={entry.id}
                 className="p-3 flex items-center justify-between gap-3 hover:bg-accent/40 cursor-pointer"
-                onClick={() => navigate(`/jobs/${job.id}/candidates/${entry.id}`)}
+                onClick={() => navigate(`/app/jobs/${job.id}/candidates/${entry.id}`)}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">

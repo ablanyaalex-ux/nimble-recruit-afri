@@ -404,7 +404,7 @@ export default function ClientDetail() {
           ) : (
             <Card className="divide-y divide-border">
               {jobs.map((j) => (
-                <Link key={j.id} to={`/jobs/${j.id}`} className="p-4 flex items-center justify-between hover:bg-accent/40 transition-colors">
+                <Link key={j.id} to={`/app/jobs/${j.id}`} className="p-4 flex items-center justify-between hover:bg-accent/40 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                     <div className="min-w-0">

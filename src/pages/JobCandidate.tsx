@@ -533,7 +533,7 @@ export default function JobCandidate() {
 
   return (
     <PageContainer>
-      <Link to={`/jobs/${jobId}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <Link to={`/app/jobs/${jobId}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> Back to {detail.jobs?.title ?? "job"}
       </Link>
 

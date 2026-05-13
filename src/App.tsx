@@ -50,9 +50,9 @@ const App = () => (
               <Route path="/schedule/:token" element={<SchedulePublic />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/jobs" element={<Jobs />} />
-                <Route path="/jobs/:id" element={<JobDetail />} />
-                <Route path="/jobs/:jobId/candidates/:jobCandidateId" element={<JobCandidate />} />
+                <Route path="/app/jobs" element={<Jobs />} />
+                <Route path="/app/jobs/:id" element={<JobDetail />} />
+                <Route path="/app/jobs/:jobId/candidates/:jobCandidateId" element={<JobCandidate />} />
                 <Route path="/candidates" element={<Candidates />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />
