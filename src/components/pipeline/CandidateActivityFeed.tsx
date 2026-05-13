@@ -46,6 +46,9 @@ const ACTION_META: Record<string, { Icon: any; tone: string }> = {
   offer_sent: { Icon: Send, tone: "text-sky-600 bg-sky-500/10" },
   offer_accepted: { Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
   offer_declined: { Icon: XCircle, tone: "text-destructive bg-destructive/10" },
+  tag_added: { Icon: TagIcon, tone: "text-violet-600 bg-violet-500/10" },
+  archived: { Icon: Archive, tone: "text-muted-foreground bg-muted" },
+  unarchived: { Icon: ArchiveRestore, tone: "text-emerald-600 bg-emerald-500/10" },
 };
 
 export function CandidateActivityFeed({
