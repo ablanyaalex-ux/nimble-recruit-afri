@@ -690,6 +690,12 @@ export default function JobCandidate() {
           <TabsTrigger value="summary"><FileText className="h-3.5 w-3.5" /> Summary</TabsTrigger>
           <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
           <TabsTrigger value="evaluation"><ClipboardCheck className="h-3.5 w-3.5" /> Evaluation</TabsTrigger>
+          <TabsTrigger value="documents">
+            <FolderOpen className="h-3.5 w-3.5" /> Documents{c.resume_path || docCount > 0 ? ` (${(c.resume_path ? 1 : 0) + docCount})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="comments">
+            <MessageCircle className="h-3.5 w-3.5" /> Comments{comments.length > 0 ? ` (${comments.length})` : ""}
+          </TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-3.5 w-3.5" /> Activity</TabsTrigger>
         </TabsList>
 
