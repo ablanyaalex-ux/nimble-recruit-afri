@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus, History } from "lucide-react";
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { CandidateInterviewsTab } from "@/components/interviews/CandidateInterviewsTab";
+import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
@@ -655,6 +656,7 @@ export default function JobCandidate() {
           <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
           <TabsTrigger value="cover">Cover letter</TabsTrigger>
           <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
+          <TabsTrigger value="timeline"><History className="h-3.5 w-3.5" /> Timeline</TabsTrigger>
           <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
           <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
           <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
@@ -936,6 +938,9 @@ export default function JobCandidate() {
           />
         </TabsContent>
 
+        <TabsContent value="timeline" className="mt-4">
+          <CandidateInterviewTimeline key={`tl-${interviewsRefresh}`} jobCandidateId={jobCandidateId!} />
+        </TabsContent>
         <TabsContent value="feedback" className="mt-4 space-y-3">
           {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it from the Scorecard tab.</p>}
           {feedback.map((f) => (

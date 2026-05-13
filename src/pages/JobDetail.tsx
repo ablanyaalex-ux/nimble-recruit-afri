@@ -133,6 +133,7 @@ function DraggableCard({
   entry,
   canDrag,
   canEdit,
+  isHM,
   selected,
   selectMode,
   onToggleSelect,
@@ -144,6 +145,7 @@ function DraggableCard({
   entry: PipelineEntry;
   canDrag: boolean;
   canEdit: boolean;
+  isHM: boolean;
   selected: boolean;
   selectMode: boolean;
   onToggleSelect: () => void;
@@ -152,6 +154,9 @@ function DraggableCard({
   onReject: (reason: string) => boolean | void | Promise<boolean | void>;
   onReinstate: (e: React.MouseEvent) => void;
 }) {
+  // HMs can act on cards only while in the 'reviewed' stage; recruiters/owners always.
+  const showCardActions = canEdit || isHM;
+  const hmGated = isHM && entry.stage !== "reviewed";
   const dragDisabled = !canDrag || selectMode || entry.rejected;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
@@ -197,29 +202,49 @@ function DraggableCard({
               {entry.candidates.source.replace(/_/g, " ")}
             </div>
           )}
-          {canEdit && !selectMode && (
+          {showCardActions && !selectMode && (
             <div className="flex items-center gap-1 mt-2 -mb-1">
               {!entry.rejected ? (
                 <>
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onProgress}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={onProgress}
+                    disabled={hmGated}
+                    title={hmGated ? "Available once the candidate is in the Reviewed stage" : undefined}
+                  >
                     <ChevronRight className="h-3 w-3" /> Progress
                   </Button>
-                  <RejectionReasonPopover onReasonSelect={onReject}>
+                  {hmGated ? (
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-[11px] text-destructive hover:text-destructive"
                       onClick={(e) => e.stopPropagation()}
+                      disabled
+                      title="Available once the candidate is in the Reviewed stage"
                     >
                       <X className="h-3 w-3" /> Reject
                     </Button>
-                  </RejectionReasonPopover>
+                  ) : (
+                    <RejectionReasonPopover onReasonSelect={onReject}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[11px] text-destructive hover:text-destructive"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <X className="h-3 w-3" /> Reject
+                      </Button>
+                    </RejectionReasonPopover>
+                  )}
                 </>
-              ) : (
+              ) : canEdit ? (
                 <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={onReinstate}>
                   <Undo2 className="h-3 w-3" /> Reinstate
                 </Button>
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -896,6 +921,7 @@ export default function JobDetail() {
                           entry={displayEntry}
                           canDrag={canDrag}
                           canEdit={canEdit}
+                          isHM={isHM}
                           selected={selected.has(entry.id)}
                           selectMode={selectMode}
                           onToggleSelect={() => toggleSelect(entry.id)}
