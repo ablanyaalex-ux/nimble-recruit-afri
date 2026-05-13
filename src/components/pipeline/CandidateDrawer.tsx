@@ -153,6 +153,32 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
       const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
       setFeedback(fRes.data.map((f) => ({ ...f, author: byId.get(f.author_id) ?? null })));
     }
+
+    // Latest interview summary
+    const { data: iRows } = await supabase
+      .from("interview_schedules")
+      .select("id, status, scheduled_at, duration_minutes, interviewer_ids")
+      .eq("job_candidate_id", jobCandidateId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const latest = iRows?.[0];
+    if (latest) {
+      const { count } = await supabase
+        .from("interview_scorecards")
+        .select("id", { count: "exact", head: true })
+        .eq("interview_id", latest.id)
+        .not("submitted_at", "is", null);
+      setInterviewSummary({
+        id: latest.id,
+        status: latest.status,
+        scheduled_at: latest.scheduled_at,
+        duration_minutes: latest.duration_minutes,
+        interviewer_count: (latest.interviewer_ids ?? []).length,
+        submitted_scorecards: count ?? 0,
+      });
+    } else {
+      setInterviewSummary(null);
+    }
   };
 
   useEffect(() => {
