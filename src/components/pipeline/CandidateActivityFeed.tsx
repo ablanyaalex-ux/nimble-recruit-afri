@@ -174,6 +174,18 @@ export function CandidateActivityFeed({
             {l.metadata?.preview && <span className="text-muted-foreground"> — “{l.metadata.preview}”</span>}
           </>
         );
+      case "offer_generated":
+        return <><strong>{actor}</strong> generated an offer</>;
+      case "offer_submitted_for_approval":
+        return <><strong>{actor}</strong> submitted the offer for internal approval</>;
+      case "offer_approved":
+        return <><strong>{actor}</strong> approved the offer</>;
+      case "offer_sent":
+        return <><strong>{actor}</strong> sent the offer to the candidate</>;
+      case "offer_accepted":
+        return <><strong>{actor}</strong> — candidate accepted the offer 🎉</>;
+      case "offer_declined":
+        return <><strong>{actor}</strong> — candidate declined the offer{l.metadata?.reason && <span className="text-muted-foreground"> — {l.metadata.reason}</span>}</>;
       default:
         return <><strong>{actor}</strong> {l.action_type.replace(/_/g, " ")}</>;
     }
