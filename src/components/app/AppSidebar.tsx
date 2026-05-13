@@ -21,6 +21,7 @@ const allNavItems = [
   { title: "Jobs", url: "/jobs", icon: Briefcase, hideForHM: false },
   { title: "Candidates", url: "/candidates", icon: Users, hideForHM: true },
   { title: "Clients", url: "/clients", icon: Building2, hideForHM: true },
+  { title: "Inbox", url: "/inbox", icon: Inbox, hideForHM: true },
   { title: "Interviews", url: "/interviews", icon: CalendarDays, hideForHM: false },
   { title: "Team", url: "/team", icon: UserPlus, hideForHM: true },
   { title: "Templates", url: "/settings/templates", icon: FileText, hideForHM: true },
