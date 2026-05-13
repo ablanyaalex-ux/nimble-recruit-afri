@@ -179,6 +179,7 @@ export default function SettingsTemplates() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="survey">Survey</SelectItem>
                   <SelectItem value="job_description">Job description</SelectItem>
                   <SelectItem value="offer_letter">Offer letter</SelectItem>
                 </SelectContent>
