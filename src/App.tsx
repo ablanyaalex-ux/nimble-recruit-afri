@@ -25,6 +25,7 @@ import CareersJobPublic from "./pages/CareersJobPublic";
 import ApprovePublic from "./pages/ApprovePublic";
 import SchedulePublic from "./pages/SchedulePublic";
 import MyInterviews from "./pages/MyInterviews";
+import Inbox from "./pages/Inbox";
 import ScorecardForm from "./pages/ScorecardForm";
 import NotFound from "./pages/NotFound.tsx";
 
