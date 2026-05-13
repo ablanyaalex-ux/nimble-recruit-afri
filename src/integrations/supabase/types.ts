@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_type: string
+          actor_id: string | null
+          candidate_id: string | null
+          created_at: string
+          from_value: string | null
+          id: string
+          job_candidate_id: string | null
+          job_id: string | null
+          metadata: Json
+          to_value: string | null
+          workspace_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_id?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          from_value?: string | null
+          id?: string
+          job_candidate_id?: string | null
+          job_id?: string | null
+          metadata?: Json
+          to_value?: string | null
+          workspace_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          from_value?: string | null
+          id?: string
+          job_candidate_id?: string | null
+          job_id?: string | null
+          metadata?: Json
+          to_value?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       candidate_comments: {
         Row: {
           author_id: string

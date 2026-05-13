@@ -4,6 +4,9 @@ import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, 
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { CandidateInterviewsTab } from "@/components/interviews/CandidateInterviewsTab";
 import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
+import { CandidateStagesTimeline } from "@/components/pipeline/CandidateStagesTimeline";
+import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFeed";
+import { Activity, GitBranch } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
@@ -107,7 +110,8 @@ export default function JobCandidate() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [rescheduleInterviewId, setRescheduleInterviewId] = useState<string | null>(null);
   const [interviewsRefresh, setInterviewsRefresh] = useState(0);
-  const initialTab = searchParams.get("tab") === "interviews" ? "interviews" : "resume";
+  const tabParam = searchParams.get("tab");
+  const initialTab = tabParam ?? "resume";
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
@@ -206,6 +210,24 @@ export default function JobCandidate() {
   };
 
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [jobCandidateId]);
+
+  // Realtime: refresh stage/rejection state when the candidate row updates elsewhere (e.g. Kanban)
+  useEffect(() => {
+    if (!jobCandidateId) return;
+    const ch = supabase
+      .channel(`jc-${jobCandidateId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "job_candidates", filter: `id=eq.${jobCandidateId}` },
+        (payload) => {
+          const row = payload.new as any;
+          setDetail((prev) => prev ? { ...prev, stage: row.stage, rejected: row.rejected, rejection_reason: row.rejection_reason } : prev);
+          setInterviewsRefresh((n) => n + 1);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [jobCandidateId]);
 
   useEffect(() => {
     const loadMentionables = async () => {
@@ -655,6 +677,8 @@ export default function JobCandidate() {
         <TabsList>
           <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
           <TabsTrigger value="cover">Cover letter</TabsTrigger>
+          <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
+          <TabsTrigger value="activity"><Activity className="h-3.5 w-3.5" /> Activity</TabsTrigger>
           <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
           <TabsTrigger value="timeline"><History className="h-3.5 w-3.5" /> Timeline</TabsTrigger>
           <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
@@ -935,6 +959,22 @@ export default function JobCandidate() {
             jobCandidateId={jobCandidateId!}
             onSchedule={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}
             onReschedule={(id) => { setRescheduleInterviewId(id); setScheduleOpen(true); }}
+          />
+        </TabsContent>
+
+        <TabsContent value="stages" className="mt-4">
+          <CandidateStagesTimeline
+            jobCandidateId={jobCandidateId!}
+            stages={allStages}
+            currentStage={detail.stage}
+            refreshKey={interviewsRefresh}
+          />
+        </TabsContent>
+        <TabsContent value="activity" className="mt-4">
+          <CandidateActivityFeed
+            jobCandidateId={jobCandidateId!}
+            stages={allStages}
+            refreshKey={interviewsRefresh}
           />
         </TabsContent>
 
