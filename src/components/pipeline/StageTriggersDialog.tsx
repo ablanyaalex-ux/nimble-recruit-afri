@@ -64,7 +64,7 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
         .select("id, stage_id, workspace_id, trigger_type, settings, enabled, template_id, delay_minutes")
         .eq("stage_id", stageId)
         .order("created_at", { ascending: true }),
-      supabase.from("templates").select("id, name").eq("workspace_id", workspaceId).eq("type", "email"),
+      supabase.from("templates").select("id, name, type").eq("workspace_id", workspaceId).in("type", ["email", "survey"]),
     ]);
     setLoading(false);
     if (tr.error) { toast.error(tr.error.message); return; }
