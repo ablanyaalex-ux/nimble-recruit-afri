@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Users, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Users, FileText, Trash2, Tag as TagIcon, Archive, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +20,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { BulkRejectDialog } from "@/components/pipeline/BulkRejectDialog";
+import { BulkAddTagDialog } from "@/components/pipeline/BulkAddTagDialog";
 
 type Candidate = {
   id: string;
@@ -26,49 +31,94 @@ type Candidate = {
   email: string | null;
   headline: string | null;
   resume_path: string | null;
+  archived: boolean;
 };
+
+type CandidateTag = { candidate_id: string; tag: string };
 
 export default function Candidates() {
   const { user } = useAuth();
   const { currentWorkspaceId, currentRole } = useWorkspace();
   const canEdit = canEditWorkspace(currentRole);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [tagsByCand, setTagsByCand] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [view, setView] = useState<"active" | "archived">("active");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkReject, setBulkReject] = useState(false);
+  const [bulkTag, setBulkTag] = useState(false);
+
   const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    phone: "",
-    headline: "",
-    location: "",
-    linkedin_url: "",
-    notes: "",
+    full_name: "", email: "", phone: "", headline: "", location: "", linkedin_url: "", notes: "",
   });
   const [resume, setResume] = useState<File | null>(null);
 
   const refresh = async () => {
     if (!currentWorkspaceId) return;
     setLoading(true);
+    setSelected(new Set());
     const { data } = await supabase
       .from("candidates")
-      .select("id, full_name, email, headline, resume_path")
+      .select("id, full_name, email, headline, resume_path, archived")
       .eq("workspace_id", currentWorkspaceId)
-      .order("created_at", { ascending: false });
-    if (data) setCandidates(data);
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    setCandidates((data ?? []) as Candidate[]);
+
+    const ids = (data ?? []).map((c: any) => c.id);
+    if (ids.length) {
+      const { data: tagRows } = await supabase
+        .from("candidate_tags")
+        .select("candidate_id, tag")
+        .in("candidate_id", ids);
+      const map: Record<string, string[]> = {};
+      for (const r of (tagRows ?? []) as CandidateTag[]) {
+        (map[r.candidate_id] ??= []).push(r.tag);
+      }
+      setTagsByCand(map);
+    } else {
+      setTagsByCand({});
+    }
     setLoading(false);
   };
 
+  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [currentWorkspaceId]);
+
+  const visible = useMemo(
+    () => candidates.filter((c) => (view === "archived" ? c.archived : !c.archived)),
+    [candidates, view]
+  );
+
+  // Drop selections that are no longer visible (e.g. after switching tab)
   useEffect(() => {
-    refresh();
+    if (selected.size === 0) return;
+    const visIds = new Set(visible.map((c) => c.id));
+    let changed = false;
+    const next = new Set<string>();
+    for (const id of selected) { if (visIds.has(id)) next.add(id); else changed = true; }
+    if (changed) setSelected(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWorkspaceId]);
+  }, [view, candidates]);
+
+  const allSelected = visible.length > 0 && visible.every((c) => selected.has(c.id));
+  const someSelected = selected.size > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(visible.map((c) => c.id)));
+  };
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !currentWorkspaceId || !form.full_name.trim()) {
-      return toast.error("Name is required");
-    }
+    if (!user || !currentWorkspaceId || !form.full_name.trim()) return toast.error("Name is required");
     setSubmitting(true);
     const { data: cand, error } = await supabase
       .from("candidates")
@@ -85,20 +135,13 @@ export default function Candidates() {
       })
       .select("id")
       .single();
-
-    if (error || !cand) {
-      setSubmitting(false);
-      return toast.error(error?.message ?? "Failed");
-    }
+    if (error || !cand) { setSubmitting(false); return toast.error(error?.message ?? "Failed"); }
 
     if (resume) {
       const path = `${currentWorkspaceId}/${cand.id}/${resume.name}`;
       const { error: upErr } = await supabase.storage.from("resumes").upload(path, resume, { upsert: true });
-      if (upErr) {
-        toast.error(`Resume upload failed: ${upErr.message}`);
-      } else {
-        await supabase.from("candidates").update({ resume_path: path }).eq("id", cand.id);
-      }
+      if (upErr) toast.error(`Resume upload failed: ${upErr.message}`);
+      else await supabase.from("candidates").update({ resume_path: path }).eq("id", cand.id);
     }
 
     setSubmitting(false);
@@ -108,6 +151,23 @@ export default function Candidates() {
     setResume(null);
     refresh();
   };
+
+  const bulkArchive = async (archive: boolean) => {
+    if (!user) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase
+      .from("candidates")
+      .update({ archived: archive, archived_at: archive ? new Date().toISOString() : null, archived_by: archive ? user.id : null })
+      .in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(`${archive ? "Archived" : "Restored"} ${ids.length}`);
+    refresh();
+  };
+
+  const selectedCandidates = useMemo(
+    () => candidates.filter((c) => selected.has(c.id)).map((c) => ({ candidate_id: c.id, full_name: c.full_name, email: c.email })),
+    [candidates, selected]
+  );
 
   return (
     <PageContainer>
@@ -124,42 +184,26 @@ export default function Candidates() {
               <DialogContent>
                 <DialogHeader><DialogTitle>New candidate</DialogTitle></DialogHeader>
                 <form onSubmit={onCreate} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Full name</Label>
-                    <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+                  <div className="space-y-2"><Label>Full name</Label>
+                    <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required /></div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2"><Label>Email</Label>
+                      <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Phone</Label>
+                      <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Phone</Label>
-                      <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                    </div>
+                    <div className="space-y-2"><Label>Headline</Label>
+                      <Input value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Location</Label>
+                      <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Headline</Label>
-                      <Input placeholder="Senior Backend Engineer" value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Location</Label>
-                      <Input placeholder="London, UK" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>LinkedIn URL</Label>
-                    <Input value={form.linkedin_url} onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Resume (PDF/DOC)</Label>
-                    <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Notes</Label>
-                    <Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-                  </div>
+                  <div className="space-y-2"><Label>LinkedIn URL</Label>
+                    <Input value={form.linkedin_url} onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Resume (PDF/DOC)</Label>
+                    <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setResume(e.target.files?.[0] ?? null)} /></div>
+                  <div className="space-y-2"><Label>Notes</Label>
+                    <Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                   <DialogFooter><Button type="submit" disabled={submitting}>{submitting ? "Saving…" : "Add"}</Button></DialogFooter>
                 </form>
               </DialogContent>
@@ -168,27 +212,112 @@ export default function Candidates() {
         }
       />
 
+      <Tabs value={view} onValueChange={(v) => setView(v as any)} className="mb-3">
+        <TabsList>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : candidates.length === 0 ? (
+      ) : visible.length === 0 ? (
         <Card className="p-10 text-center">
           <Users className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="font-display text-xl">No candidates yet</p>
+          <p className="font-display text-xl">No candidates {view === "archived" ? "archived" : "yet"}</p>
         </Card>
       ) : (
-        <Card className="divide-y divide-border">
-          {candidates.map((c) => (
-            <div key={c.id} className="p-4 flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="font-medium">{c.full_name}</div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {c.headline ?? c.email ?? "—"}
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_2rem] items-center gap-3 border-b bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground">
+            <Checkbox
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              onCheckedChange={toggleAll}
+              aria-label="Select all"
+            />
+            <span>Name</span>
+            <span className="hidden sm:block">Headline / Email</span>
+            <span className="hidden md:block">Tags</span>
+            <span />
+          </div>
+          <div className="divide-y divide-border">
+            {visible.map((c) => {
+              const isSel = selected.has(c.id);
+              const tags = tagsByCand[c.id] ?? [];
+              return (
+                <div
+                  key={c.id}
+                  className={`grid grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_2rem] items-center gap-3 px-4 py-3 transition-colors ${isSel ? "bg-primary/5" : "hover:bg-muted/30"}`}
+                >
+                  <Checkbox checked={isSel} onCheckedChange={() => toggle(c.id)} aria-label={`Select ${c.full_name}`} />
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{c.full_name}</div>
+                    <div className="text-xs text-muted-foreground truncate sm:hidden">{c.headline ?? c.email ?? "—"}</div>
+                  </div>
+                  <div className="hidden sm:block min-w-0 text-sm text-muted-foreground truncate">
+                    {c.headline ?? c.email ?? "—"}
+                  </div>
+                  <div className="hidden md:flex flex-wrap gap-1 min-w-0">
+                    {tags.slice(0, 3).map((t) => (
+                      <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
+                    ))}
+                    {tags.length > 3 && <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>}
+                  </div>
+                  <div className="text-right">
+                    {c.resume_path && <FileText className="h-4 w-4 text-muted-foreground inline" />}
+                  </div>
                 </div>
-              </div>
-              {c.resume_path && <Upload className="h-4 w-4 text-muted-foreground" />}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </Card>
+      )}
+
+      {/* Floating bulk action bar */}
+      {selected.size > 0 && canEdit && (
+        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-xl border bg-background/95 backdrop-blur px-3 py-2 shadow-lg">
+            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())} aria-label="Clear selection">
+              <X className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium pr-2 border-r">{selected.size} selected</span>
+            {view === "active" ? (
+              <>
+                <Button size="sm" variant="outline" onClick={() => bulkArchive(true)}>
+                  <Archive className="h-4 w-4" /> Archive
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setBulkTag(true)}>
+                  <TagIcon className="h-4 w-4" /> Add tag
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => setBulkReject(true)}>
+                  <Trash2 className="h-4 w-4" /> Reject
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => bulkArchive(false)}>
+                <Archive className="h-4 w-4" /> Restore
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {currentWorkspaceId && (
+        <>
+          <BulkRejectDialog
+            open={bulkReject}
+            onOpenChange={setBulkReject}
+            workspaceId={currentWorkspaceId}
+            candidates={selectedCandidates}
+            onDone={refresh}
+          />
+          <BulkAddTagDialog
+            open={bulkTag}
+            onOpenChange={setBulkTag}
+            workspaceId={currentWorkspaceId}
+            candidateIds={Array.from(selected)}
+            onDone={refresh}
+          />
+        </>
       )}
     </PageContainer>
   );
