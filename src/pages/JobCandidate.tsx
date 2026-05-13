@@ -944,6 +944,22 @@ export default function JobCandidate() {
           />
         </TabsContent>
 
+        <TabsContent value="stages" className="mt-4">
+          <CandidateStagesTimeline
+            jobCandidateId={jobCandidateId!}
+            stages={allStages}
+            currentStage={detail.stage}
+            refreshKey={interviewsRefresh}
+          />
+        </TabsContent>
+        <TabsContent value="activity" className="mt-4">
+          <CandidateActivityFeed
+            jobCandidateId={jobCandidateId!}
+            stages={allStages}
+            refreshKey={interviewsRefresh}
+          />
+        </TabsContent>
+
         <TabsContent value="timeline" className="mt-4">
           <CandidateInterviewTimeline key={`tl-${interviewsRefresh}`} jobCandidateId={jobCandidateId!} />
         </TabsContent>
