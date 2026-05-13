@@ -303,6 +303,87 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_job_submissions: {
+        Row: {
+          apply_url: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          employment_type: string | null
+          id: string
+          location: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          payment_status: string
+          poster_company: string | null
+          poster_email: string
+          poster_name: string
+          poster_phone: string | null
+          published_at: string | null
+          published_job_id: string | null
+          remote_policy: string | null
+          review_token: string
+          salary_max: number | null
+          salary_min: number | null
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          apply_url?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          employment_type?: string | null
+          id?: string
+          location?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          payment_status?: string
+          poster_company?: string | null
+          poster_email: string
+          poster_name: string
+          poster_phone?: string | null
+          published_at?: string | null
+          published_job_id?: string | null
+          remote_policy?: string | null
+          review_token?: string
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          apply_url?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          employment_type?: string | null
+          id?: string
+          location?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          payment_status?: string
+          poster_company?: string | null
+          poster_email?: string
+          poster_name?: string
+          poster_phone?: string | null
+          published_at?: string | null
+          published_job_id?: string | null
+          remote_policy?: string | null
+          review_token?: string
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       interview_feedback: {
         Row: {
           author_id: string
@@ -735,7 +816,12 @@ export type Database = {
           id: string
           interview_competencies: Json
           location: string | null
+          marketplace_category: string | null
+          marketplace_published_at: string | null
+          marketplace_status: string
+          marketplace_summary: string | null
           reference: string | null
+          remote_policy: string | null
           salary_max: number | null
           salary_min: number | null
           status: Database["public"]["Enums"]["job_status"]
@@ -758,7 +844,12 @@ export type Database = {
           id?: string
           interview_competencies?: Json
           location?: string | null
+          marketplace_category?: string | null
+          marketplace_published_at?: string | null
+          marketplace_status?: string
+          marketplace_summary?: string | null
           reference?: string | null
+          remote_policy?: string | null
           salary_max?: number | null
           salary_min?: number | null
           status?: Database["public"]["Enums"]["job_status"]
@@ -781,7 +872,12 @@ export type Database = {
           id?: string
           interview_competencies?: Json
           location?: string | null
+          marketplace_category?: string | null
+          marketplace_published_at?: string | null
+          marketplace_status?: string
+          marketplace_summary?: string | null
           reference?: string | null
+          remote_policy?: string | null
           salary_max?: number | null
           salary_min?: number | null
           status?: Database["public"]["Enums"]["job_status"]
