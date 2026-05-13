@@ -210,13 +210,14 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
               <div className="space-y-2">
                 <Label>Template</Label>
                 <Select value={templateId} onValueChange={setTemplateId}>
-                  <SelectTrigger><SelectValue placeholder="Choose template…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={type === "send_survey" ? "Choose survey template…" : "Choose template…"} /></SelectTrigger>
                   <SelectContent>
-                    {templates.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-muted-foreground">No email templates yet — create one in Settings → Templates</div>
-                    ) : templates.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
+                    {(() => {
+                      const filtered = templates.filter((t) => type === "send_survey" ? t.type === "survey" : t.type === "email" || !t.type);
+                      return filtered.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">No {type === "send_survey" ? "survey" : "email"} templates yet — create one in Settings → Templates</div>
+                      ) : filtered.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>));
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
