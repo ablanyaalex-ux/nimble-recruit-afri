@@ -20,6 +20,7 @@ import {
   Zap,
   CheckCircle2,
   HelpCircle,
+  CalendarPlus,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -79,6 +80,7 @@ import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
 import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
 import { JobCompetenciesDialog } from "@/components/interviews/JobCompetenciesDialog";
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
+import { BulkScheduleInterviewsDialog } from "@/components/interviews/BulkScheduleInterviewsDialog";
 import { ApprovalProgressCard } from "@/components/jobs/ApprovalProgressCard";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
@@ -292,6 +294,7 @@ export default function JobDetail() {
   const [questionsOpen, setQuestionsOpen] = useState(false);
   const [competenciesOpen, setCompetenciesOpen] = useState(false);
   const [scheduleFor, setScheduleFor] = useState<{ jcId: string; stageId: string | null } | null>(null);
+  const [bulkScheduleOpen, setBulkScheduleOpen] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
@@ -597,7 +600,12 @@ export default function JobDetail() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={jobStatusBadgeClass(job.status)}>{STATUS_LABELS[job.status]}</Badge>
-          {job.approval_status && job.approval_status !== "approved" && (
+          {job.approval_status === "pending" && (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/10">
+              Awaiting Approval
+            </Badge>
+          )}
+          {job.approval_status && job.approval_status !== "approved" && job.approval_status !== "pending" && (
             <Badge variant="outline" className="capitalize">{job.approval_status}</Badge>
           )}
           {canEdit && (
@@ -787,53 +795,46 @@ export default function JobDetail() {
       </div>
 
       {/* Bulk action bar */}
-      {selectMode && canEdit && (
-        <div className="flex items-center gap-2 flex-wrap mb-4 p-2.5 rounded-md border border-primary/30 bg-primary/5">
-          <span className="text-sm font-medium px-1">
-            {selected.size} selected
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" disabled={bulkBusy}>
-                Move to stage…
+      {selectMode && canEdit && (() => {
+        const selectedEntries = entries.filter((e) => selected.has(e.id));
+        const allInInterviewStage = selectedEntries.length > 0 && selectedEntries.every((e) => {
+          const s = stages.find((x) => x.key === e.stage);
+          return s && (/interview/i.test(s.key) || /interview/i.test(s.label ?? ""));
+        });
+        return (
+          <div className="flex items-center gap-2 flex-wrap mb-4 p-2.5 rounded-md border border-primary/30 bg-primary/5">
+            <span className="text-sm font-medium px-1">{selected.size} selected</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={bulkBusy}>Move to stage…</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {stages.map((s) => (
+                  <DropdownMenuItem key={s.key} onClick={() => bulkMoveTo(s.key)}>{s.label}</DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {allInInterviewStage && (
+              <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => setBulkScheduleOpen(true)}>
+                <CalendarPlus className="h-4 w-4" /> Schedule interviews ({selected.size})
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {stages.map((s) => (
-                <DropdownMenuItem key={s.key} onClick={() => bulkMoveTo(s.key)}>
-                  {s.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <RejectionReasonPopover
-            candidateCount={selected.size}
-            disabled={bulkBusy}
-            onReasonSelect={(reason) => rejectCandidates(Array.from(selected), reason)}
-          >
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive hover:text-destructive"
+            )}
+            <RejectionReasonPopover
+              candidateCount={selected.size}
               disabled={bulkBusy}
+              onReasonSelect={(reason) => rejectCandidates(Array.from(selected), reason)}
             >
-              <X className="h-4 w-4" /> Reject
+              <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={bulkBusy}>
+                <X className="h-4 w-4" /> Reject
+              </Button>
+            </RejectionReasonPopover>
+            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={bulkBusy} onClick={() => setConfirmBulkRemove(true)}>
+              <Trash2 className="h-4 w-4" /> Remove from job
             </Button>
-          </RejectionReasonPopover>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            disabled={bulkBusy}
-            onClick={() => setConfirmBulkRemove(true)}
-          >
-            <Trash2 className="h-4 w-4" /> Remove from job
-          </Button>
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={clearSelection}>
-            Clear
-          </Button>
-        </div>
-      )}
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={clearSelection}>Clear</Button>
+          </div>
+        );
+      })()}
 
       {isHM && (
         <p className="text-xs text-muted-foreground mb-3">
@@ -1011,6 +1012,13 @@ export default function JobDetail() {
         jobCandidateId={scheduleFor?.jcId ?? null}
         defaultStageId={scheduleFor?.stageId ?? null}
         onCreated={refresh}
+      />
+
+      <BulkScheduleInterviewsDialog
+        open={bulkScheduleOpen}
+        onOpenChange={setBulkScheduleOpen}
+        jobCandidateIds={Array.from(selected)}
+        onCreated={() => { refresh(); clearSelection(); }}
       />
 
       {canEdit && (

@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CalendarPlus, CalendarSearch, Copy, Link as LinkIcon } from "lucide-react";
+import { RichTextEditor, textToHtml, htmlToText } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 
 type Member = { user_id: string; display_name: string };
@@ -42,6 +43,8 @@ export function ScheduleInterviewDialog({
   const [creating, setCreating] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewSlots, setPreviewSlots] = useState<string[] | null>(null);
+  const [subject, setSubject] = useState<string>("Schedule your interview — {{job_title}}");
+  const [bodyHtml, setBodyHtml] = useState<string>(textToHtml(`Hi {{candidate_name}},\n\nPlease pick a time for your interview using this link:\n{{schedule_link}}\n\nWe look forward to speaking with you.`));
   const isReschedule = !!existingInterviewId;
 
   useEffect(() => {
