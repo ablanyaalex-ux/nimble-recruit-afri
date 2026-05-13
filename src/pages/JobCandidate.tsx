@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus, History } from "lucide-react";
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { CandidateInterviewsTab } from "@/components/interviews/CandidateInterviewsTab";
+import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
