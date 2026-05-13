@@ -680,21 +680,16 @@ export default function JobCandidate() {
         )}
       </Card>
 
-      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "resume" ? {} : { tab: v }, { replace: true })}>
+      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "summary" ? {} : { tab: v }, { replace: true })}>
         <TabsList>
-          <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
-          <TabsTrigger value="cover">Cover letter</TabsTrigger>
+          <TabsTrigger value="summary"><FileText className="h-3.5 w-3.5" /> Summary</TabsTrigger>
           <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
+          <TabsTrigger value="evaluation"><ClipboardCheck className="h-3.5 w-3.5" /> Evaluation</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-3.5 w-3.5" /> Activity</TabsTrigger>
-          <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
-          <TabsTrigger value="timeline"><History className="h-3.5 w-3.5" /> Timeline</TabsTrigger>
-          <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
-          <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
-          <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
         </TabsList>
 
 
-        <TabsContent value="resume" className="mt-4 space-y-4">
+        <TabsContent value="summary" className="mt-4 space-y-4">
           {c.resume_path && (
             <Card className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
