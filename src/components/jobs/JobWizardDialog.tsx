@@ -32,6 +32,39 @@ type Question = {
   fail_values: string[];
 };
 
+type StdField = { enabled: boolean; required: boolean };
+type FormConfig = {
+  standard_fields: {
+    full_name: StdField;
+    email: StdField;
+    phone: StdField;
+    location: StdField;
+    address: StdField;
+  };
+  allow_cv_parsing: boolean;
+  require_cv: boolean;
+};
+
+const DEFAULT_FORM_CONFIG: FormConfig = {
+  standard_fields: {
+    full_name: { enabled: true, required: true },
+    email: { enabled: true, required: true },
+    phone: { enabled: true, required: false },
+    location: { enabled: false, required: false },
+    address: { enabled: false, required: false },
+  },
+  allow_cv_parsing: true,
+  require_cv: false,
+};
+
+const STD_FIELD_LABELS: Record<keyof FormConfig["standard_fields"], string> = {
+  full_name: "Full name",
+  email: "Email",
+  phone: "Phone",
+  location: "Location (city / country)",
+  address: "Full address",
+};
+
 const STEPS = ["Job Details", "Application Builder", "Approval Chain"] as const;
 
 function newQuestion(): Question {
