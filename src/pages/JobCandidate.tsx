@@ -1302,6 +1302,20 @@ export default function JobCandidate() {
           refresh();
         }}
       />
+
+      {detail.jobs && (
+        <SendEmailDialog
+          open={emailOpen}
+          onOpenChange={setEmailOpen}
+          workspaceId={detail.jobs.workspace_id}
+          candidateId={detail.candidate_id}
+          jobCandidateId={detail.id}
+          candidateName={detail.candidates.full_name}
+          candidateEmail={detail.candidates.email}
+          jobTitle={detail.jobs.title}
+          onSent={() => setInterviewsRefresh((n) => n + 1)}
+        />
+      )}
     </PageContainer>
   );
 }
