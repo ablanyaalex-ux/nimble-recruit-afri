@@ -26,6 +26,8 @@ import ApprovePublic from "./pages/ApprovePublic";
 import SchedulePublic from "./pages/SchedulePublic";
 import MyInterviews from "./pages/MyInterviews";
 import Inbox from "./pages/Inbox";
+import Marketplace from "./pages/Marketplace";
+import PostJobGuest from "./pages/PostJobGuest";
 import ScorecardForm from "./pages/ScorecardForm";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -48,6 +50,8 @@ const App = () => (
               <Route path="/careers/:workspaceId/:jobId" element={<CareersJobPublic />} />
               <Route path="/approve/:token" element={<ApprovePublic />} />
               <Route path="/schedule/:token" element={<SchedulePublic />} />
+              <Route path="/jobs" element={<Marketplace />} />
+              <Route path="/post-job" element={<PostJobGuest />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/app/jobs" element={<Jobs />} />
