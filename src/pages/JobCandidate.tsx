@@ -155,6 +155,8 @@ export default function JobCandidate() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [targetStage, setTargetStage] = useState("application");
   const [addingToJob, setAddingToJob] = useState(false);
+  const [docCount, setDocCount] = useState(0);
+  const [cvOpen, setCvOpen] = useState(true);
 
   const { stages: allStages } = usePipelineStages(detail?.jobs?.workspace_id);
   const stages = visibleStagesForRole(currentRole, allStages);
