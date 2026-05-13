@@ -37,6 +37,9 @@ const ACTION_META: Record<string, { Icon: any; tone: string }> = {
   unrejected: { Icon: RotateCcw, tone: "text-amber-600 bg-amber-500/10" },
   email_sent: { Icon: Mail, tone: "text-sky-600 bg-sky-500/10" },
   recruiter_assigned: { Icon: UserCog, tone: "text-primary bg-primary/10" },
+  document_uploaded: { Icon: FileText, tone: "text-indigo-600 bg-indigo-500/10" },
+  assessment_added: { Icon: Link2, tone: "text-violet-600 bg-violet-500/10" },
+  comment_added: { Icon: MessageSquare, tone: "text-foreground bg-muted" },
 };
 
 export function CandidateActivityFeed({
