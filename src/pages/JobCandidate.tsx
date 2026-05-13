@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus, History } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone, Linkedin, Tag, Send, Star, FileText, MessageSquare, ClipboardList, ExternalLink, MapPin, Sparkles, RefreshCw, ChevronRight, X, Undo2, Pencil, Briefcase, MoreHorizontal, ShieldOff, CheckCircle2, AlertCircle, ArrowRightCircle, FileSearch, Quote, CalendarPlus, History, ChevronDown } from "lucide-react";
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
 import { CandidateInterviewsTab } from "@/components/interviews/CandidateInterviewsTab";
 import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
@@ -9,8 +9,9 @@ import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFe
 import { CandidateDocuments } from "@/components/pipeline/CandidateDocuments";
 import { SendEmailDialog } from "@/components/pipeline/SendEmailDialog";
 import { OffersSection } from "@/components/pipeline/OffersSection";
-import { Activity, GitBranch, ClipboardCheck } from "lucide-react";
+import { Activity, GitBranch, ClipboardCheck, FolderOpen, MessageCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
 import { supabase } from "@/integrations/supabase/client";
