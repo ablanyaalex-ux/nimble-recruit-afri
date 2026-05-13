@@ -178,10 +178,11 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
           <div className="space-y-3 border-t pt-4">
             <div className="space-y-2">
               <Label>Action</Label>
-              <Select value={type} onValueChange={(v) => setType(v as any)}>
+              <Select value={type} onValueChange={(v) => { setType(v as any); if (v === "send_survey") { setUseTemplate(true); setTemplateId(""); } }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="send_email">Send email to candidate</SelectItem>
+                  <SelectItem value="send_survey">Send survey to candidate</SelectItem>
                   <SelectItem value="slack_notification" disabled>Slack notification (coming soon)</SelectItem>
                   <SelectItem value="create_task" disabled>Create task (coming soon)</SelectItem>
                 </SelectContent>
