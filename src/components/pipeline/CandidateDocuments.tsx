@@ -59,11 +59,13 @@ export function CandidateDocuments({
   candidateId,
   workspaceId,
   canEdit,
+  onDocCountChange,
 }: {
   jobCandidateId: string;
   candidateId: string;
   workspaceId: string;
   canEdit: boolean;
+  onDocCountChange?: (count: number) => void;
 }) {
   const { user } = useAuth();
   const [docs, setDocs] = useState<Doc[]>([]);
