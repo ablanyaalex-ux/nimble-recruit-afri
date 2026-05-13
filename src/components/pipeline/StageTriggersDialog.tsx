@@ -24,7 +24,7 @@ export type StageTrigger = {
   delay_minutes: number;
 };
 
-type Template = { id: string; name: string };
+type Template = { id: string; name: string; type?: string };
 
 type Props = {
   open: boolean;
