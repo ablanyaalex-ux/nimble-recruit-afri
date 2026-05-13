@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CalendarPlus, CalendarSearch, Copy, Link as LinkIcon } from "lucide-react";
+import { RichTextEditor, textToHtml, htmlToText } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 
 type Member = { user_id: string; display_name: string };
