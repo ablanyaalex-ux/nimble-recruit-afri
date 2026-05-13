@@ -108,7 +108,7 @@ export function CandidateInterviewsTab({
                 )}
                 {r.status === "scheduled" && (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => reopenForReschedule(r.id)}>
+                    <Button size="sm" variant="outline" onClick={() => onReschedule?.(r.id)}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1" /> Reschedule
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => cancel(r.id)}>
