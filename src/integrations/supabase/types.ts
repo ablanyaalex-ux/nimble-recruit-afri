@@ -661,6 +661,7 @@ export type Database = {
       }
       jobs: {
         Row: {
+          application_form_config: Json
           approval_decided_at: string | null
           approval_note: string | null
           approval_requested_from: string | null
@@ -683,6 +684,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          application_form_config?: Json
           approval_decided_at?: string | null
           approval_note?: string | null
           approval_requested_from?: string | null
@@ -705,6 +707,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          application_form_config?: Json
           approval_decided_at?: string | null
           approval_note?: string | null
           approval_requested_from?: string | null
