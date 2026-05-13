@@ -48,11 +48,12 @@ export default function AppLayout() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top bar */}
           <header className="h-14 flex items-center justify-between px-3 md:px-6 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-30">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1">
               <div className="hidden md:block">
                 <SidebarTrigger />
               </div>
               <div className="md:hidden font-display text-lg tracking-tight">TalentFlow</div>
+              <div className="ml-2 flex-1 max-w-md"><GlobalSearch /></div>
             </div>
 
             <div className="flex items-center gap-1">
