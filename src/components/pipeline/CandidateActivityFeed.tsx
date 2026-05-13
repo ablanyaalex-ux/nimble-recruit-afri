@@ -148,6 +148,26 @@ export function CandidateActivityFeed({
             {l.metadata?.subject && <span className="text-muted-foreground"> — “{l.metadata.subject}”</span>}
           </>
         );
+      case "document_uploaded":
+        return (
+          <>
+            <strong>{actor}</strong> uploaded document <strong>{l.to_value}</strong>
+            {l.metadata?.category && <span className="text-muted-foreground"> ({l.metadata.category})</span>}
+          </>
+        );
+      case "assessment_added":
+        return (
+          <>
+            <strong>{actor}</strong> added assessment link <strong>{l.to_value}</strong>
+          </>
+        );
+      case "comment_added":
+        return (
+          <>
+            <strong>{actor}</strong> added a comment
+            {l.metadata?.preview && <span className="text-muted-foreground"> — “{l.metadata.preview}”</span>}
+          </>
+        );
       default:
         return <><strong>{actor}</strong> {l.action_type.replace(/_/g, " ")}</>;
     }
