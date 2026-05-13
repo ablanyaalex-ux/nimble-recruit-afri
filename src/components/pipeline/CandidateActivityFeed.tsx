@@ -189,6 +189,12 @@ export function CandidateActivityFeed({
         return <><strong>{actor}</strong> — candidate accepted the offer 🎉</>;
       case "offer_declined":
         return <><strong>{actor}</strong> — candidate declined the offer{l.metadata?.reason && <span className="text-muted-foreground"> — {l.metadata.reason}</span>}</>;
+      case "tag_added":
+        return <><strong>{actor}</strong> tagged candidate <strong>{l.to_value ?? l.metadata?.tag}</strong></>;
+      case "archived":
+        return <><strong>{actor}</strong> archived the candidate</>;
+      case "unarchived":
+        return <><strong>{actor}</strong> restored the candidate</>;
       default:
         return <><strong>{actor}</strong> {l.action_type.replace(/_/g, " ")}</>;
     }
