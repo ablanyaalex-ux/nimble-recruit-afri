@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare, Award, Send, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare, Award, Send, CheckCircle2, XCircle, Tag as TagIcon, Archive, ArchiveRestore } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Log = {
@@ -46,6 +46,9 @@ const ACTION_META: Record<string, { Icon: any; tone: string }> = {
   offer_sent: { Icon: Send, tone: "text-sky-600 bg-sky-500/10" },
   offer_accepted: { Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
   offer_declined: { Icon: XCircle, tone: "text-destructive bg-destructive/10" },
+  tag_added: { Icon: TagIcon, tone: "text-violet-600 bg-violet-500/10" },
+  archived: { Icon: Archive, tone: "text-muted-foreground bg-muted" },
+  unarchived: { Icon: ArchiveRestore, tone: "text-emerald-600 bg-emerald-500/10" },
 };
 
 export function CandidateActivityFeed({
@@ -186,6 +189,12 @@ export function CandidateActivityFeed({
         return <><strong>{actor}</strong> — candidate accepted the offer 🎉</>;
       case "offer_declined":
         return <><strong>{actor}</strong> — candidate declined the offer{l.metadata?.reason && <span className="text-muted-foreground"> — {l.metadata.reason}</span>}</>;
+      case "tag_added":
+        return <><strong>{actor}</strong> tagged candidate <strong>{l.to_value ?? l.metadata?.tag}</strong></>;
+      case "archived":
+        return <><strong>{actor}</strong> archived the candidate</>;
+      case "unarchived":
+        return <><strong>{actor}</strong> restored the candidate</>;
       default:
         return <><strong>{actor}</strong> {l.action_type.replace(/_/g, " ")}</>;
     }
