@@ -6,7 +6,8 @@ import { CandidateInterviewsTab } from "@/components/interviews/CandidateIntervi
 import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
 import { CandidateStagesTimeline } from "@/components/pipeline/CandidateStagesTimeline";
 import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFeed";
-import { Activity, GitBranch } from "lucide-react";
+import { SendEmailDialog } from "@/components/pipeline/SendEmailDialog";
+import { Activity, GitBranch, ClipboardCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
