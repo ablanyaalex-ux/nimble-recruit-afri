@@ -172,13 +172,14 @@ Deno.serve(async (req) => {
         .update({ status: "scheduled", scheduled_at: start.toISOString() })
         .eq("id", interview.id);
 
-      // Insert pending scorecards
+      // Upsert pending scorecards (idempotent for rebooks/reschedules)
       for (const uid of (interview.interviewer_ids ?? [])) {
-        await admin.from("interview_scorecards").insert({
-          interview_id: interview.id,
-          interviewer_id: uid,
-          ratings: {},
-        }).select();
+        await admin.from("interview_scorecards")
+          .upsert({
+            interview_id: interview.id,
+            interviewer_id: uid,
+            ratings: {},
+          }, { onConflict: "interview_id,interviewer_id" });
       }
 
       const jc: any = interview.job_candidates;
