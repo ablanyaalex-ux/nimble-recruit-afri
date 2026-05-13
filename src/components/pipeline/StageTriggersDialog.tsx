@@ -146,7 +146,7 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
                     <Mail className="h-4 w-4" />
-                    {t.trigger_type === "send_email" ? "Send email to candidate" : t.trigger_type}
+                    {t.trigger_type === "send_email" ? "Send email to candidate" : t.trigger_type === "send_survey" ? "Send survey to candidate" : t.trigger_type}
                     <Badge variant="outline" className="text-[10px]"><Clock className="h-3 w-3" /> {delayLabel(t.delay_minutes ?? 0)}</Badge>
                     {!t.enabled && <Badge variant="outline">Disabled</Badge>}
                   </div>
