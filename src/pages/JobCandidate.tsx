@@ -938,6 +938,9 @@ export default function JobCandidate() {
           />
         </TabsContent>
 
+        <TabsContent value="timeline" className="mt-4">
+          <CandidateInterviewTimeline key={`tl-${interviewsRefresh}`} jobCandidateId={jobCandidateId!} />
+        </TabsContent>
         <TabsContent value="feedback" className="mt-4 space-y-3">
           {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it from the Scorecard tab.</p>}
           {feedback.map((f) => (
