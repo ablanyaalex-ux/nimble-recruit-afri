@@ -83,8 +83,10 @@ export function CandidateDocuments({
       .select("*")
       .eq("job_candidate_id", jobCandidateId)
       .order("created_at", { ascending: false });
-    setDocs((data ?? []) as unknown as Doc[]);
+    const list = (data ?? []) as unknown as Doc[];
+    setDocs(list);
     setLoading(false);
+    onDocCountChange?.(list.length);
   };
 
   useEffect(() => {
