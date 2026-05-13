@@ -211,6 +211,24 @@ export default function JobCandidate() {
 
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [jobCandidateId]);
 
+  // Realtime: refresh stage/rejection state when the candidate row updates elsewhere (e.g. Kanban)
+  useEffect(() => {
+    if (!jobCandidateId) return;
+    const ch = supabase
+      .channel(`jc-${jobCandidateId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "job_candidates", filter: `id=eq.${jobCandidateId}` },
+        (payload) => {
+          const row = payload.new as any;
+          setDetail((prev) => prev ? { ...prev, stage: row.stage, rejected: row.rejected, rejection_reason: row.rejection_reason } : prev);
+          setInterviewsRefresh((n) => n + 1);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [jobCandidateId]);
+
   useEffect(() => {
     const loadMentionables = async () => {
       if (!detail?.jobs) return;
