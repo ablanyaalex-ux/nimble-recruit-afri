@@ -20,6 +20,7 @@ import {
   Zap,
   CheckCircle2,
   HelpCircle,
+  CalendarPlus,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
