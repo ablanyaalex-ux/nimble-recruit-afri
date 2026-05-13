@@ -20,13 +20,14 @@ type Template = { id: string; name: string };
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function ScheduleInterviewDialog({
-  open, onOpenChange, jobCandidateId, defaultStageId, onCreated,
+  open, onOpenChange, jobCandidateId, defaultStageId, onCreated, existingInterviewId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   jobCandidateId: string | null;
   defaultStageId?: string | null;
   onCreated?: () => void;
+  existingInterviewId?: string | null;
 }) {
   const { user } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
@@ -41,6 +42,7 @@ export function ScheduleInterviewDialog({
   const [creating, setCreating] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewSlots, setPreviewSlots] = useState<string[] | null>(null);
+  const isReschedule = !!existingInterviewId;
 
   useEffect(() => {
     if (!open || !currentWorkspaceId) return;
@@ -56,13 +58,29 @@ export function ScheduleInterviewDialog({
       setMembers(ids.map((id) => ({ user_id: id, display_name: byId.get(id) ?? "Member" })));
       setStages((stRes.data ?? []) as Stage[]);
       setTemplates((tplRes.data ?? []) as Template[]);
+
+      if (isReschedule && existingInterviewId) {
+        // Load existing interview data
+        const { data: iv } = await supabase
+          .from("interview_schedules")
+          .select("interviewer_ids, duration_minutes, stage_id")
+          .eq("id", existingInterviewId)
+          .maybeSingle();
+        if (iv) {
+          setSelectedInterviewers((iv.interviewer_ids ?? []) as string[]);
+          setDuration(iv.duration_minutes ?? 45);
+          setStageId(iv.stage_id ?? "");
+          return;
+        }
+      }
+
       if (defaultStageId) setStageId(defaultStageId);
       else {
         const interview = (stRes.data ?? []).find((s: any) => /interview/i.test(s.label));
         setStageId(interview?.id ?? (stRes.data?.[0]?.id ?? ""));
       }
     })();
-  }, [open, currentWorkspaceId, defaultStageId]);
+  }, [open, currentWorkspaceId, defaultStageId, isReschedule, existingInterviewId]);
 
   function toggleInterviewer(id: string, v: boolean) {
     setSelectedInterviewers((prev) => v ? [...prev, id] : prev.filter((x) => x !== id));
@@ -144,22 +162,39 @@ export function ScheduleInterviewDialog({
     return Array.from(map.entries()).slice(0, 7);
   }, [previewSlots]);
 
-  async function create() {
+  async function submit() {
     if (!jobCandidateId || !user || !currentWorkspaceId) return;
     if (selectedInterviewers.length === 0) { toast.error("Select at least one interviewer"); return; }
     setCreating(true);
-    const { data, error } = await supabase.functions.invoke("interview-scheduling", {
-      body: {
-        mode: "create",
-        jobCandidateId,
-        interviewerIds: selectedInterviewers,
-        durationMinutes: duration,
-        stageId: stageId || null,
-      },
-    });
+
+    let data: any, error: any;
+    if (isReschedule && existingInterviewId) {
+      const res = await supabase.functions.invoke("interview-scheduling", {
+        body: {
+          mode: "reschedule",
+          interviewId: existingInterviewId,
+          interviewerIds: selectedInterviewers,
+          durationMinutes: duration,
+          stageId: stageId || null,
+        },
+      });
+      data = res.data; error = res.error;
+    } else {
+      const res = await supabase.functions.invoke("interview-scheduling", {
+        body: {
+          mode: "create",
+          jobCandidateId,
+          interviewerIds: selectedInterviewers,
+          durationMinutes: duration,
+          stageId: stageId || null,
+        },
+      });
+      data = res.data; error = res.error;
+    }
+
     if (error || !data?.ok) {
       setCreating(false);
-      toast.error((error as any)?.message ?? data?.error ?? "Failed to create");
+      toast.error((error as any)?.message ?? data?.error ?? "Failed to save");
       return;
     }
     const token = data.schedule_token as string;
@@ -175,8 +210,12 @@ export function ScheduleInterviewDialog({
       const candName = (jc as any)?.candidates?.full_name ?? "Candidate";
       const jobTitle = (jc as any)?.jobs?.title ?? "the role";
       if (email) {
-        let subject = `Schedule your interview — ${jobTitle}`;
-        let body = `Hi ${candName},\n\nPlease pick a time for your interview using this link:\n${link}\n\nWe look forward to speaking with you.`;
+        let subject = isReschedule
+          ? `Rescheduled: pick a new time — ${jobTitle}`
+          : `Schedule your interview — ${jobTitle}`;
+        let body = isReschedule
+          ? `Hi ${candName},\n\nWe need to reschedule your interview for ${jobTitle}. Please pick a new time using this link:\n${link}\n\nWe look forward to speaking with you.`
+          : `Hi ${candName},\n\nPlease pick a time for your interview using this link:\n${link}\n\nWe look forward to speaking with you.`;
         if (templateId && templateId !== "none") {
           const tpl = templates.find((t) => t.id === templateId);
           const { data: tplFull } = await supabase.from("templates").select("content").eq("id", templateId).maybeSingle();
@@ -194,13 +233,13 @@ export function ScheduleInterviewDialog({
           payload: { to: email, subject, body },
           status: "pending",
         });
-        toast.success("Scheduling link sent to candidate.");
+        toast.success(isReschedule ? "Reschedule email sent to candidate." : "Scheduling link sent to candidate.");
       } else {
         toast.warning("No candidate email on file — link not sent.");
       }
     } else {
       navigator.clipboard.writeText(link).catch(() => {});
-      toast.success("Interview created. Link copied to clipboard.");
+      toast.success(isReschedule ? "Interview updated. Link copied to clipboard." : "Interview created. Link copied to clipboard.");
     }
     setCreating(false);
     setSelectedInterviewers([]);
@@ -213,8 +252,8 @@ export function ScheduleInterviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="h-5 w-5" /> Schedule interview</DialogTitle>
-          <DialogDescription>Set up an interview round and send the candidate a self-scheduling link.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="h-5 w-5" /> {isReschedule ? "Reschedule interview" : "Schedule interview"}</DialogTitle>
+          <DialogDescription>{isReschedule ? "Update the interview round and send the candidate a new self-scheduling link." : "Set up an interview round and send the candidate a self-scheduling link."}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -309,8 +348,8 @@ export function ScheduleInterviewDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={create} disabled={creating || selectedInterviewers.length === 0}>
-            <LinkIcon className="h-4 w-4 mr-1" /> {creating ? "Creating…" : sendToCandidate ? "Create & send link" : "Create & copy link"}
+          <Button onClick={submit} disabled={creating || selectedInterviewers.length === 0}>
+            <LinkIcon className="h-4 w-4 mr-1" /> {creating ? "Saving…" : sendToCandidate ? (isReschedule ? "Update & send link" : "Create & send link") : (isReschedule ? "Update & copy link" : "Create & copy link")}
           </Button>
         </DialogFooter>
       </DialogContent>
