@@ -656,6 +656,7 @@ export default function JobCandidate() {
           <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
           <TabsTrigger value="cover">Cover letter</TabsTrigger>
           <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
+          <TabsTrigger value="timeline"><History className="h-3.5 w-3.5" /> Timeline</TabsTrigger>
           <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
           <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
           <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
