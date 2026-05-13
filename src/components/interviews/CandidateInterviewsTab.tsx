@@ -16,8 +16,8 @@ type Schedule = {
 };
 
 export function CandidateInterviewsTab({
-  jobCandidateId, onSchedule,
-}: { jobCandidateId: string; onSchedule: () => void }) {
+  jobCandidateId, onSchedule, onReschedule,
+}: { jobCandidateId: string; onSchedule: () => void; onReschedule?: (id: string) => void }) {
   const [rows, setRows] = useState<Schedule[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -53,16 +53,6 @@ export function CandidateInterviewsTab({
     const { error } = await supabase.from("interview_schedules").update({ status: "cancelled" }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Interview cancelled");
-    load();
-  }
-
-  async function reopenForReschedule(id: string) {
-    const { error } = await supabase
-      .from("interview_schedules")
-      .update({ status: "pending_scheduling", scheduled_at: null })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Reset to pending — share the link to reschedule.");
     load();
   }
 
@@ -118,7 +108,7 @@ export function CandidateInterviewsTab({
                 )}
                 {r.status === "scheduled" && (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => reopenForReschedule(r.id)}>
+                    <Button size="sm" variant="outline" onClick={() => onReschedule?.(r.id)}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1" /> Reschedule
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => cancel(r.id)}>
