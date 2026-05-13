@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Copy, ExternalLink, Megaphone, Linkedin, MessageCircle, Globe } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Copy, ExternalLink, Megaphone, Linkedin, MessageCircle, Globe, Store, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type Job = {
   id: string;
@@ -33,9 +37,12 @@ const AFRICAN_BOARDS = [
   { name: "Glassdoor", url: "https://www.glassdoor.com/employers/post-job/" },
 ];
 
+const CATEGORIES = ["Engineering", "Product", "Design", "Sales", "Marketing", "Operations", "Finance", "People", "Other"];
+
 export function PostJobDialog({ job, trigger }: { job: Job; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const careersUrl = `${window.location.origin}/careers/${job.workspace_id}/${job.id}`;
+  const marketplaceUrl = `${window.location.origin}/jobs`;
   const company = job.clients?.name ?? "Our client";
   const summary = `${job.title}${job.location ? ` — ${job.location}` : ""} at ${company}\n\n${
     job.description ? job.description.slice(0, 400) + (job.description.length > 400 ? "…" : "") : ""
@@ -49,6 +56,49 @@ export function PostJobDialog({ job, trigger }: { job: Job; trigger: React.React
   const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(careersUrl)}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(summary)}`;
 
+  // Marketplace state
+  const [mpStatus, setMpStatus] = useState<"public" | "private">("private");
+  const [mpCategory, setMpCategory] = useState<string>("Engineering");
+  const [mpSummary, setMpSummary] = useState<string>("");
+  const [mpSaving, setMpSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from("jobs")
+        .select("marketplace_status, marketplace_category, marketplace_summary")
+        .eq("id", job.id)
+        .maybeSingle();
+      if (data) {
+        setMpStatus((data.marketplace_status as "public" | "private") ?? "private");
+        setMpCategory(data.marketplace_category ?? "Engineering");
+        setMpSummary(data.marketplace_summary ?? "");
+      }
+    })();
+  }, [open, job.id]);
+
+  async function saveMarketplace(nextStatus?: "public" | "private") {
+    setMpSaving(true);
+    const status = nextStatus ?? mpStatus;
+    const { error } = await supabase
+      .from("jobs")
+      .update({
+        marketplace_status: status,
+        marketplace_category: mpCategory,
+        marketplace_summary: mpSummary.trim() || null,
+        marketplace_published_at: status === "public" ? new Date().toISOString() : null,
+      })
+      .eq("id", job.id);
+    setMpSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setMpStatus(status);
+    toast.success(status === "public" ? "Published to marketplace" : "Removed from marketplace");
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -59,13 +109,69 @@ export function PostJobDialog({ job, trigger }: { job: Job; trigger: React.React
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="careers">
-          <TabsList className="grid grid-cols-4">
+        <Tabs defaultValue="marketplace">
+          <TabsList className="grid grid-cols-5">
+            <TabsTrigger value="marketplace"><Store className="h-3 w-3" /> Marketplace</TabsTrigger>
             <TabsTrigger value="careers"><Globe className="h-3 w-3" /> Careers</TabsTrigger>
             <TabsTrigger value="linkedin"><Linkedin className="h-3 w-3" /> LinkedIn</TabsTrigger>
             <TabsTrigger value="whatsapp"><MessageCircle className="h-3 w-3" /> WhatsApp</TabsTrigger>
             <TabsTrigger value="boards">Boards</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="marketplace" className="space-y-4 mt-4">
+            <div className="flex items-start justify-between gap-3 p-3 border rounded-md">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">Talentboard Marketplace</span>
+                  <Badge variant={mpStatus === "public" ? "default" : "secondary"} className="text-[10px] capitalize">
+                    {mpStatus}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Publish to the public job board. Anyone can browse and apply.
+                </p>
+              </div>
+              <Switch
+                checked={mpStatus === "public"}
+                onCheckedChange={(v) => saveMarketplace(v ? "public" : "private")}
+                disabled={mpSaving}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <div>
+                <Label className="text-xs">Category</Label>
+                <Select value={mpCategory} onValueChange={setMpCategory}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">One-line summary (shown on the marketplace card)</Label>
+                <Textarea
+                  rows={2}
+                  maxLength={160}
+                  value={mpSummary}
+                  onChange={(e) => setMpSummary(e.target.value)}
+                  placeholder="e.g. Lead our backend platform team — fully remote, generous equity."
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">{mpSummary.length}/160</p>
+              </div>
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => saveMarketplace()} disabled={mpSaving}>
+                  {mpSaving && <Loader2 className="h-3 w-3 animate-spin" />} Save
+                </Button>
+              </div>
+            </div>
+
+            {mpStatus === "public" && (
+              <div className="text-xs text-muted-foreground border-t pt-3">
+                View at <a href={marketplaceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">{marketplaceUrl}</a>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="careers" className="space-y-3 mt-4">
             <Label className="text-xs">Public careers link</Label>
