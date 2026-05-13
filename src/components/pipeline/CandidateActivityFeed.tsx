@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw } from "lucide-react";
+import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Log = {
@@ -37,6 +37,9 @@ const ACTION_META: Record<string, { Icon: any; tone: string }> = {
   unrejected: { Icon: RotateCcw, tone: "text-amber-600 bg-amber-500/10" },
   email_sent: { Icon: Mail, tone: "text-sky-600 bg-sky-500/10" },
   recruiter_assigned: { Icon: UserCog, tone: "text-primary bg-primary/10" },
+  document_uploaded: { Icon: FileText, tone: "text-indigo-600 bg-indigo-500/10" },
+  assessment_added: { Icon: Link2, tone: "text-violet-600 bg-violet-500/10" },
+  comment_added: { Icon: MessageSquare, tone: "text-foreground bg-muted" },
 };
 
 export function CandidateActivityFeed({
@@ -143,6 +146,26 @@ export function CandidateActivityFeed({
           <>
             <strong>{actor}</strong> sent an email
             {l.metadata?.subject && <span className="text-muted-foreground"> — “{l.metadata.subject}”</span>}
+          </>
+        );
+      case "document_uploaded":
+        return (
+          <>
+            <strong>{actor}</strong> uploaded document <strong>{l.to_value}</strong>
+            {l.metadata?.category && <span className="text-muted-foreground"> ({l.metadata.category})</span>}
+          </>
+        );
+      case "assessment_added":
+        return (
+          <>
+            <strong>{actor}</strong> added assessment link <strong>{l.to_value}</strong>
+          </>
+        );
+      case "comment_added":
+        return (
+          <>
+            <strong>{actor}</strong> added a comment
+            {l.metadata?.preview && <span className="text-muted-foreground"> — “{l.metadata.preview}”</span>}
           </>
         );
       default:

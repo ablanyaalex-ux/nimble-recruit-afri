@@ -88,6 +88,54 @@ export type Database = {
           },
         ]
       }
+      candidate_documents: {
+        Row: {
+          candidate_id: string
+          category: string
+          created_at: string
+          file_path: string | null
+          id: string
+          job_candidate_id: string
+          kind: string
+          mime_type: string | null
+          name: string
+          size_bytes: number | null
+          uploaded_by: string
+          url: string | null
+          workspace_id: string
+        }
+        Insert: {
+          candidate_id: string
+          category?: string
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          job_candidate_id: string
+          kind: string
+          mime_type?: string | null
+          name: string
+          size_bytes?: number | null
+          uploaded_by: string
+          url?: string | null
+          workspace_id: string
+        }
+        Update: {
+          candidate_id?: string
+          category?: string
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          job_candidate_id?: string
+          kind?: string
+          mime_type?: string | null
+          name?: string
+          size_bytes?: number | null
+          uploaded_by?: string
+          url?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       candidates: {
         Row: {
           anonymized_resume_summary: string | null

@@ -6,6 +6,7 @@ import { CandidateInterviewsTab } from "@/components/interviews/CandidateIntervi
 import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
 import { CandidateStagesTimeline } from "@/components/pipeline/CandidateStagesTimeline";
 import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFeed";
+import { CandidateDocuments } from "@/components/pipeline/CandidateDocuments";
 import { SendEmailDialog } from "@/components/pipeline/SendEmailDialog";
 import { Activity, GitBranch, ClipboardCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -948,6 +949,15 @@ export default function JobCandidate() {
             )}
           </Card>
 
+          {detail.jobs && (
+            <CandidateDocuments
+              jobCandidateId={detail.id}
+              candidateId={detail.candidate_id}
+              workspaceId={detail.jobs.workspace_id}
+              canEdit={canEdit}
+            />
+          )}
+
           <Card className="p-4">
             <div className="font-display text-base mb-2">Cover letter</div>
             <p className="text-sm text-muted-foreground">No cover letter on file.</p>
@@ -961,15 +971,26 @@ export default function JobCandidate() {
             </div>
             <div className="space-y-3">
               {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
-              {comments.map((c) => (
-                <div key={c.id} className="rounded-md border bg-muted/20 p-3">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {c.author?.display_name ?? "Someone"} • {new Date(c.created_at).toLocaleString()}
+              {comments.map((c) => {
+                const mine = c.author_id === user?.id;
+                const initials = (c.author?.display_name ?? "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+                return (
+                  <div key={c.id} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
+                    <div className="h-7 w-7 shrink-0 rounded-full bg-muted grid place-items-center text-[10px] font-semibold text-muted-foreground">
+                      {initials || "·"}
+                    </div>
+                    <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 ${mine ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
+                      <div className={`text-[11px] mb-0.5 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        {c.author?.display_name ?? "Someone"} · {new Date(c.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </div>
+                      <div className="text-sm">
+                        <CommentBody text={c.body} users={mentionables} />
+                      </div>
+                    </div>
                   </div>
-                  <CommentBody text={c.body} users={mentionables} />
-                </div>
-              ))}
-              <div className="space-y-2 pt-1">
+                );
+              })}
+              <div className="space-y-2 pt-3 border-t">
                 <MentionTextarea
                   value={newComment}
                   onChange={setNewComment}
