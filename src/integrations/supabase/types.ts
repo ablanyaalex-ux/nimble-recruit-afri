@@ -136,9 +136,39 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_tags: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          created_by: string
+          id: string
+          tag: string
+          workspace_id: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          tag: string
+          workspace_id: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          tag?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       candidates: {
         Row: {
           anonymized_resume_summary: string | null
+          archived: boolean
+          archived_at: string | null
+          archived_by: string | null
           created_at: string
           created_by: string
           email: string | null
@@ -162,6 +192,9 @@ export type Database = {
         }
         Insert: {
           anonymized_resume_summary?: string | null
+          archived?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           created_by: string
           email?: string | null
@@ -185,6 +218,9 @@ export type Database = {
         }
         Update: {
           anonymized_resume_summary?: string | null
+          archived?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           created_by?: string
           email?: string | null
