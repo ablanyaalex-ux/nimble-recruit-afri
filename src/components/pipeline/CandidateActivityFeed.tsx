@@ -40,6 +40,12 @@ const ACTION_META: Record<string, { Icon: any; tone: string }> = {
   document_uploaded: { Icon: FileText, tone: "text-indigo-600 bg-indigo-500/10" },
   assessment_added: { Icon: Link2, tone: "text-violet-600 bg-violet-500/10" },
   comment_added: { Icon: MessageSquare, tone: "text-foreground bg-muted" },
+  offer_generated: { Icon: Award, tone: "text-amber-600 bg-amber-500/10" },
+  offer_submitted_for_approval: { Icon: Award, tone: "text-amber-600 bg-amber-500/10" },
+  offer_approved: { Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
+  offer_sent: { Icon: Send, tone: "text-sky-600 bg-sky-500/10" },
+  offer_accepted: { Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
+  offer_declined: { Icon: XCircle, tone: "text-destructive bg-destructive/10" },
 };
 
 export function CandidateActivityFeed({
