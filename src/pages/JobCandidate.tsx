@@ -585,6 +585,11 @@ export default function JobCandidate() {
                 <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
                   <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
                 </Button>
+                {!isHM && (
+                  <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)}>
+                    <Mail className="h-3.5 w-3.5" /> Send email
+                  </Button>
+                )}
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
                   <ChevronRight className="h-3.5 w-3.5" /> Progress
                 </Button>
