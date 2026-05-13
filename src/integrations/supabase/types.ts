@@ -243,6 +243,66 @@ export type Database = {
           },
         ]
       }
+      communication_threads: {
+        Row: {
+          candidate_id: string | null
+          channel: string
+          contact_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          job_candidate_id: string | null
+          last_message_at: string
+          last_message_preview: string | null
+          participant_email: string | null
+          participant_name: string | null
+          reply_to_token: string
+          status: string
+          subject: string
+          unread_count: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          channel?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          job_candidate_id?: string | null
+          last_message_at?: string
+          last_message_preview?: string | null
+          participant_email?: string | null
+          participant_name?: string | null
+          reply_to_token?: string
+          status?: string
+          subject?: string
+          unread_count?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          candidate_id?: string | null
+          channel?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          job_candidate_id?: string | null
+          last_message_at?: string
+          last_message_preview?: string | null
+          participant_email?: string | null
+          participant_name?: string | null
+          reply_to_token?: string
+          status?: string
+          subject?: string
+          unread_count?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       interview_feedback: {
         Row: {
           author_id: string
@@ -742,6 +802,62 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          attachments: Json
+          body: string
+          body_html: string | null
+          created_at: string
+          direction: string
+          id: string
+          read_at: string | null
+          recipient_email: string | null
+          sender_email: string | null
+          sender_name: string | null
+          sender_user_id: string | null
+          thread_id: string
+          workspace_id: string
+        }
+        Insert: {
+          attachments?: Json
+          body?: string
+          body_html?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          read_at?: string | null
+          recipient_email?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_user_id?: string | null
+          thread_id: string
+          workspace_id: string
+        }
+        Update: {
+          attachments?: Json
+          body?: string
+          body_html?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          read_at?: string | null
+          recipient_email?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_user_id?: string | null
+          thread_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "communication_threads"
             referencedColumns: ["id"]
           },
         ]
