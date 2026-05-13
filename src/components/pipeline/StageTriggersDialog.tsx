@@ -17,14 +17,14 @@ export type StageTrigger = {
   id: string;
   stage_id: string;
   workspace_id: string;
-  trigger_type: "send_email" | "slack_notification" | "create_task";
+  trigger_type: "send_email" | "send_survey" | "slack_notification" | "create_task";
   settings: any;
   enabled: boolean;
   template_id: string | null;
   delay_minutes: number;
 };
 
-type Template = { id: string; name: string };
+type Template = { id: string; name: string; type?: string };
 
 type Props = {
   open: boolean;
@@ -49,7 +49,7 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [type, setType] = useState<"send_email">("send_email");
+  const [type, setType] = useState<"send_email" | "send_survey">("send_email");
   const [useTemplate, setUseTemplate] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
@@ -64,7 +64,7 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
         .select("id, stage_id, workspace_id, trigger_type, settings, enabled, template_id, delay_minutes")
         .eq("stage_id", stageId)
         .order("created_at", { ascending: true }),
-      supabase.from("templates").select("id, name").eq("workspace_id", workspaceId).eq("type", "email"),
+      supabase.from("templates").select("id, name, type").eq("workspace_id", workspaceId).in("type", ["email", "survey"]),
     ]);
     setLoading(false);
     if (tr.error) { toast.error(tr.error.message); return; }
@@ -146,7 +146,7 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
                     <Mail className="h-4 w-4" />
-                    {t.trigger_type === "send_email" ? "Send email to candidate" : t.trigger_type}
+                    {t.trigger_type === "send_email" ? "Send email to candidate" : t.trigger_type === "send_survey" ? "Send survey to candidate" : t.trigger_type}
                     <Badge variant="outline" className="text-[10px]"><Clock className="h-3 w-3" /> {delayLabel(t.delay_minutes ?? 0)}</Badge>
                     {!t.enabled && <Badge variant="outline">Disabled</Badge>}
                   </div>
@@ -178,10 +178,11 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
           <div className="space-y-3 border-t pt-4">
             <div className="space-y-2">
               <Label>Action</Label>
-              <Select value={type} onValueChange={(v) => setType(v as any)}>
+              <Select value={type} onValueChange={(v) => { setType(v as any); if (v === "send_survey") { setUseTemplate(true); setTemplateId(""); } }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="send_email">Send email to candidate</SelectItem>
+                  <SelectItem value="send_survey">Send survey to candidate</SelectItem>
                   <SelectItem value="slack_notification" disabled>Slack notification (coming soon)</SelectItem>
                   <SelectItem value="create_task" disabled>Create task (coming soon)</SelectItem>
                 </SelectContent>
@@ -209,13 +210,14 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
               <div className="space-y-2">
                 <Label>Template</Label>
                 <Select value={templateId} onValueChange={setTemplateId}>
-                  <SelectTrigger><SelectValue placeholder="Choose template…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={type === "send_survey" ? "Choose survey template…" : "Choose template…"} /></SelectTrigger>
                   <SelectContent>
-                    {templates.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-muted-foreground">No email templates yet — create one in Settings → Templates</div>
-                    ) : templates.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
+                    {(() => {
+                      const filtered = templates.filter((t) => type === "send_survey" ? t.type === "survey" : t.type === "email" || !t.type);
+                      return filtered.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">No {type === "send_survey" ? "survey" : "email"} templates yet — create one in Settings → Templates</div>
+                      ) : filtered.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>));
+                    })()}
                   </SelectContent>
                 </Select>
               </div>

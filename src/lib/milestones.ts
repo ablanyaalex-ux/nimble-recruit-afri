@@ -1,21 +1,19 @@
 import type { PipelineStage } from "@/lib/permissions";
 
-export type MilestoneKey = "application" | "screen" | "assessment" | "interviews" | "closing";
+export type MilestoneKey = "application" | "screening" | "interviews" | "closing";
 
 export const MILESTONES: { key: MilestoneKey; label: string }[] = [
   { key: "application", label: "Application" },
-  { key: "screen", label: "Screen" },
-  { key: "assessment", label: "Assessment" },
+  { key: "screening", label: "Screening" },
   { key: "interviews", label: "Interviews" },
   { key: "closing", label: "Closing" },
 ];
 
 const RULES: { key: MilestoneKey; match: RegExp }[] = [
-  { key: "closing", match: /offer|accepted|hired|closed|filled/i },
+  { key: "closing", match: /offer|accepted|hired|closed|filled|reject/i },
   { key: "interviews", match: /interview|panel|onsite|final/i },
-  { key: "assessment", match: /assess|test|portfolio|task|exercise|challenge/i },
-  { key: "screen", match: /screen|recruiter call|chat|phone/i },
-  { key: "application", match: /appl|cv|resume|review|new/i },
+  { key: "screening", match: /screen|recruiter call|chat|phone|assess|test|portfolio|task|exercise|challenge|reviewed?/i },
+  { key: "application", match: /appl|cv|resume|new/i },
 ];
 
 export function milestoneForStage(stage: Pick<PipelineStage, "key" | "label">): MilestoneKey {

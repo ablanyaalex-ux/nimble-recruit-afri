@@ -6,7 +6,8 @@ import { CandidateInterviewsTab } from "@/components/interviews/CandidateIntervi
 import { CandidateInterviewTimeline } from "@/components/interviews/CandidateInterviewTimeline";
 import { CandidateStagesTimeline } from "@/components/pipeline/CandidateStagesTimeline";
 import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFeed";
-import { Activity, GitBranch } from "lucide-react";
+import { SendEmailDialog } from "@/components/pipeline/SendEmailDialog";
+import { Activity, GitBranch, ClipboardCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnonymiseCvDialog } from "@/components/pipeline/AnonymiseCvDialog";
@@ -111,7 +112,8 @@ export default function JobCandidate() {
   const [rescheduleInterviewId, setRescheduleInterviewId] = useState<string | null>(null);
   const [interviewsRefresh, setInterviewsRefresh] = useState(0);
   const tabParam = searchParams.get("tab");
-  const initialTab = tabParam ?? "resume";
+  const initialTab = tabParam ?? "summary";
+  const [emailOpen, setEmailOpen] = useState(false);
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
@@ -583,6 +585,11 @@ export default function JobCandidate() {
                 <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
                   <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
                 </Button>
+                {!isHM && (
+                  <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)}>
+                    <Mail className="h-3.5 w-3.5" /> Send email
+                  </Button>
+                )}
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
                   <ChevronRight className="h-3.5 w-3.5" /> Progress
                 </Button>
@@ -673,21 +680,16 @@ export default function JobCandidate() {
         )}
       </Card>
 
-      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "resume" ? {} : { tab: v }, { replace: true })}>
+      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "summary" ? {} : { tab: v }, { replace: true })}>
         <TabsList>
-          <TabsTrigger value="resume"><FileText className="h-3.5 w-3.5" /> Resume</TabsTrigger>
-          <TabsTrigger value="cover">Cover letter</TabsTrigger>
+          <TabsTrigger value="summary"><FileText className="h-3.5 w-3.5" /> Summary</TabsTrigger>
           <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
+          <TabsTrigger value="evaluation"><ClipboardCheck className="h-3.5 w-3.5" /> Evaluation</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-3.5 w-3.5" /> Activity</TabsTrigger>
-          <TabsTrigger value="interviews"><CalendarPlus className="h-3.5 w-3.5" /> Interviews</TabsTrigger>
-          <TabsTrigger value="timeline"><History className="h-3.5 w-3.5" /> Timeline</TabsTrigger>
-          <TabsTrigger value="feedback"><ClipboardList className="h-3.5 w-3.5" /> Feedback ({feedback.length})</TabsTrigger>
-          <TabsTrigger value="scorecard"><Star className="h-3.5 w-3.5" /> Scorecard</TabsTrigger>
-          <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> Comments ({comments.length})</TabsTrigger>
         </TabsList>
 
 
-        <TabsContent value="resume" className="mt-4 space-y-4">
+        <TabsContent value="summary" className="mt-4 space-y-4">
           {c.resume_path && (
             <Card className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
@@ -945,21 +947,45 @@ export default function JobCandidate() {
               <p className="text-sm text-muted-foreground">No resume uploaded for this candidate.</p>
             )}
           </Card>
-        </TabsContent>
 
-        <TabsContent value="cover" className="mt-4">
           <Card className="p-4">
+            <div className="font-display text-base mb-2">Cover letter</div>
             <p className="text-sm text-muted-foreground">No cover letter on file.</p>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="interviews" className="mt-4">
-          <CandidateInterviewsTab
-            key={interviewsRefresh}
-            jobCandidateId={jobCandidateId!}
-            onSchedule={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}
-            onReschedule={(id) => { setRescheduleInterviewId(id); setScheduleOpen(true); }}
-          />
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-base flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" /> Comments ({comments.length})
+              </div>
+            </div>
+            <div className="space-y-3">
+              {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
+              {comments.map((c) => (
+                <div key={c.id} className="rounded-md border bg-muted/20 p-3">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {c.author?.display_name ?? "Someone"} • {new Date(c.created_at).toLocaleString()}
+                  </div>
+                  <CommentBody text={c.body} users={mentionables} />
+                </div>
+              ))}
+              <div className="space-y-2 pt-1">
+                <MentionTextarea
+                  value={newComment}
+                  onChange={setNewComment}
+                  users={mentionables}
+                  placeholder="Write a comment… type @ to mention"
+                  rows={3}
+                  disabled={posting}
+                />
+                <div className="flex items-center justify-end">
+                  <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
+                    <Send className="h-3 w-3" /> Post
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="stages" className="mt-4">
@@ -970,42 +996,39 @@ export default function JobCandidate() {
             refreshKey={interviewsRefresh}
           />
         </TabsContent>
-        <TabsContent value="activity" className="mt-4">
-          <CandidateActivityFeed
-            jobCandidateId={jobCandidateId!}
-            stages={allStages}
-            refreshKey={interviewsRefresh}
-          />
-        </TabsContent>
 
-        <TabsContent value="timeline" className="mt-4">
-          <CandidateInterviewTimeline key={`tl-${interviewsRefresh}`} jobCandidateId={jobCandidateId!} />
-        </TabsContent>
-        <TabsContent value="feedback" className="mt-4 space-y-3">
-          {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it from the Scorecard tab.</p>}
-          {feedback.map((f) => (
-            <Card key={f.id} className="p-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                <span>{f.author?.display_name ?? "Someone"} • {new Date(f.created_at).toLocaleDateString()}</span>
-                <div className="flex items-center gap-2">
-                  {f.rating && (
-                    <span className="inline-flex items-center gap-0.5">
-                      {Array.from({ length: f.rating }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current text-primary" />)}
-                    </span>
-                  )}
-                  {f.recommendation && <Badge variant="outline" className="capitalize">{f.recommendation.replace("_", " ")}</Badge>}
-                </div>
+        <TabsContent value="evaluation" className="mt-4 space-y-4">
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-base flex items-center gap-2">
+                <CalendarPlus className="h-4 w-4 text-primary" /> Interviews
               </div>
-              {f.strengths && <p className="text-sm mt-2"><strong>Strengths:</strong> {f.strengths}</p>}
-              {f.concerns && <p className="text-sm mt-1"><strong>Concerns:</strong> {f.concerns}</p>}
-              {f.notes && <p className="text-sm mt-1 whitespace-pre-wrap">{f.notes}</p>}
-            </Card>
-          ))}
-        </TabsContent>
+              {canMove && !detail.rejected && (
+                <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
+                  <CalendarPlus className="h-3.5 w-3.5" /> Schedule
+                </Button>
+              )}
+            </div>
+            <CandidateInterviewsTab
+              key={interviewsRefresh}
+              jobCandidateId={jobCandidateId!}
+              onSchedule={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}
+              onReschedule={(id) => { setRescheduleInterviewId(id); setScheduleOpen(true); }}
+            />
+          </Card>
 
-        <TabsContent value="scorecard" className="mt-4 space-y-3">
+          <Card className="p-4">
+            <div className="font-display text-base mb-3 flex items-center gap-2">
+              <History className="h-4 w-4 text-primary" /> Interview timeline
+            </div>
+            <CandidateInterviewTimeline key={`tl-${interviewsRefresh}`} jobCandidateId={jobCandidateId!} />
+          </Card>
+
           {feedback.length > 0 && (
             <Card className="p-4">
+              <div className="font-display text-base mb-3 flex items-center gap-2">
+                <Star className="h-4 w-4 text-primary" /> Scorecard
+              </div>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">Average rating</div>
@@ -1036,9 +1059,33 @@ export default function JobCandidate() {
               </div>
             </Card>
           )}
+
           <Card className="p-4">
-            <div className="font-display text-base mb-3">Add interview feedback</div>
-            <form onSubmit={submitFeedback} className="space-y-3">
+            <div className="font-display text-base mb-3 flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" /> Feedback ({feedback.length})
+            </div>
+            <div className="space-y-3">
+              {feedback.length === 0 && <p className="text-sm text-muted-foreground">No interview feedback yet. Add it below.</p>}
+              {feedback.map((f) => (
+                <div key={f.id} className="rounded-md border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                    <span>{f.author?.display_name ?? "Someone"} • {new Date(f.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-2">
+                      {f.rating && (
+                        <span className="inline-flex items-center gap-0.5">
+                          {Array.from({ length: f.rating }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current text-primary" />)}
+                        </span>
+                      )}
+                      {f.recommendation && <Badge variant="outline" className="capitalize">{f.recommendation.replace("_", " ")}</Badge>}
+                    </div>
+                  </div>
+                  {f.strengths && <p className="text-sm mt-1"><strong>Strengths:</strong> {f.strengths}</p>}
+                  {f.concerns && <p className="text-sm mt-1"><strong>Concerns:</strong> {f.concerns}</p>}
+                  {f.notes && <p className="text-sm mt-1 whitespace-pre-wrap">{f.notes}</p>}
+                </div>
+              ))}
+            </div>
+            <form onSubmit={submitFeedback} className="space-y-3 mt-4 pt-4 border-t">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Rating (1-5)</Label>
@@ -1079,31 +1126,12 @@ export default function JobCandidate() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="comments" className="mt-4 space-y-3">
-          {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
-          {comments.map((c) => (
-            <Card key={c.id} className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">
-                {c.author?.display_name ?? "Someone"} • {new Date(c.created_at).toLocaleString()}
-              </div>
-              <CommentBody text={c.body} users={mentionables} />
-            </Card>
-          ))}
-          <div className="space-y-2">
-            <MentionTextarea
-              value={newComment}
-              onChange={setNewComment}
-              users={mentionables}
-              placeholder="Write a comment… type @ to mention"
-              rows={3}
-              disabled={posting}
-            />
-            <div className="flex items-center justify-end">
-              <Button size="sm" onClick={postComment} disabled={posting || !newComment.trim()}>
-                <Send className="h-3 w-3" /> Post
-              </Button>
-            </div>
-          </div>
+        <TabsContent value="activity" className="mt-4">
+          <CandidateActivityFeed
+            jobCandidateId={jobCandidateId!}
+            stages={allStages}
+            refreshKey={interviewsRefresh}
+          />
         </TabsContent>
       </Tabs>
 
@@ -1274,6 +1302,20 @@ export default function JobCandidate() {
           refresh();
         }}
       />
+
+      {detail.jobs && (
+        <SendEmailDialog
+          open={emailOpen}
+          onOpenChange={setEmailOpen}
+          workspaceId={detail.jobs.workspace_id}
+          candidateId={detail.candidate_id}
+          jobCandidateId={detail.id}
+          candidateName={detail.candidates.full_name}
+          candidateEmail={detail.candidates.email}
+          jobTitle={detail.jobs.title}
+          onSent={() => setInterviewsRefresh((n) => n + 1)}
+        />
+      )}
     </PageContainer>
   );
 }
