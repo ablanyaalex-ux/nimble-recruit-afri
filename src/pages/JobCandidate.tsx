@@ -104,6 +104,7 @@ export default function JobCandidate() {
   const { user } = useAuth();
   const { currentRole } = useWorkspace();
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [rescheduleInterviewId, setRescheduleInterviewId] = useState<string | null>(null);
   const [interviewsRefresh, setInterviewsRefresh] = useState(0);
   const initialTab = searchParams.get("tab") === "interviews" ? "interviews" : "resume";
   const canMove = canMoveStages(currentRole);
@@ -556,7 +557,7 @@ export default function JobCandidate() {
             )}
             {canMove && !detail.rejected && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setScheduleOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
                   <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
                 </Button>
                 <Button size="sm" onClick={progressCandidate} disabled={progressing}>
@@ -930,7 +931,8 @@ export default function JobCandidate() {
           <CandidateInterviewsTab
             key={interviewsRefresh}
             jobCandidateId={jobCandidateId!}
-            onSchedule={() => setScheduleOpen(true)}
+            onSchedule={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}
+            onReschedule={(id) => { setRescheduleInterviewId(id); setScheduleOpen(true); }}
           />
         </TabsContent>
 
@@ -1062,9 +1064,10 @@ export default function JobCandidate() {
 
       <ScheduleInterviewDialog
         open={scheduleOpen}
-        onOpenChange={setScheduleOpen}
+        onOpenChange={(v) => { setScheduleOpen(v); if (!v) setRescheduleInterviewId(null); }}
         jobCandidateId={jobCandidateId ?? null}
-        onCreated={() => { setInterviewsRefresh((n) => n + 1); setSearchParams({ tab: "interviews" }, { replace: true }); }}
+        existingInterviewId={rescheduleInterviewId}
+        onCreated={() => { setInterviewsRefresh((n) => n + 1); setRescheduleInterviewId(null); setSearchParams({ tab: "interviews" }, { replace: true }); }}
       />
 
       <Dialog open={editCandidateOpen} onOpenChange={setEditCandidateOpen}>
