@@ -25,6 +25,7 @@ import CareersJobPublic from "./pages/CareersJobPublic";
 import ApprovePublic from "./pages/ApprovePublic";
 import SchedulePublic from "./pages/SchedulePublic";
 import MyInterviews from "./pages/MyInterviews";
+import Inbox from "./pages/Inbox";
 import ScorecardForm from "./pages/ScorecardForm";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />
                 <Route path="/interviews" element={<MyInterviews />} />
+                <Route path="/inbox" element={<Inbox />} />
                 <Route path="/interviews/:interviewId/scorecard/:interviewerId" element={<ScorecardForm />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/settings/templates" element={<SettingsTemplates />} />
