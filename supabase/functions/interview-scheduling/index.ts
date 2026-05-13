@@ -292,6 +292,60 @@ Deno.serve(async (req) => {
       return json({ ok: true, id: row.id, schedule_token: row.schedule_token });
     }
 
+    // Reschedule an existing interview (recruiter updates interviewers, duration, stage)
+    if (mode === "reschedule") {
+      const { interviewId, interviewerIds, durationMinutes, stageId } = body;
+      if (!interviewId) return json({ error: "interviewId required" }, 400);
+
+      const { data: existing } = await admin
+        .from("interview_schedules")
+        .select("id, workspace_id, job_candidate_id, interviewer_ids, duration_minutes, stage_id, status, scheduled_at")
+        .eq("id", interviewId)
+        .maybeSingle();
+      if (!existing) return json({ error: "Interview not found" }, 404);
+
+      const { data: canEdit } = await admin.rpc("can_edit_workspace", { _uid: u.user.id, _workspace_id: existing.workspace_id });
+      if (!canEdit) return json({ error: "Forbidden" }, 403);
+
+      const updateData: any = {
+        status: "pending_scheduling",
+        scheduled_at: null,
+      };
+      if (Array.isArray(interviewerIds) && interviewerIds.length > 0) updateData.interviewer_ids = interviewerIds;
+      if (typeof durationMinutes === "number") updateData.duration_minutes = durationMinutes;
+      if (typeof stageId !== "undefined") updateData.stage_id = stageId ?? null;
+
+      const { data: updated, error: updErr } = await admin
+        .from("interview_schedules")
+        .update(updateData)
+        .eq("id", interviewId)
+        .select("id, schedule_token, interviewer_ids")
+        .single();
+      if (updErr) return json({ error: updErr.message }, 500);
+
+      // If interviewers changed, clean up old scorecards and create new ones
+      const newIds: string[] = updated.interviewer_ids ?? [];
+      const oldIds: string[] = existing.interviewer_ids ?? [];
+      const removed = oldIds.filter((id: string) => !newIds.includes(id));
+      const added = newIds.filter((id: string) => !oldIds.includes(id));
+
+      if (removed.length) {
+        await admin.from("interview_scorecards")
+          .delete()
+          .eq("interview_id", interviewId)
+          .in("interviewer_id", removed);
+      }
+      for (const uid of added) {
+        await admin.from("interview_scorecards").insert({
+          interview_id: interviewId,
+          interviewer_id: uid,
+          ratings: {},
+        }).select();
+      }
+
+      return json({ ok: true, id: updated.id, schedule_token: updated.schedule_token });
+    }
+
     return json({ error: "Unknown mode" }, 400);
   } catch (e) {
     console.error("interview-scheduling error", e);
