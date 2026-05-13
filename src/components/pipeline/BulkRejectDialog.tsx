@@ -93,10 +93,9 @@ export function BulkRejectDialog({ open, onOpenChange, workspaceId, candidates, 
       // Mark all job_candidate rows for this candidate (in this workspace) as rejected
       const { data: jcRows } = await supabase
         .from("job_candidates")
-        .select("id, job_id, jobs!inner(workspace_id)")
+        .select("id, job_id")
         .eq("candidate_id", c.candidate_id)
-        .eq("rejected", false)
-        .eq("jobs.workspace_id", workspaceId);
+        .eq("rejected", false);
 
       for (const jc of (jcRows ?? []) as any[]) {
         const { error } = await supabase
