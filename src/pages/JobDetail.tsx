@@ -79,6 +79,7 @@ import { JobApprovalsDialog } from "@/components/jobs/JobApprovalsDialog";
 import { JobQuestionsDialog } from "@/components/jobs/JobQuestionsDialog";
 import { JobCompetenciesDialog } from "@/components/interviews/JobCompetenciesDialog";
 import { ScheduleInterviewDialog } from "@/components/interviews/ScheduleInterviewDialog";
+import { BulkScheduleInterviewsDialog } from "@/components/interviews/BulkScheduleInterviewsDialog";
 import { ApprovalProgressCard } from "@/components/jobs/ApprovalProgressCard";
 import { Input } from "@/components/ui/input";
 import { jobStatusBadgeClass } from "@/lib/jobStatus";
@@ -292,6 +293,7 @@ export default function JobDetail() {
   const [questionsOpen, setQuestionsOpen] = useState(false);
   const [competenciesOpen, setCompetenciesOpen] = useState(false);
   const [scheduleFor, setScheduleFor] = useState<{ jcId: string; stageId: string | null } | null>(null);
+  const [bulkScheduleOpen, setBulkScheduleOpen] = useState(false);
 
   const { stages: allStages, refresh: refreshStages } = usePipelineStages(job?.workspace_id);
   const stages = useMemo(() => visibleStagesForRole(currentRole, allStages), [currentRole, allStages]);
