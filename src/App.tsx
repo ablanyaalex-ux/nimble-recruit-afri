@@ -28,6 +28,7 @@ import MyInterviews from "./pages/MyInterviews";
 import Inbox from "./pages/Inbox";
 import Marketplace from "./pages/Marketplace";
 import PostJobGuest from "./pages/PostJobGuest";
+import OfferPublic from "./pages/OfferPublic";
 import ScorecardForm from "./pages/ScorecardForm";
 import NotFound from "./pages/NotFound.tsx";
 
