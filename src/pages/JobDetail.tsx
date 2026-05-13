@@ -133,6 +133,7 @@ function DraggableCard({
   entry,
   canDrag,
   canEdit,
+  isHM,
   selected,
   selectMode,
   onToggleSelect,
@@ -144,6 +145,7 @@ function DraggableCard({
   entry: PipelineEntry;
   canDrag: boolean;
   canEdit: boolean;
+  isHM: boolean;
   selected: boolean;
   selectMode: boolean;
   onToggleSelect: () => void;
@@ -152,6 +154,9 @@ function DraggableCard({
   onReject: (reason: string) => boolean | void | Promise<boolean | void>;
   onReinstate: (e: React.MouseEvent) => void;
 }) {
+  // HMs can act on cards only while in the 'reviewed' stage; recruiters/owners always.
+  const showCardActions = canEdit || isHM;
+  const hmGated = isHM && entry.stage !== "reviewed";
   const dragDisabled = !canDrag || selectMode || entry.rejected;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
