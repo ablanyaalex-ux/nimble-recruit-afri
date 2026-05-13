@@ -71,6 +71,15 @@ type Feedback = {
   author?: { display_name: string | null } | null;
 };
 
+type InterviewSummary = {
+  id: string;
+  status: string;
+  scheduled_at: string | null;
+  duration_minutes: number;
+  interviewer_count: number;
+  submitted_scorecards: number;
+};
+
 export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = DEFAULT_STAGES }: Props) {
   const [interviewOpen, setInterviewOpen] = useState(false);
   const { user } = useAuth();
@@ -80,6 +89,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const [detail, setDetail] = useState<Detail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [interviewSummary, setInterviewSummary] = useState<InterviewSummary | null>(null);
   const [mentionables, setMentionables] = useState<MentionableUser[]>([]);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
