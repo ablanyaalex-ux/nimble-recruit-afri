@@ -93,6 +93,7 @@ export function JobWizardDialog({ open, onOpenChange, workspaceId, onCreated }: 
 
   // Step 2
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
 
   // Step 3
   const [members, setMembers] = useState<MemberOpt[]>([]);
@@ -102,7 +103,7 @@ export function JobWizardDialog({ open, onOpenChange, workspaceId, onCreated }: 
     if (!open) return;
     setStep(0);
     setTitle(""); setClientId(""); setDescription(""); setLocation(""); setEmploymentType("full_time");
-    setQuestions([]); setChain([]);
+    setQuestions([]); setChain([]); setFormConfig(DEFAULT_FORM_CONFIG);
     (async () => {
       const [cs, ms] = await Promise.all([
         supabase.from("clients").select("id, name").eq("workspace_id", workspaceId).order("name"),
