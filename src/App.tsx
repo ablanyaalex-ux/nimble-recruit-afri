@@ -57,6 +57,7 @@ const App = () => (
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />
                 <Route path="/interviews" element={<MyInterviews />} />
+                <Route path="/inbox" element={<Inbox />} />
                 <Route path="/interviews/:interviewId/scorecard/:interviewerId" element={<ScorecardForm />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/settings/templates" element={<SettingsTemplates />} />
