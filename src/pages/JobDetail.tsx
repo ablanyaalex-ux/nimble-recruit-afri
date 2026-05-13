@@ -921,6 +921,7 @@ export default function JobDetail() {
                           entry={displayEntry}
                           canDrag={canDrag}
                           canEdit={canEdit}
+                          isHM={isHM}
                           selected={selected.has(entry.id)}
                           selectMode={selectMode}
                           onToggleSelect={() => toggleSelect(entry.id)}
