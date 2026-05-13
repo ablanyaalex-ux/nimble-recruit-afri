@@ -43,6 +43,8 @@ export function ScheduleInterviewDialog({
   const [creating, setCreating] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewSlots, setPreviewSlots] = useState<string[] | null>(null);
+  const [subject, setSubject] = useState<string>("Schedule your interview — {{job_title}}");
+  const [bodyHtml, setBodyHtml] = useState<string>(textToHtml(`Hi {{candidate_name}},\n\nPlease pick a time for your interview using this link:\n{{schedule_link}}\n\nWe look forward to speaking with you.`));
   const isReschedule = !!existingInterviewId;
 
   useEffect(() => {
