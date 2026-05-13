@@ -71,6 +71,15 @@ type Feedback = {
   author?: { display_name: string | null } | null;
 };
 
+type InterviewSummary = {
+  id: string;
+  status: string;
+  scheduled_at: string | null;
+  duration_minutes: number;
+  interviewer_count: number;
+  submitted_scorecards: number;
+};
+
 export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = DEFAULT_STAGES }: Props) {
   const [interviewOpen, setInterviewOpen] = useState(false);
   const { user } = useAuth();
@@ -80,6 +89,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
   const [detail, setDetail] = useState<Detail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [interviewSummary, setInterviewSummary] = useState<InterviewSummary | null>(null);
   const [mentionables, setMentionables] = useState<MentionableUser[]>([]);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -142,6 +152,32 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
         .in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
       const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
       setFeedback(fRes.data.map((f) => ({ ...f, author: byId.get(f.author_id) ?? null })));
+    }
+
+    // Latest interview summary
+    const { data: iRows } = await supabase
+      .from("interview_schedules")
+      .select("id, status, scheduled_at, duration_minutes, interviewer_ids")
+      .eq("job_candidate_id", jobCandidateId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const latest = iRows?.[0];
+    if (latest) {
+      const { count } = await supabase
+        .from("interview_scorecards")
+        .select("id", { count: "exact", head: true })
+        .eq("interview_id", latest.id)
+        .not("submitted_at", "is", null);
+      setInterviewSummary({
+        id: latest.id,
+        status: latest.status,
+        scheduled_at: latest.scheduled_at,
+        duration_minutes: latest.duration_minutes,
+        interviewer_count: (latest.interviewer_ids ?? []).length,
+        submitted_scorecards: count ?? 0,
+      });
+    } else {
+      setInterviewSummary(null);
     }
   };
 
@@ -310,6 +346,30 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
               {detail.anonymized && (
                 <Badge variant="outline">Anonymised for HMs</Badge>
               )}
+              {interviewSummary && (() => {
+                const i = interviewSummary;
+                const now = Date.now();
+                const ts = i.scheduled_at ? new Date(i.scheduled_at).getTime() : null;
+                if (i.status === "pending_scheduling") {
+                  return <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Awaiting candidate booking</Badge>;
+                }
+                if (i.status === "cancelled") {
+                  return <Badge variant="outline">Interview cancelled</Badge>;
+                }
+                if (ts && ts > now) {
+                  const fmt = new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                  return <Badge variant="outline" className="border-primary/40 text-primary">Interview {fmt}</Badge>;
+                }
+                if (ts && ts <= now) {
+                  if (i.submitted_scorecards >= i.interviewer_count && i.interviewer_count > 0) {
+                    return <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Interview complete</Badge>;
+                  }
+                  return <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    Awaiting scorecard ({i.submitted_scorecards}/{i.interviewer_count})
+                  </Badge>;
+                }
+                return null;
+              })()}
               {canMove && (
                 <Select value={detail.stage} onValueChange={moveStage}>
                   <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>

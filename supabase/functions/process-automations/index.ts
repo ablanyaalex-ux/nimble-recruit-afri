@@ -285,22 +285,36 @@ Deno.serve(async (req) => {
 
     // ---- SUBMIT APPLICATION (public, anon) ----
     if (mode === "submit_application") {
-      const { jobId, name, email, phone, answers } = body as {
+      const {
+        jobId, name, email, phone, answers,
+        location: applicantLocation, address,
+        resumeBase64, resumeMime, resumeName,
+      } = body as {
         jobId: string;
         name: string;
         email: string;
         phone?: string;
         answers: Record<string, string>;
+        location?: string | null;
+        address?: string | null;
+        resumeBase64?: string | null;
+        resumeMime?: string | null;
+        resumeName?: string | null;
       };
       if (!jobId || !name?.trim() || !email?.trim()) {
         return json({ error: "Missing required fields" }, 400);
       }
       const { data: job } = await admin
         .from("jobs")
-        .select("id, workspace_id, title, status, approval_status, created_by")
+        .select("id, workspace_id, title, status, approval_status, created_by, application_form_config")
         .eq("id", jobId).maybeSingle();
       if (!job || job.status !== "open" || job.approval_status !== "approved") {
         return json({ error: "Job not accepting applications" }, 404);
+      }
+
+      const cfg: any = job.application_form_config ?? {};
+      if (cfg?.require_cv && !resumeBase64) {
+        return json({ error: "CV is required for this role" }, 400);
       }
 
       const { data: questions } = await admin
@@ -317,12 +331,42 @@ Deno.serve(async (req) => {
         if (ans && fails.includes(ans)) { knockedOut = q; break; }
       }
 
+      // Optional CV upload to private "resumes" bucket via service role
+      let resumePath: string | null = null;
+      if (resumeBase64 && resumeMime) {
+        try {
+          const bin = Uint8Array.from(atob(resumeBase64), (c) => c.charCodeAt(0));
+          if (bin.byteLength > 8 * 1024 * 1024) {
+            return json({ error: "CV must be under 8 MB" }, 413);
+          }
+          const safeName = (resumeName ?? "resume").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+          const path = `${job.workspace_id}/applications/${crypto.randomUUID()}-${safeName}`;
+          const { error: upErr } = await admin.storage.from("resumes").upload(path, bin, {
+            contentType: resumeMime,
+            upsert: false,
+          });
+          if (upErr) {
+            console.error("resume upload error", upErr);
+          } else {
+            resumePath = path;
+          }
+        } catch (e) {
+          console.error("resume decode error", e);
+        }
+      }
+
+      const notesParts: string[] = [];
+      if (address?.trim()) notesParts.push(`Address: ${address.trim()}`);
+
       // Insert candidate
       const { data: cand, error: candErr } = await admin.from("candidates").insert({
         workspace_id: job.workspace_id,
         full_name: name.trim(),
         email: email.trim(),
         phone: phone?.trim() || null,
+        location: applicantLocation?.trim() || null,
+        notes: notesParts.length ? notesParts.join("\n") : null,
+        resume_path: resumePath,
         source: "careers_site",
         created_by: job.created_by,
       }).select("id").single();
