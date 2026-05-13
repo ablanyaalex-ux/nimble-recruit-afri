@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare } from "lucide-react";
+import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare, Award, Send, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Log = {
