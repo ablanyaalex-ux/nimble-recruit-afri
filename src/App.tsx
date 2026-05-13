@@ -53,6 +53,7 @@ const App = () => (
               <Route path="/schedule/:token" element={<SchedulePublic />} />
               <Route path="/jobs" element={<Marketplace />} />
               <Route path="/post-job" element={<PostJobGuest />} />
+              <Route path="/offer/:token" element={<OfferPublic />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/app/jobs" element={<Jobs />} />
