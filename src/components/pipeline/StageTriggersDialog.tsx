@@ -49,7 +49,7 @@ export function StageTriggersDialog({ open, onOpenChange, workspaceId, stageId, 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [type, setType] = useState<"send_email">("send_email");
+  const [type, setType] = useState<"send_email" | "send_survey">("send_email");
   const [useTemplate, setUseTemplate] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
