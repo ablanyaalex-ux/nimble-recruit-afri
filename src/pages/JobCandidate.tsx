@@ -8,6 +8,7 @@ import { CandidateStagesTimeline } from "@/components/pipeline/CandidateStagesTi
 import { CandidateActivityFeed } from "@/components/pipeline/CandidateActivityFeed";
 import { CandidateDocuments } from "@/components/pipeline/CandidateDocuments";
 import { SendEmailDialog } from "@/components/pipeline/SendEmailDialog";
+import { OffersSection } from "@/components/pipeline/OffersSection";
 import { Activity, GitBranch, ClipboardCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -1037,6 +1038,20 @@ export default function JobCandidate() {
               onReschedule={(id) => { setRescheduleInterviewId(id); setScheduleOpen(true); }}
             />
           </Card>
+
+          {detail.jobs && (
+            <OffersSection
+              workspaceId={detail.jobs.workspace_id}
+              jobId={detail.job_id}
+              jobCandidateId={detail.id}
+              candidateId={detail.candidate_id}
+              canEdit={canEdit}
+              onOfferAccepted={() => {
+                toast.success("🎉 Offer accepted! Candidate moved to Hired.");
+                refresh();
+              }}
+            />
+          )}
 
           <Card className="p-4">
             <div className="font-display text-base mb-3 flex items-center gap-2">

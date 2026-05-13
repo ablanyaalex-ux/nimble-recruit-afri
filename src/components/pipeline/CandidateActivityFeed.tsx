@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare } from "lucide-react";
+import { ArrowRight, Mail, Trash2, UserCog, UserPlus, RotateCcw, FileText, Link2, MessageSquare, Award, Send, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Log = {
@@ -40,6 +40,12 @@ const ACTION_META: Record<string, { Icon: any; tone: string }> = {
   document_uploaded: { Icon: FileText, tone: "text-indigo-600 bg-indigo-500/10" },
   assessment_added: { Icon: Link2, tone: "text-violet-600 bg-violet-500/10" },
   comment_added: { Icon: MessageSquare, tone: "text-foreground bg-muted" },
+  offer_generated: { Icon: Award, tone: "text-amber-600 bg-amber-500/10" },
+  offer_submitted_for_approval: { Icon: Award, tone: "text-amber-600 bg-amber-500/10" },
+  offer_approved: { Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
+  offer_sent: { Icon: Send, tone: "text-sky-600 bg-sky-500/10" },
+  offer_accepted: { Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
+  offer_declined: { Icon: XCircle, tone: "text-destructive bg-destructive/10" },
 };
 
 export function CandidateActivityFeed({
@@ -168,6 +174,18 @@ export function CandidateActivityFeed({
             {l.metadata?.preview && <span className="text-muted-foreground"> — “{l.metadata.preview}”</span>}
           </>
         );
+      case "offer_generated":
+        return <><strong>{actor}</strong> generated an offer</>;
+      case "offer_submitted_for_approval":
+        return <><strong>{actor}</strong> submitted the offer for internal approval</>;
+      case "offer_approved":
+        return <><strong>{actor}</strong> approved the offer</>;
+      case "offer_sent":
+        return <><strong>{actor}</strong> sent the offer to the candidate</>;
+      case "offer_accepted":
+        return <><strong>{actor}</strong> — candidate accepted the offer 🎉</>;
+      case "offer_declined":
+        return <><strong>{actor}</strong> — candidate declined the offer{l.metadata?.reason && <span className="text-muted-foreground"> — {l.metadata.reason}</span>}</>;
       default:
         return <><strong>{actor}</strong> {l.action_type.replace(/_/g, " ")}</>;
     }

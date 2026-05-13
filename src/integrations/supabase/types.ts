@@ -1075,6 +1075,78 @@ export type Database = {
         }
         Relationships: []
       }
+      offers: {
+        Row: {
+          bonus: string | null
+          candidate_id: string
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          decline_reason: string | null
+          equity: string | null
+          id: string
+          internal_approved_at: string | null
+          internal_approved_by: string | null
+          job_candidate_id: string
+          job_id: string
+          notes: string | null
+          public_token: string
+          salary_amount: number | null
+          salary_currency: string | null
+          sent_at: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          bonus?: string | null
+          candidate_id: string
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          decline_reason?: string | null
+          equity?: string | null
+          id?: string
+          internal_approved_at?: string | null
+          internal_approved_by?: string | null
+          job_candidate_id: string
+          job_id: string
+          notes?: string | null
+          public_token?: string
+          salary_amount?: number | null
+          salary_currency?: string | null
+          sent_at?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          bonus?: string | null
+          candidate_id?: string
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          decline_reason?: string | null
+          equity?: string | null
+          id?: string
+          internal_approved_at?: string | null
+          internal_approved_by?: string | null
+          job_candidate_id?: string
+          job_id?: string
+          notes?: string | null
+          public_token?: string
+          salary_amount?: number | null
+          salary_currency?: string | null
+          sent_at?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       outbound_email_queue: {
         Row: {
           attempts: number
@@ -1420,6 +1492,24 @@ export type Database = {
           workspace_name: string
         }[]
       }
+      get_offer_by_token: {
+        Args: { _token: string }
+        Returns: {
+          bonus: string
+          candidate_name: string
+          client_name: string
+          decided_at: string
+          equity: string
+          id: string
+          job_title: string
+          notes: string
+          salary_amount: number
+          salary_currency: string
+          sent_at: string
+          start_date: string
+          status: string
+        }[]
+      }
       has_workspace_role: {
         Args: {
           _role: Database["public"]["Enums"]["workspace_role"]
@@ -1445,6 +1535,10 @@ export type Database = {
         Returns: boolean
       }
       job_reference_prefix: { Args: { _client_name: string }; Returns: string }
+      respond_offer: {
+        Args: { _accept: boolean; _reason?: string; _token: string }
+        Returns: Json
+      }
       user_workspace_role: {
         Args: { _uid: string; _workspace_id: string }
         Returns: Database["public"]["Enums"]["workspace_role"]

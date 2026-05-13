@@ -28,6 +28,7 @@ import MyInterviews from "./pages/MyInterviews";
 import Inbox from "./pages/Inbox";
 import Marketplace from "./pages/Marketplace";
 import PostJobGuest from "./pages/PostJobGuest";
+import OfferPublic from "./pages/OfferPublic";
 import ScorecardForm from "./pages/ScorecardForm";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/schedule/:token" element={<SchedulePublic />} />
               <Route path="/jobs" element={<Marketplace />} />
               <Route path="/post-job" element={<PostJobGuest />} />
+              <Route path="/offer/:token" element={<OfferPublic />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/app/jobs" element={<Jobs />} />
