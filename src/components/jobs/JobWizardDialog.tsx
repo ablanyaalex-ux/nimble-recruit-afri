@@ -168,6 +168,7 @@ export function JobWizardDialog({ open, onOpenChange, workspaceId, onCreated }: 
         employment_type: employmentType,
         status: hasChain ? "on_hold" : "open",
         approval_status: hasChain ? "pending" : "approved",
+        application_form_config: formConfig as any,
         created_by: user.id,
       }).select("id").single();
       if (jerr || !job) throw new Error(jerr?.message ?? "Failed to create job");
