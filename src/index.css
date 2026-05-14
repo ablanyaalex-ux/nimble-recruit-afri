@@ -113,3 +113,26 @@
     letter-spacing: -0.01em;
   }
 }
+
+@layer utilities {
+  .shadow-float {
+    box-shadow:
+      0 1px 2px hsl(9 18% 12% / 0.04),
+      0 12px 32px -12px hsl(283 24% 11% / 0.10),
+      0 32px 64px -32px hsl(38 92% 50% / 0.08);
+  }
+
+  .bg-mesh-creative {
+    background-image:
+      radial-gradient(at 0% 0%, hsl(283 40% 35% / 0.18) 0px, transparent 55%),
+      radial-gradient(at 28% 8%, hsl(38 92% 60% / 0.14) 0px, transparent 50%),
+      radial-gradient(at 60% 0%, hsl(20 80% 65% / 0.10) 0px, transparent 45%);
+  }
+
+  .glass-panel {
+    background-color: hsl(0 0% 100% / 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-color: hsl(0 0% 100% / 0.55);
+  }
+}
