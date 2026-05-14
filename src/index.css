@@ -40,7 +40,7 @@
     --input: 214 24% 91%;
     --ring: 160 84% 30%;
 
-    --radius: 1rem;                     /* rounded-2xl baseline */
+    --radius: 0.625rem;
 
     /* Sidebar — Deep Midnight Slate #0F172A */
     --sidebar-background: 222 47% 11%;
