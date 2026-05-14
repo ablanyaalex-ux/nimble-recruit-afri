@@ -323,7 +323,7 @@ export function CandidateDrawer({ jobCandidateId, onClose, onChanged, stages = D
 
   return (
     <Sheet open={!!jobCandidateId} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto glass-panel border-l">
         {detail && (
           <>
             <SheetHeader>

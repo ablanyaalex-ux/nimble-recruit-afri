@@ -71,9 +71,16 @@ export function AppSidebar() {
                     : location.pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={active}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className={cn(
+                        "rounded-full text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        "data-[active=true]:bg-[hsl(38_92%_50%)] data-[active=true]:text-[hsl(283_24%_11%)] data-[active=true]:font-medium data-[active=true]:shadow-[0_4px_14px_-4px_hsl(38_92%_50%/0.5)]",
+                      )}
+                    >
                       <NavLink to={item.url} end={item.end}>
-                        <item.icon className={cn("h-4 w-4", active && "text-primary")} />
+                        <item.icon className={cn("h-4 w-4", !active && "text-sidebar-foreground/70")} />
                         {!collapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
