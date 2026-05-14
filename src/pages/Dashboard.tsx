@@ -172,7 +172,13 @@ export default function Dashboard() {
     stages.find((s) => s.key === key)?.label ?? key.replace(/_/g, " ");
 
   return (
-    <PageContainer>
+    <div className="relative">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-mesh-creative blur-3xl opacity-80"
+      />
+      <div className="relative">
+      <PageContainer>
       <PageHeader
         eyebrow="Today"
         title={`Good to see you, ${greeting}.`}
