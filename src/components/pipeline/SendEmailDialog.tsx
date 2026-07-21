@@ -20,6 +20,9 @@ type Props = {
   candidateName: string;
   candidateEmail: string | null;
   jobTitle: string;
+  offerLink?: string;
+  defaultSubject?: string;
+  defaultBody?: string;
   onSent?: () => void;
 };
 
@@ -29,7 +32,7 @@ function render(tpl: string, vars: Record<string, string>): string {
 
 export function SendEmailDialog({
   open, onOpenChange, workspaceId, candidateId, jobCandidateId,
-  candidateName, candidateEmail, jobTitle, onSent,
+  candidateName, candidateEmail, jobTitle, offerLink, defaultSubject, defaultBody, onSent,
 }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateId, setTemplateId] = useState<string>("blank");
@@ -41,9 +44,10 @@ export function SendEmailDialog({
   const vars = useMemo(() => ({
     candidate_name: candidateName,
     job_title: jobTitle,
+    offer_link: offerLink ?? "",
     company_name: "",
     stage: "",
-  }), [candidateName, jobTitle]);
+  }), [candidateName, jobTitle, offerLink]);
 
   useEffect(() => {
     if (!open) return;
