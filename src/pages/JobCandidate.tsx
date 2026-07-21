@@ -550,6 +550,7 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
+  const isClosedStage = /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
   // Once a recruiter saves redactions, the candidate is anonymised — the redacted
   // view applies to everyone (recruiters and HMs) so what you see is what HMs see.
   const showRedactedView = !!detail.anonymized && !!redactedPath;
@@ -587,22 +588,28 @@ export default function JobCandidate() {
             )}
             {canMove && !detail.rejected && (
               <>
-                <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
-                  <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
-                </Button>
+                {!isClosedStage && (
+                  <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
+                    <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
+                  </Button>
+                )}
                 {!isHM && (
                   <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)}>
                     <Mail className="h-3.5 w-3.5" /> Send email
                   </Button>
                 )}
-                <Button size="sm" onClick={progressCandidate} disabled={progressing}>
-                  <ChevronRight className="h-3.5 w-3.5" /> Progress
-                </Button>
-                <RejectionReasonPopover disabled={progressing} align="end" onReasonSelect={rejectCandidate}>
-                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={progressing}>
-                    <X className="h-3.5 w-3.5" /> Reject
-                  </Button>
-                </RejectionReasonPopover>
+                {!isClosedStage && (
+                  <>
+                    <Button size="sm" onClick={progressCandidate} disabled={progressing}>
+                      <ChevronRight className="h-3.5 w-3.5" /> Progress
+                    </Button>
+                    <RejectionReasonPopover disabled={progressing} align="end" onReasonSelect={rejectCandidate}>
+                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={progressing}>
+                        <X className="h-3.5 w-3.5" /> Reject
+                      </Button>
+                    </RejectionReasonPopover>
+                  </>
+                )}
               </>
             )}
             {canMove && detail.rejected && (

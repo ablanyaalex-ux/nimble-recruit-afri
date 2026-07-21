@@ -5,7 +5,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Award, Send, Pencil, Copy, Check, Sparkles } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2 } from "lucide-react";
 import { OfferDialog } from "./OfferDialog";
 import { toast } from "sonner";
 
@@ -30,7 +42,7 @@ type Offer = {
 const STATUS_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Draft", variant: "outline" },
   internal_approval: { label: "Awaiting approval", variant: "secondary" },
-  approved: { label: "Approved", variant: "secondary" },
+  approved: { label: "Approved — ready to send", variant: "secondary" },
   sent: { label: "Sent to candidate", variant: "default" },
   accepted: { label: "Accepted 🎉", variant: "default" },
   declined: { label: "Declined", variant: "destructive" },
@@ -53,6 +65,9 @@ export function OffersSection({
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete"; offer: Offer }>(null);
+  const [reasonInput, setReasonInput] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -91,7 +106,7 @@ export function OffersSection({
       internal_approved_at: new Date().toISOString(),
     }).eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Offer approved.");
+    toast.success("Offer approved. Ready to send.");
   };
 
   const sendOffer = async (id: string) => {
@@ -103,10 +118,94 @@ export function OffersSection({
     toast.success("Offer sent to candidate.");
   };
 
+  const moveToAcceptedStage = async () => {
+    // Find a stage matching accepted/hired in this workspace and move the candidate
+    const { data: stages } = await supabase
+      .from("workspace_pipeline_stages")
+      .select("key, label, position")
+      .eq("workspace_id", workspaceId)
+      .order("position", { ascending: false });
+    const match = (stages ?? []).find((s: any) =>
+      /accepted|hired|filled/i.test(s.key) || /accepted|hired|filled/i.test(s.label)
+    );
+    if (match) {
+      await supabase.from("job_candidates").update({ stage: (match as any).key }).eq("id", jobCandidateId);
+    }
+  };
+
+  const markAccepted = async (o: Offer) => {
+    setBusy(true);
+    const { error } = await supabase.from("offers").update({
+      status: "accepted",
+      decided_at: new Date().toISOString(),
+      decline_reason: null,
+    }).eq("id", o.id);
+    if (!error) await moveToAcceptedStage();
+    setBusy(false);
+    setConfirm(null);
+    if (error) return toast.error(error.message);
+    toast.success("Marked as accepted. Candidate moved to Offer Accepted.");
+  };
+
+  const markDeclined = async (o: Offer) => {
+    setBusy(true);
+    const { error } = await supabase.from("offers").update({
+      status: "declined",
+      decided_at: new Date().toISOString(),
+      decline_reason: reasonInput.trim() || null,
+    }).eq("id", o.id);
+    setBusy(false);
+    setConfirm(null);
+    setReasonInput("");
+    if (error) return toast.error(error.message);
+    toast.success("Marked as declined.");
+  };
+
+  const withdrawOffer = async (o: Offer) => {
+    setBusy(true);
+    const { error } = await supabase.from("offers").update({
+      status: "withdrawn",
+      decided_at: new Date().toISOString(),
+      decline_reason: reasonInput.trim() || null,
+    }).eq("id", o.id);
+    setBusy(false);
+    setConfirm(null);
+    setReasonInput("");
+    if (error) return toast.error(error.message);
+    toast.success("Offer withdrawn.");
+  };
+
+  const deleteDraft = async (o: Offer) => {
+    setBusy(true);
+    const { error } = await supabase.from("offers").delete().eq("id", o.id);
+    setBusy(false);
+    setConfirm(null);
+    if (error) return toast.error(error.message);
+    toast.success("Draft deleted.");
+  };
+
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/offer/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Offer link copied.");
+  };
+
+  const openLink = (token: string) => {
+    const url = `${window.location.origin}/offer/${token}`;
+    window.open(url, "_blank", "noopener");
+  };
+
+  const confirmTitle: Record<string, string> = {
+    accept: "Mark offer as accepted?",
+    decline: "Mark offer as declined?",
+    withdraw: "Withdraw this offer?",
+    delete: "Delete this draft?",
+  };
+  const confirmDesc: Record<string, string> = {
+    accept: "This records the candidate's acceptance and moves them to the Offer Accepted stage.",
+    decline: "This records the candidate's declination. The offer link will no longer be actionable.",
+    withdraw: "The offer link becomes inactive and the candidate can no longer respond. You can generate a new offer afterwards.",
+    delete: "Permanently remove this draft offer. This can't be undone.",
   };
 
   return (
@@ -130,6 +229,9 @@ export function OffersSection({
         <div className="space-y-3">
           {offers.map((o) => {
             const badge = STATUS_BADGE[o.status] ?? { label: o.status, variant: "outline" as const };
+            const isPending = o.status === "sent";
+            const isLive = ["approved", "sent"].includes(o.status);
+            const isTerminal = ["accepted", "declined", "withdrawn"].includes(o.status);
             return (
               <div key={o.id} className="rounded-md border bg-muted/20 p-3 space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -146,11 +248,17 @@ export function OffersSection({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {canEdit && o.status === "draft" && (
-                      <Button size="sm" variant="ghost" onClick={() => { setEditId(o.id); setDialogOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" /> Edit
-                      </Button>
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => { setEditId(o.id); setDialogOpen(true); }}>
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                          onClick={() => setConfirm({ type: "delete", offer: o })}>
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </Button>
+                      </>
                     )}
                     {canEdit && o.status === "internal_approval" && (
                       <Button size="sm" variant="outline" onClick={() => approveOffer(o.id)}>
@@ -162,9 +270,32 @@ export function OffersSection({
                         <Send className="h-3.5 w-3.5" /> Send to candidate
                       </Button>
                     )}
-                    {(o.status === "sent" || o.status === "accepted" || o.status === "declined") && (
-                      <Button size="sm" variant="ghost" onClick={() => copyLink(o.public_token)}>
-                        <Copy className="h-3.5 w-3.5" /> Copy link
+                    {(isLive || isTerminal) && (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => copyLink(o.public_token)}>
+                          <Copy className="h-3.5 w-3.5" /> Copy link
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openLink(o.public_token)}>
+                          <ExternalLink className="h-3.5 w-3.5" /> Preview
+                        </Button>
+                      </>
+                    )}
+                    {canEdit && isPending && (
+                      <>
+                        <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700"
+                          onClick={() => setConfirm({ type: "accept", offer: o })}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Mark accepted
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
+                          onClick={() => setConfirm({ type: "decline", offer: o })}>
+                          <XCircle className="h-3.5 w-3.5" /> Mark declined
+                        </Button>
+                      </>
+                    )}
+                    {canEdit && isLive && (
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                        onClick={() => setConfirm({ type: "withdraw", offer: o })}>
+                        <Ban className="h-3.5 w-3.5" /> Withdraw
                       </Button>
                     )}
                   </div>
@@ -176,13 +307,17 @@ export function OffersSection({
                   </div>
                 )}
                 {o.notes && <p className="text-xs whitespace-pre-wrap text-muted-foreground">{o.notes}</p>}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1">
+                  {o.sent_at && <span>Sent {new Date(o.sent_at).toLocaleString()}</span>}
+                  {o.decided_at && <span>Decided {new Date(o.decided_at).toLocaleString()}</span>}
+                </div>
                 {o.status === "internal_approval" && canEdit && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-2">
                     <Checkbox id={`approve-${o.id}`} onCheckedChange={(v) => v && approveOffer(o.id)} />
                     <label htmlFor={`approve-${o.id}`}>I approve this offer for sending to the candidate.</label>
                   </div>
                 )}
-                {o.status === "declined" && o.decline_reason && (
+                {(o.status === "declined" || o.status === "withdrawn") && o.decline_reason && (
                   <p className="text-xs text-destructive">Reason: {o.decline_reason}</p>
                 )}
               </div>
@@ -201,6 +336,37 @@ export function OffersSection({
         existingOfferId={editId}
         onSaved={refresh}
       />
+
+      <AlertDialog open={!!confirm} onOpenChange={(v) => { if (!v) { setConfirm(null); setReasonInput(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm ? confirmTitle[confirm.type] : ""}</AlertDialogTitle>
+            <AlertDialogDescription>{confirm ? confirmDesc[confirm.type] : ""}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {confirm && (confirm.type === "decline" || confirm.type === "withdraw") && (
+            <div className="space-y-1">
+              <Label className="text-xs">Reason (optional)</Label>
+              <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
+                placeholder={confirm.type === "decline" ? "Why did the candidate decline?" : "Why is the offer being withdrawn?"} />
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={() => {
+                if (!confirm) return;
+                if (confirm.type === "accept") markAccepted(confirm.offer);
+                else if (confirm.type === "decline") markDeclined(confirm.offer);
+                else if (confirm.type === "withdraw") withdrawOffer(confirm.offer);
+                else if (confirm.type === "delete") deleteDraft(confirm.offer);
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
