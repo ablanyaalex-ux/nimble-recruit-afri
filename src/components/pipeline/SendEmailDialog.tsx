@@ -52,6 +52,9 @@ export function SendEmailDialog({
   useEffect(() => {
     if (!open) return;
     setTo(candidateEmail ?? "");
+    setSubject(defaultSubject ?? "");
+    setBody(defaultBody ?? "");
+    setTemplateId("blank");
     (async () => {
       const { data } = await supabase
         .from("templates")
@@ -61,7 +64,7 @@ export function SendEmailDialog({
         .order("updated_at", { ascending: false });
       setTemplates((data ?? []) as Template[]);
     })();
-  }, [open, workspaceId, candidateEmail]);
+  }, [open, workspaceId, candidateEmail, defaultSubject, defaultBody]);
 
   const applyTemplate = (id: string) => {
     setTemplateId(id);
