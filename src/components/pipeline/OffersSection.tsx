@@ -384,19 +384,38 @@ export function OffersSection({
             <AlertDialogTitle>{confirm ? confirmTitle[confirm.type] : ""}</AlertDialogTitle>
             <AlertDialogDescription>{confirm ? confirmDesc[confirm.type] : ""}</AlertDialogDescription>
           </AlertDialogHeader>
-          {confirm && (confirm.type === "decline" || confirm.type === "withdraw") && (
-            <div className="space-y-1">
-              <Label className="text-xs">Reason (optional)</Label>
-              <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
-                placeholder={confirm.type === "decline" ? "Why did the candidate decline?" : "Why is the offer being withdrawn?"} />
-            </div>
-          )}
+          {confirm && (confirm.type === "decline" || confirm.type === "withdraw") && (() => {
+            const trimmed = reasonInput.trim();
+            const tooShort = trimmed.length > 0 && trimmed.length < 5;
+            return (
+              <div className="space-y-1">
+                <Label className="text-xs">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
+                  maxLength={500}
+                  aria-invalid={tooShort || trimmed.length === 0}
+                  placeholder={confirm.type === "decline" ? "Why did the candidate decline?" : "Why is the offer being withdrawn?"} />
+                <p className={`text-[11px] ${tooShort ? "text-destructive" : "text-muted-foreground"}`}>
+                  {tooShort ? "Please provide at least 5 characters." : `${trimmed.length}/500 — required for the audit log.`}
+                </p>
+              </div>
+            );
+          })()}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={busy}
-              onClick={() => {
+              disabled={
+                busy ||
+                (confirm && (confirm.type === "decline" || confirm.type === "withdraw") && reasonInput.trim().length < 5)
+              }
+              onClick={(e) => {
                 if (!confirm) return;
+                if ((confirm.type === "decline" || confirm.type === "withdraw") && reasonInput.trim().length < 5) {
+                  e.preventDefault();
+                  toast.error("Please provide a reason (min. 5 characters).");
+                  return;
+                }
                 if (confirm.type === "accept") markAccepted(confirm.offer);
                 else if (confirm.type === "decline") markDeclined(confirm.offer);
                 else if (confirm.type === "withdraw") withdrawOffer(confirm.offer);
@@ -408,6 +427,23 @@ export function OffersSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {emailOffer && candidateName && jobTitle && (
+        <SendEmailDialog
+          open={!!emailOfferId}
+          onOpenChange={(v) => { if (!v) setEmailOfferId(null); }}
+          workspaceId={workspaceId}
+          candidateId={candidateId}
+          jobCandidateId={jobCandidateId}
+          candidateName={candidateName}
+          candidateEmail={candidateEmail ?? null}
+          jobTitle={jobTitle}
+          offerLink={publicUrlFor(emailOffer.public_token)}
+          defaultSubject={`Your offer for ${jobTitle}`}
+          defaultBody={`Hi ${candidateName},\n\nWe're thrilled to extend you an offer for the ${jobTitle} role${clientName ? ` at ${clientName}` : ""}. You can review the full details and accept or decline securely here:\n\n${publicUrlFor(emailOffer.public_token)}\n\nAttached is a PDF copy of the offer for your records. Please reach out with any questions.\n\nBest,\nThe hiring team`}
+          onSent={refresh}
+        />
+      )}
     </Card>
   );
 }
