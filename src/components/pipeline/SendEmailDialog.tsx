@@ -187,7 +187,7 @@ export function SendEmailDialog({
             <Label>Body</Label>
             <Textarea rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
             <p className="text-xs text-muted-foreground">
-              Placeholders are filled when applying a template: <code>{"{{candidate_name}}"}</code>, <code>{"{{job_title}}"}</code>.
+              Placeholders are filled when applying a template: <code>{"{{candidate_name}}"}</code>, <code>{"{{job_title}}"}</code>{offerLink ? <>, <code>{"{{offer_link}}"}</code></> : null}.
             </p>
           </div>
         </div>
