@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2, FileDown, Mail } from "lucide-react";
 import { OfferDialog } from "./OfferDialog";
+import { SendEmailDialog } from "./SendEmailDialog";
+import { downloadOfferPdf } from "@/lib/offerPdf";
 import { toast } from "sonner";
 
 type Offer = {
@@ -51,6 +53,7 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 
 export function OffersSection({
   workspaceId, jobId, jobCandidateId, candidateId, canEdit,
+  candidateName, candidateEmail, jobTitle, clientName, workspaceName,
   onOfferAccepted,
 }: {
   workspaceId: string;
@@ -58,6 +61,11 @@ export function OffersSection({
   jobCandidateId: string;
   candidateId: string;
   canEdit: boolean;
+  candidateName?: string;
+  candidateEmail?: string | null;
+  jobTitle?: string;
+  clientName?: string | null;
+  workspaceName?: string | null;
   onOfferAccepted?: () => void;
 }) {
   const { user } = useAuth();
@@ -68,6 +76,31 @@ export function OffersSection({
   const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete"; offer: Offer }>(null);
   const [reasonInput, setReasonInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
+
+  const publicUrlFor = (token: string) => `${window.location.origin}/offer/${token}`;
+
+  const handleDownloadPdf = (o: Offer) => {
+    downloadOfferPdf({
+      candidateName: candidateName ?? "Candidate",
+      candidateEmail,
+      jobTitle: jobTitle ?? "Role",
+      clientName,
+      workspaceName,
+      salary_amount: o.salary_amount,
+      salary_currency: o.salary_currency,
+      start_date: o.start_date,
+      equity: o.equity,
+      bonus: o.bonus,
+      notes: o.notes,
+      status: (STATUS_BADGE[o.status]?.label ?? o.status),
+      sent_at: o.sent_at,
+      decided_at: o.decided_at,
+      publicUrl: ["approved", "sent", "accepted", "declined"].includes(o.status) ? publicUrlFor(o.public_token) : null,
+    });
+  };
+
+  const emailOffer = offers.find((o) => o.id === emailOfferId) ?? null;
 
   const refresh = async () => {
     setLoading(true);
@@ -278,8 +311,16 @@ export function OffersSection({
                         <Button size="sm" variant="ghost" onClick={() => openLink(o.public_token)}>
                           <ExternalLink className="h-3.5 w-3.5" /> Preview
                         </Button>
+                        {canEdit && isLive && candidateEmail && (
+                          <Button size="sm" variant="outline" onClick={() => setEmailOfferId(o.id)}>
+                            <Mail className="h-3.5 w-3.5" /> Email offer
+                          </Button>
+                        )}
                       </>
                     )}
+                    <Button size="sm" variant="ghost" onClick={() => handleDownloadPdf(o)}>
+                      <FileDown className="h-3.5 w-3.5" /> PDF
+                    </Button>
                     {canEdit && isPending && (
                       <>
                         <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700"
@@ -343,19 +384,38 @@ export function OffersSection({
             <AlertDialogTitle>{confirm ? confirmTitle[confirm.type] : ""}</AlertDialogTitle>
             <AlertDialogDescription>{confirm ? confirmDesc[confirm.type] : ""}</AlertDialogDescription>
           </AlertDialogHeader>
-          {confirm && (confirm.type === "decline" || confirm.type === "withdraw") && (
-            <div className="space-y-1">
-              <Label className="text-xs">Reason (optional)</Label>
-              <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
-                placeholder={confirm.type === "decline" ? "Why did the candidate decline?" : "Why is the offer being withdrawn?"} />
-            </div>
-          )}
+          {confirm && (confirm.type === "decline" || confirm.type === "withdraw") && (() => {
+            const trimmed = reasonInput.trim();
+            const tooShort = trimmed.length > 0 && trimmed.length < 5;
+            return (
+              <div className="space-y-1">
+                <Label className="text-xs">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
+                  maxLength={500}
+                  aria-invalid={tooShort || trimmed.length === 0}
+                  placeholder={confirm.type === "decline" ? "Why did the candidate decline?" : "Why is the offer being withdrawn?"} />
+                <p className={`text-[11px] ${tooShort ? "text-destructive" : "text-muted-foreground"}`}>
+                  {tooShort ? "Please provide at least 5 characters." : `${trimmed.length}/500 — required for the audit log.`}
+                </p>
+              </div>
+            );
+          })()}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={busy}
-              onClick={() => {
+              disabled={
+                busy ||
+                (confirm && (confirm.type === "decline" || confirm.type === "withdraw") && reasonInput.trim().length < 5)
+              }
+              onClick={(e) => {
                 if (!confirm) return;
+                if ((confirm.type === "decline" || confirm.type === "withdraw") && reasonInput.trim().length < 5) {
+                  e.preventDefault();
+                  toast.error("Please provide a reason (min. 5 characters).");
+                  return;
+                }
                 if (confirm.type === "accept") markAccepted(confirm.offer);
                 else if (confirm.type === "decline") markDeclined(confirm.offer);
                 else if (confirm.type === "withdraw") withdrawOffer(confirm.offer);
@@ -367,6 +427,23 @@ export function OffersSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {emailOffer && candidateName && jobTitle && (
+        <SendEmailDialog
+          open={!!emailOfferId}
+          onOpenChange={(v) => { if (!v) setEmailOfferId(null); }}
+          workspaceId={workspaceId}
+          candidateId={candidateId}
+          jobCandidateId={jobCandidateId}
+          candidateName={candidateName}
+          candidateEmail={candidateEmail ?? null}
+          jobTitle={jobTitle}
+          offerLink={publicUrlFor(emailOffer.public_token)}
+          defaultSubject={`Your offer for ${jobTitle}`}
+          defaultBody={`Hi ${candidateName},\n\nWe're thrilled to extend you an offer for the ${jobTitle} role${clientName ? ` at ${clientName}` : ""}. You can review the full details and accept or decline securely here:\n\n${publicUrlFor(emailOffer.public_token)}\n\nAttached is a PDF copy of the offer for your records. Please reach out with any questions.\n\nBest,\nThe hiring team`}
+          onSent={refresh}
+        />
+      )}
     </Card>
   );
 }

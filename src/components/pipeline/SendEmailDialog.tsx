@@ -20,6 +20,9 @@ type Props = {
   candidateName: string;
   candidateEmail: string | null;
   jobTitle: string;
+  offerLink?: string;
+  defaultSubject?: string;
+  defaultBody?: string;
   onSent?: () => void;
 };
 
@@ -29,7 +32,7 @@ function render(tpl: string, vars: Record<string, string>): string {
 
 export function SendEmailDialog({
   open, onOpenChange, workspaceId, candidateId, jobCandidateId,
-  candidateName, candidateEmail, jobTitle, onSent,
+  candidateName, candidateEmail, jobTitle, offerLink, defaultSubject, defaultBody, onSent,
 }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateId, setTemplateId] = useState<string>("blank");
@@ -41,13 +44,17 @@ export function SendEmailDialog({
   const vars = useMemo(() => ({
     candidate_name: candidateName,
     job_title: jobTitle,
+    offer_link: offerLink ?? "",
     company_name: "",
     stage: "",
-  }), [candidateName, jobTitle]);
+  }), [candidateName, jobTitle, offerLink]);
 
   useEffect(() => {
     if (!open) return;
     setTo(candidateEmail ?? "");
+    setSubject(defaultSubject ?? "");
+    setBody(defaultBody ?? "");
+    setTemplateId("blank");
     (async () => {
       const { data } = await supabase
         .from("templates")
@@ -57,7 +64,7 @@ export function SendEmailDialog({
         .order("updated_at", { ascending: false });
       setTemplates((data ?? []) as Template[]);
     })();
-  }, [open, workspaceId, candidateEmail]);
+  }, [open, workspaceId, candidateEmail, defaultSubject, defaultBody]);
 
   const applyTemplate = (id: string) => {
     setTemplateId(id);
@@ -180,7 +187,7 @@ export function SendEmailDialog({
             <Label>Body</Label>
             <Textarea rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
             <p className="text-xs text-muted-foreground">
-              Placeholders are filled when applying a template: <code>{"{{candidate_name}}"}</code>, <code>{"{{job_title}}"}</code>.
+              Placeholders are filled when applying a template: <code>{"{{candidate_name}}"}</code>, <code>{"{{job_title}}"}</code>{offerLink ? <>, <code>{"{{offer_link}}"}</code></> : null}.
             </p>
           </div>
         </div>

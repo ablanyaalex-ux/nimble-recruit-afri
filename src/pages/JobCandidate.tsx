@@ -954,6 +954,9 @@ export default function JobCandidate() {
               jobCandidateId={detail.id}
               candidateId={detail.candidate_id}
               canEdit={canEdit}
+              candidateName={detail.candidates.full_name}
+              candidateEmail={detail.candidates.email}
+              jobTitle={detail.jobs.title}
               onOfferAccepted={() => {
                 toast.success("🎉 Offer accepted! Candidate moved to Hired.");
                 refresh();
