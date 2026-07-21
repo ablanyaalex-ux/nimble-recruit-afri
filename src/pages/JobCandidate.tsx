@@ -586,7 +586,7 @@ export default function JobCandidate() {
                 </SelectContent>
               </Select>
             )}
-            {canMove && !detail.rejected && (
+            {canMove && !detail.rejected && !isClosedStage && (
               <>
                 <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
                   <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
