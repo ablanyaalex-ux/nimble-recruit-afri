@@ -53,6 +53,7 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 
 export function OffersSection({
   workspaceId, jobId, jobCandidateId, candidateId, canEdit,
+  candidateName, candidateEmail, jobTitle, clientName, workspaceName,
   onOfferAccepted,
 }: {
   workspaceId: string;
@@ -60,6 +61,11 @@ export function OffersSection({
   jobCandidateId: string;
   candidateId: string;
   canEdit: boolean;
+  candidateName?: string;
+  candidateEmail?: string | null;
+  jobTitle?: string;
+  clientName?: string | null;
+  workspaceName?: string | null;
   onOfferAccepted?: () => void;
 }) {
   const { user } = useAuth();
