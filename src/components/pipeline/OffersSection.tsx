@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2, FileDown, Mail } from "lucide-react";
 import { OfferDialog } from "./OfferDialog";
+import { SendEmailDialog } from "./SendEmailDialog";
+import { downloadOfferPdf } from "@/lib/offerPdf";
 import { toast } from "sonner";
 
 type Offer = {
