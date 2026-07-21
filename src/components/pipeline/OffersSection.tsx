@@ -76,6 +76,31 @@ export function OffersSection({
   const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete"; offer: Offer }>(null);
   const [reasonInput, setReasonInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
+
+  const publicUrlFor = (token: string) => `${window.location.origin}/offer/${token}`;
+
+  const handleDownloadPdf = (o: Offer) => {
+    downloadOfferPdf({
+      candidateName: candidateName ?? "Candidate",
+      candidateEmail,
+      jobTitle: jobTitle ?? "Role",
+      clientName,
+      workspaceName,
+      salary_amount: o.salary_amount,
+      salary_currency: o.salary_currency,
+      start_date: o.start_date,
+      equity: o.equity,
+      bonus: o.bonus,
+      notes: o.notes,
+      status: (STATUS_BADGE[o.status]?.label ?? o.status),
+      sent_at: o.sent_at,
+      decided_at: o.decided_at,
+      publicUrl: ["approved", "sent", "accepted", "declined"].includes(o.status) ? publicUrlFor(o.public_token) : null,
+    });
+  };
+
+  const emailOffer = offers.find((o) => o.id === emailOfferId) ?? null;
 
   const refresh = async () => {
     setLoading(true);
