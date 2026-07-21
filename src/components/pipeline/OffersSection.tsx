@@ -311,8 +311,16 @@ export function OffersSection({
                         <Button size="sm" variant="ghost" onClick={() => openLink(o.public_token)}>
                           <ExternalLink className="h-3.5 w-3.5" /> Preview
                         </Button>
+                        {canEdit && isLive && candidateEmail && (
+                          <Button size="sm" variant="outline" onClick={() => setEmailOfferId(o.id)}>
+                            <Mail className="h-3.5 w-3.5" /> Email offer
+                          </Button>
+                        )}
                       </>
                     )}
+                    <Button size="sm" variant="ghost" onClick={() => handleDownloadPdf(o)}>
+                      <FileDown className="h-3.5 w-3.5" /> PDF
+                    </Button>
                     {canEdit && isPending && (
                       <>
                         <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700"
