@@ -50,7 +50,7 @@ type Detail = {
   match_verdict: string | null;
   match_rationale: string | null;
   match_breakdown: { skills_matched?: string[]; gaps?: string[]; next_steps?: string[] } | null;
-  jobs: { workspace_id: string; client_id: string; title: string; description: string | null } | null;
+  jobs: { workspace_id: string; client_id: string; title: string; description: string | null; clients?: { name: string } | null; workspaces?: { name: string } | null } | null;
   candidates: {
     full_name: string;
     email: string | null;
@@ -172,7 +172,7 @@ export default function JobCandidate() {
     setLoading(true);
     const { data } = await supabase
       .from("job_candidates")
-      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, match_score, match_verdict, match_rationale, match_breakdown, jobs(workspace_id, client_id, title, description), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
+      .select("id, stage, rejected, rejection_reason, candidate_id, job_id, anonymized, match_score, match_verdict, match_rationale, match_breakdown, jobs(workspace_id, client_id, title, description, clients(name), workspaces(name)), candidates(full_name, email, phone, headline, linkedin_url, resume_path, redacted_resume_path, redaction_rects, notes, source, location, resume_summary)")
       .eq("id", jobCandidateId)
       .single();
     if (data) {
@@ -957,6 +957,8 @@ export default function JobCandidate() {
               candidateName={detail.candidates.full_name}
               candidateEmail={detail.candidates.email}
               jobTitle={detail.jobs.title}
+              clientName={detail.jobs.clients?.name ?? null}
+              workspaceName={detail.jobs.workspaces?.name ?? null}
               onOfferAccepted={() => {
                 toast.success("🎉 Offer accepted! Candidate moved to Hired.");
                 refresh();
