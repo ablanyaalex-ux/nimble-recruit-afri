@@ -242,6 +242,21 @@ export function OffersSection({
     toast.success("Draft deleted.");
   };
 
+  const requestChanges = async (o: Offer) => {
+    setBusy(true);
+    const { error } = await supabase.from("offers").update({
+      status: "draft",
+      approval_feedback: reasonInput.trim(),
+      approval_rejected_at: new Date().toISOString(),
+      approval_rejected_by: user?.id ?? null,
+    } as any).eq("id", o.id);
+    setBusy(false);
+    setConfirm(null);
+    setReasonInput("");
+    if (error) return toast.error(error.message);
+    toast.success("Sent back to recruiter with feedback.");
+  };
+
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/offer/${token}`;
     navigator.clipboard.writeText(url);
@@ -258,12 +273,14 @@ export function OffersSection({
     decline: "Mark offer as declined?",
     withdraw: "Withdraw this offer?",
     delete: "Delete this draft?",
+    changes: "Request changes from recruiter?",
   };
   const confirmDesc: Record<string, string> = {
     accept: "This records the candidate's acceptance and moves them to the Offer Accepted stage.",
     decline: "This records the candidate's declination. The offer link will no longer be actionable.",
     withdraw: "The offer link becomes inactive and the candidate can no longer respond. You can generate a new offer afterwards.",
     delete: "Permanently remove this draft offer. This can't be undone.",
+    changes: "Send this offer back to draft with your feedback. The recruiter will need to resubmit for approval.",
   };
 
   return (
