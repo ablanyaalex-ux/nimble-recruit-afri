@@ -84,7 +84,7 @@ export function OffersSection({
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete"; offer: Offer }>(null);
+  const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete" | "changes"; offer: Offer }>(null);
   const [reasonInput, setReasonInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
@@ -319,9 +319,15 @@ export function OffersSection({
                       </>
                     )}
                     {canEdit && o.status === "internal_approval" && (
-                      <Button size="sm" variant="outline" onClick={() => approveOffer(o.id)}>
-                        <Check className="h-3.5 w-3.5" /> Approve
-                      </Button>
+                      <>
+                        <Button size="sm" onClick={() => approveOffer(o.id)}>
+                          <Check className="h-3.5 w-3.5" /> Approve offer
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
+                          onClick={() => setConfirm({ type: "changes", offer: o })}>
+                          <XCircle className="h-3.5 w-3.5" /> Request changes
+                        </Button>
+                      </>
                     )}
                     {canEdit && o.status === "approved" && (
                       <Button size="sm" onClick={() => sendOffer(o.id)}>
@@ -343,8 +349,8 @@ export function OffersSection({
                         )}
                       </>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => handleDownloadPdf(o)}>
-                      <FileDown className="h-3.5 w-3.5" /> PDF
+                    <Button size="sm" variant={o.signed_at ? "outline" : "ghost"} onClick={() => handleDownloadPdf(o)}>
+                      <FileDown className="h-3.5 w-3.5" /> {o.signed_at ? "Signed offer + certificate" : "PDF"}
                     </Button>
                     {canEdit && isPending && (
                       <>
