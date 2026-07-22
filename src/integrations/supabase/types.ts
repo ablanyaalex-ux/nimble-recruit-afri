@@ -1113,12 +1113,16 @@ export type Database = {
       }
       offers: {
         Row: {
+          approval_feedback: string | null
+          approval_rejected_at: string | null
+          approval_rejected_by: string | null
           bonus: string | null
           candidate_id: string
           created_at: string
           created_by: string
           decided_at: string | null
           decline_reason: string | null
+          envelope_id: string
           equity: string | null
           id: string
           internal_approved_at: string | null
@@ -1130,18 +1134,30 @@ export type Database = {
           salary_amount: number | null
           salary_currency: string | null
           sent_at: string | null
+          signature_data: string | null
+          signature_type: string | null
+          signed_at: string | null
+          signer_ip: string | null
+          signer_name: string | null
+          signer_ua: string | null
           start_date: string | null
           status: string
           updated_at: string
+          viewed_at: string | null
+          viewed_ip: string | null
           workspace_id: string
         }
         Insert: {
+          approval_feedback?: string | null
+          approval_rejected_at?: string | null
+          approval_rejected_by?: string | null
           bonus?: string | null
           candidate_id: string
           created_at?: string
           created_by: string
           decided_at?: string | null
           decline_reason?: string | null
+          envelope_id?: string
           equity?: string | null
           id?: string
           internal_approved_at?: string | null
@@ -1153,18 +1169,30 @@ export type Database = {
           salary_amount?: number | null
           salary_currency?: string | null
           sent_at?: string | null
+          signature_data?: string | null
+          signature_type?: string | null
+          signed_at?: string | null
+          signer_ip?: string | null
+          signer_name?: string | null
+          signer_ua?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
+          viewed_at?: string | null
+          viewed_ip?: string | null
           workspace_id: string
         }
         Update: {
+          approval_feedback?: string | null
+          approval_rejected_at?: string | null
+          approval_rejected_by?: string | null
           bonus?: string | null
           candidate_id?: string
           created_at?: string
           created_by?: string
           decided_at?: string | null
           decline_reason?: string | null
+          envelope_id?: string
           equity?: string | null
           id?: string
           internal_approved_at?: string | null
@@ -1176,9 +1204,17 @@ export type Database = {
           salary_amount?: number | null
           salary_currency?: string | null
           sent_at?: string | null
+          signature_data?: string | null
+          signature_type?: string | null
+          signed_at?: string | null
+          signer_ip?: string | null
+          signer_name?: string | null
+          signer_ua?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
+          viewed_at?: string | null
+          viewed_ip?: string | null
           workspace_id?: string
         }
         Relationships: []
@@ -1532,18 +1568,31 @@ export type Database = {
         Args: { _token: string }
         Returns: {
           bonus: string
+          candidate_email: string
           candidate_name: string
           client_name: string
+          created_at: string
           decided_at: string
+          envelope_id: string
           equity: string
           id: string
+          internal_approved_at: string
           job_title: string
           notes: string
+          recruiter_name: string
           salary_amount: number
           salary_currency: string
           sent_at: string
+          signature_data: string
+          signature_type: string
+          signed_at: string
+          signer_ip: string
+          signer_name: string
+          signer_ua: string
           start_date: string
           status: string
+          viewed_at: string
+          workspace_name: string
         }[]
       }
       has_workspace_role: {
@@ -1571,8 +1620,23 @@ export type Database = {
         Returns: boolean
       }
       job_reference_prefix: { Args: { _client_name: string }; Returns: string }
+      record_offer_view: {
+        Args: { _ip?: string; _token: string }
+        Returns: undefined
+      }
       respond_offer: {
         Args: { _accept: boolean; _reason?: string; _token: string }
+        Returns: Json
+      }
+      sign_offer: {
+        Args: {
+          _signature_data: string
+          _signature_type: string
+          _signer_ip?: string
+          _signer_name: string
+          _signer_ua?: string
+          _token: string
+        }
         Returns: Json
       }
       user_workspace_role: {

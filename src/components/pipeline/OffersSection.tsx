@@ -39,14 +39,25 @@ type Offer = {
   decline_reason: string | null;
   public_token: string;
   created_at: string;
+  envelope_id: string | null;
+  viewed_at: string | null;
+  viewed_ip: string | null;
+  signed_at: string | null;
+  signer_name: string | null;
+  signer_ip: string | null;
+  signer_ua: string | null;
+  signature_type: "typed" | "drawn" | null;
+  signature_data: string | null;
+  approval_feedback: string | null;
+  approval_rejected_at: string | null;
 };
 
 const STATUS_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Draft", variant: "outline" },
-  internal_approval: { label: "Awaiting approval", variant: "secondary" },
+  internal_approval: { label: "Pending approval", variant: "secondary" },
   approved: { label: "Approved — ready to send", variant: "secondary" },
   sent: { label: "Sent to candidate", variant: "default" },
-  accepted: { label: "Accepted 🎉", variant: "default" },
+  accepted: { label: "Accepted & signed 🎉", variant: "default" },
   declined: { label: "Declined", variant: "destructive" },
   withdrawn: { label: "Withdrawn", variant: "outline" },
 };
@@ -73,7 +84,7 @@ export function OffersSection({
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete"; offer: Offer }>(null);
+  const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete" | "changes"; offer: Offer }>(null);
   const [reasonInput, setReasonInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
@@ -97,6 +108,20 @@ export function OffersSection({
       sent_at: o.sent_at,
       decided_at: o.decided_at,
       publicUrl: ["approved", "sent", "accepted", "declined"].includes(o.status) ? publicUrlFor(o.public_token) : null,
+      envelopeId: o.envelope_id,
+      createdAt: o.created_at,
+      approvedAt: o.internal_approved_at,
+      viewedAt: o.viewed_at,
+      viewedIp: o.viewed_ip,
+      signature: o.signature_data && o.signature_type ? {
+        type: o.signature_type,
+        data: o.signature_data,
+        signedAt: o.signed_at ?? o.decided_at ?? new Date().toISOString(),
+        signerName: o.signer_name ?? candidateName ?? "Candidate",
+        signerEmail: candidateEmail,
+        signerIp: o.signer_ip,
+        signerUa: o.signer_ua,
+      } : null,
     });
   };
 
@@ -217,6 +242,21 @@ export function OffersSection({
     toast.success("Draft deleted.");
   };
 
+  const requestChanges = async (o: Offer) => {
+    setBusy(true);
+    const { error } = await supabase.from("offers").update({
+      status: "draft",
+      approval_feedback: reasonInput.trim(),
+      approval_rejected_at: new Date().toISOString(),
+      approval_rejected_by: user?.id ?? null,
+    } as any).eq("id", o.id);
+    setBusy(false);
+    setConfirm(null);
+    setReasonInput("");
+    if (error) return toast.error(error.message);
+    toast.success("Sent back to recruiter with feedback.");
+  };
+
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/offer/${token}`;
     navigator.clipboard.writeText(url);
@@ -233,12 +273,14 @@ export function OffersSection({
     decline: "Mark offer as declined?",
     withdraw: "Withdraw this offer?",
     delete: "Delete this draft?",
+    changes: "Request changes from recruiter?",
   };
   const confirmDesc: Record<string, string> = {
     accept: "This records the candidate's acceptance and moves them to the Offer Accepted stage.",
     decline: "This records the candidate's declination. The offer link will no longer be actionable.",
     withdraw: "The offer link becomes inactive and the candidate can no longer respond. You can generate a new offer afterwards.",
     delete: "Permanently remove this draft offer. This can't be undone.",
+    changes: "Send this offer back to draft with your feedback. The recruiter will need to resubmit for approval.",
   };
 
   return (
@@ -294,9 +336,15 @@ export function OffersSection({
                       </>
                     )}
                     {canEdit && o.status === "internal_approval" && (
-                      <Button size="sm" variant="outline" onClick={() => approveOffer(o.id)}>
-                        <Check className="h-3.5 w-3.5" /> Approve
-                      </Button>
+                      <>
+                        <Button size="sm" onClick={() => approveOffer(o.id)}>
+                          <Check className="h-3.5 w-3.5" /> Approve offer
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
+                          onClick={() => setConfirm({ type: "changes", offer: o })}>
+                          <XCircle className="h-3.5 w-3.5" /> Request changes
+                        </Button>
+                      </>
                     )}
                     {canEdit && o.status === "approved" && (
                       <Button size="sm" onClick={() => sendOffer(o.id)}>
@@ -318,8 +366,8 @@ export function OffersSection({
                         )}
                       </>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => handleDownloadPdf(o)}>
-                      <FileDown className="h-3.5 w-3.5" /> PDF
+                    <Button size="sm" variant={o.signed_at ? "outline" : "ghost"} onClick={() => handleDownloadPdf(o)}>
+                      <FileDown className="h-3.5 w-3.5" /> {o.signed_at ? "Signed offer + certificate" : "PDF"}
                     </Button>
                     {canEdit && isPending && (
                       <>
@@ -352,10 +400,21 @@ export function OffersSection({
                   {o.sent_at && <span>Sent {new Date(o.sent_at).toLocaleString()}</span>}
                   {o.decided_at && <span>Decided {new Date(o.decided_at).toLocaleString()}</span>}
                 </div>
-                {o.status === "internal_approval" && canEdit && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-2">
-                    <Checkbox id={`approve-${o.id}`} onCheckedChange={(v) => v && approveOffer(o.id)} />
-                    <label htmlFor={`approve-${o.id}`}>I approve this offer for sending to the candidate.</label>
+                {o.status === "internal_approval" && (
+                  <div className="border-t pt-2 text-xs text-muted-foreground">
+                    Awaiting internal approval. Sending and copying the candidate link are locked until an approver signs off.
+                  </div>
+                )}
+                {o.status === "draft" && o.approval_feedback && (
+                  <div className="border-t pt-2 text-xs">
+                    <span className="font-medium text-destructive">Approver feedback:</span>{" "}
+                    <span className="text-muted-foreground">{o.approval_feedback}</span>
+                  </div>
+                )}
+                {o.status === "accepted" && o.signed_at && (
+                  <div className="border-t pt-2 text-[11px] text-muted-foreground space-y-0.5">
+                    <div>Signed by {o.signer_name} · {new Date(o.signed_at).toLocaleString()}</div>
+                    {o.signer_ip && <div>IP {o.signer_ip} · Envelope {o.envelope_id}</div>}
                   </div>
                 )}
                 {(o.status === "declined" || o.status === "withdrawn") && o.decline_reason && (
@@ -384,18 +443,24 @@ export function OffersSection({
             <AlertDialogTitle>{confirm ? confirmTitle[confirm.type] : ""}</AlertDialogTitle>
             <AlertDialogDescription>{confirm ? confirmDesc[confirm.type] : ""}</AlertDialogDescription>
           </AlertDialogHeader>
-          {confirm && (confirm.type === "decline" || confirm.type === "withdraw") && (() => {
+          {confirm && (confirm.type === "decline" || confirm.type === "withdraw" || confirm.type === "changes") && (() => {
             const trimmed = reasonInput.trim();
             const tooShort = trimmed.length > 0 && trimmed.length < 5;
+            const label = confirm.type === "changes" ? "Feedback for recruiter" : "Reason";
+            const placeholder = confirm.type === "decline"
+              ? "Why did the candidate decline?"
+              : confirm.type === "withdraw"
+                ? "Why is the offer being withdrawn?"
+                : "What needs to change before this can be approved?";
             return (
               <div className="space-y-1">
                 <Label className="text-xs">
-                  Reason <span className="text-destructive">*</span>
+                  {label} <span className="text-destructive">*</span>
                 </Label>
                 <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
                   maxLength={500}
                   aria-invalid={tooShort || trimmed.length === 0}
-                  placeholder={confirm.type === "decline" ? "Why did the candidate decline?" : "Why is the offer being withdrawn?"} />
+                  placeholder={placeholder} />
                 <p className={`text-[11px] ${tooShort ? "text-destructive" : "text-muted-foreground"}`}>
                   {tooShort ? "Please provide at least 5 characters." : `${trimmed.length}/500 — required for the audit log.`}
                 </p>
@@ -407,19 +472,20 @@ export function OffersSection({
             <AlertDialogAction
               disabled={
                 busy ||
-                (confirm && (confirm.type === "decline" || confirm.type === "withdraw") && reasonInput.trim().length < 5)
+                (!!confirm && (confirm.type === "decline" || confirm.type === "withdraw" || confirm.type === "changes") && reasonInput.trim().length < 5)
               }
               onClick={(e) => {
                 if (!confirm) return;
-                if ((confirm.type === "decline" || confirm.type === "withdraw") && reasonInput.trim().length < 5) {
+                if ((confirm.type === "decline" || confirm.type === "withdraw" || confirm.type === "changes") && reasonInput.trim().length < 5) {
                   e.preventDefault();
-                  toast.error("Please provide a reason (min. 5 characters).");
+                  toast.error("Please provide at least 5 characters.");
                   return;
                 }
                 if (confirm.type === "accept") markAccepted(confirm.offer);
                 else if (confirm.type === "decline") markDeclined(confirm.offer);
                 else if (confirm.type === "withdraw") withdrawOffer(confirm.offer);
                 else if (confirm.type === "delete") deleteDraft(confirm.offer);
+                else if (confirm.type === "changes") requestChanges(confirm.offer);
               }}
             >
               Confirm
