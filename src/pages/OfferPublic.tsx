@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sparkles, CheckCircle2, XCircle, Calendar, Banknote, Briefcase } from "lucide-react";
+import { Sparkles, CheckCircle2, XCircle, Calendar, Banknote, Briefcase, FileDown, PenTool } from "lucide-react";
 import { toast } from "sonner";
+import { SignatureDialog } from "@/components/offers/SignatureDialog";
+import { downloadOfferPdf } from "@/lib/offerPdf";
 
 type Offer = {
   id: string;
@@ -21,8 +23,21 @@ type Offer = {
   sent_at: string | null;
   decided_at: string | null;
   candidate_name: string;
+  candidate_email: string | null;
   job_title: string;
   client_name: string;
+  workspace_name: string;
+  envelope_id: string;
+  viewed_at: string | null;
+  signed_at: string | null;
+  signer_name: string | null;
+  signer_ip: string | null;
+  signer_ua: string | null;
+  signature_type: "typed" | "drawn" | null;
+  signature_data: string | null;
+  internal_approved_at: string | null;
+  created_at: string;
+  recruiter_name: string | null;
 };
 
 export default function OfferPublic() {
@@ -31,6 +46,7 @@ export default function OfferPublic() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [celebrate, setCelebrate] = useState(false);
 
@@ -44,18 +60,86 @@ export default function OfferPublic() {
     setOffer(row);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [token]);
+  const getIp = async (): Promise<string | null> => {
+    try {
+      const r = await fetch("https://api.ipify.org?format=json");
+      const j = await r.json();
+      return j.ip ?? null;
+    } catch { return null; }
+  };
 
-  const respond = async (accept: boolean) => {
+  useEffect(() => {
+    (async () => {
+      await load();
+      if (token) {
+        const ip = await getIp();
+        await supabase.rpc("record_offer_view", { _token: token, _ip: ip });
+      }
+    })();
+    // eslint-disable-next-line
+  }, [token]);
+
+  const decline = async () => {
     if (!token) return;
     setSubmitting(true);
-    const { error } = await supabase.rpc("respond_offer", { _token: token, _accept: accept, _reason: accept ? null : reason || null });
+    const { error } = await supabase.rpc("respond_offer", { _token: token, _accept: false, _reason: reason || null });
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    if (accept) setCelebrate(true);
-    toast.success(accept ? "Offer accepted!" : "Response submitted.");
+    toast.success("Response submitted.");
     load();
   };
+
+  const sign = async (payload: { type: "typed" | "drawn"; data: string; signerName: string }) => {
+    if (!token) return;
+    setSubmitting(true);
+    const ip = await getIp();
+    const ua = navigator.userAgent;
+    const { error } = await supabase.rpc("sign_offer", {
+      _token: token,
+      _signer_name: payload.signerName,
+      _signature_type: payload.type,
+      _signature_data: payload.data,
+      _signer_ip: ip,
+      _signer_ua: ua,
+    });
+    setSubmitting(false);
+    if (error) return toast.error(error.message);
+    setSignOpen(false);
+    setCelebrate(true);
+    toast.success("Offer signed and accepted!");
+    load();
+  };
+
+  const buildPdfInput = (o: Offer) => ({
+    candidateName: o.candidate_name,
+    candidateEmail: o.candidate_email,
+    jobTitle: o.job_title,
+    clientName: o.client_name,
+    workspaceName: o.workspace_name,
+    recruiterName: o.recruiter_name,
+    salary_amount: o.salary_amount,
+    salary_currency: o.salary_currency,
+    start_date: o.start_date,
+    equity: o.equity,
+    bonus: o.bonus,
+    notes: o.notes,
+    status: o.status,
+    sent_at: o.sent_at,
+    decided_at: o.decided_at,
+    envelopeId: o.envelope_id,
+    createdAt: o.created_at,
+    approvedAt: o.internal_approved_at,
+    viewedAt: o.viewed_at,
+    signature: o.signature_data && o.signature_type ? {
+      type: o.signature_type,
+      data: o.signature_data,
+      signedAt: o.signed_at ?? o.decided_at ?? new Date().toISOString(),
+      signerName: o.signer_name ?? o.candidate_name,
+      signerEmail: o.candidate_email,
+      signerIp: o.signer_ip,
+      signerUa: o.signer_ua,
+    } : null,
+  });
 
   if (loading) {
     return <div className="min-h-screen grid place-items-center bg-gradient-to-br from-background to-muted/30">
@@ -72,6 +156,7 @@ export default function OfferPublic() {
     </div>;
   }
 
+  const signed = offer.status === "accepted" && !!offer.signed_at;
   const decided = offer.status === "accepted" || offer.status === "declined";
 
   return (
@@ -86,7 +171,23 @@ export default function OfferPublic() {
           <p className="text-muted-foreground mt-2">
             {offer.job_title} · {offer.client_name}
           </p>
+          <p className="text-[11px] text-muted-foreground/70 mt-1">Envelope ID: {offer.envelope_id}</p>
         </div>
+
+        {signed && (
+          <Card className="p-4 mb-4 border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/20 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="h-5 w-5" />
+              <div>
+                <p className="font-medium">Offer signed successfully.</p>
+                <p className="text-xs opacity-80">A copy with your signature and audit certificate is available below.</p>
+              </div>
+            </div>
+            <Button onClick={() => downloadOfferPdf(buildPdfInput(offer))}>
+              <FileDown className="h-4 w-4" /> Download signed PDF
+            </Button>
+          </Card>
+        )}
 
         <Card className="p-8 shadow-2xl border-primary/10">
           <div className="grid sm:grid-cols-2 gap-6 mb-6">
@@ -101,6 +202,14 @@ export default function OfferPublic() {
           {offer.notes && (
             <div className="rounded-lg bg-muted/50 p-4 text-sm whitespace-pre-wrap leading-relaxed mb-6">
               {offer.notes}
+            </div>
+          )}
+
+          {!decided && (
+            <div className="flex justify-center mb-4">
+              <Button variant="ghost" size="sm" onClick={() => downloadOfferPdf(buildPdfInput(offer))}>
+                <FileDown className="h-4 w-4" /> Download unsigned draft PDF
+              </Button>
             </div>
           )}
 
@@ -125,13 +234,13 @@ export default function OfferPublic() {
               <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Help us improve…" />
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" onClick={() => setShowDecline(false)} disabled={submitting}>Back</Button>
-                <Button variant="destructive" onClick={() => respond(false)} disabled={submitting}>Confirm decline</Button>
+                <Button variant="destructive" onClick={decline} disabled={submitting}>Confirm decline</Button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button size="lg" className="flex-1 sm:flex-none sm:px-12" onClick={() => respond(true)} disabled={submitting}>
-                <CheckCircle2 className="h-5 w-5" /> Accept offer
+              <Button size="lg" className="flex-1 sm:flex-none sm:px-12" onClick={() => setSignOpen(true)} disabled={submitting}>
+                <PenTool className="h-5 w-5" /> Sign & accept
               </Button>
               <Button size="lg" variant="outline" className="flex-1 sm:flex-none" onClick={() => setShowDecline(true)} disabled={submitting}>
                 <XCircle className="h-5 w-5" /> Decline
@@ -144,6 +253,14 @@ export default function OfferPublic() {
           This is a secure offer link. Please contact your recruiter with any questions.
         </p>
       </div>
+
+      <SignatureDialog
+        open={signOpen}
+        onOpenChange={setSignOpen}
+        defaultName={offer.candidate_name}
+        onSign={sign}
+        submitting={submitting}
+      />
     </div>
   );
 }
