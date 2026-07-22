@@ -89,7 +89,7 @@ export default function OfferPublic() {
     load();
   };
 
-  const sign = async (payload: { type: "typed" | "drawn"; data: string; signerName: string }) => {
+  const sign = async (payload: { type: "typed" | "drawn"; data: string; signerName: string }): Promise<void> => {
     if (!token) return;
     setSubmitting(true);
     const ip = await getIp();
@@ -103,7 +103,7 @@ export default function OfferPublic() {
       _signer_ua: ua,
     });
     setSubmitting(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setSignOpen(false);
     setCelebrate(true);
     toast.success("Offer signed and accepted!");

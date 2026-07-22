@@ -39,14 +39,25 @@ type Offer = {
   decline_reason: string | null;
   public_token: string;
   created_at: string;
+  envelope_id: string | null;
+  viewed_at: string | null;
+  viewed_ip: string | null;
+  signed_at: string | null;
+  signer_name: string | null;
+  signer_ip: string | null;
+  signer_ua: string | null;
+  signature_type: "typed" | "drawn" | null;
+  signature_data: string | null;
+  approval_feedback: string | null;
+  approval_rejected_at: string | null;
 };
 
 const STATUS_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Draft", variant: "outline" },
-  internal_approval: { label: "Awaiting approval", variant: "secondary" },
+  internal_approval: { label: "Pending approval", variant: "secondary" },
   approved: { label: "Approved — ready to send", variant: "secondary" },
   sent: { label: "Sent to candidate", variant: "default" },
-  accepted: { label: "Accepted 🎉", variant: "default" },
+  accepted: { label: "Accepted & signed 🎉", variant: "default" },
   declined: { label: "Declined", variant: "destructive" },
   withdrawn: { label: "Withdrawn", variant: "outline" },
 };
