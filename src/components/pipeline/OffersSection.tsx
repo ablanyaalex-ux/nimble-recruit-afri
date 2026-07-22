@@ -108,6 +108,20 @@ export function OffersSection({
       sent_at: o.sent_at,
       decided_at: o.decided_at,
       publicUrl: ["approved", "sent", "accepted", "declined"].includes(o.status) ? publicUrlFor(o.public_token) : null,
+      envelopeId: o.envelope_id,
+      createdAt: o.created_at,
+      approvedAt: o.internal_approved_at,
+      viewedAt: o.viewed_at,
+      viewedIp: o.viewed_ip,
+      signature: o.signature_data && o.signature_type ? {
+        type: o.signature_type,
+        data: o.signature_data,
+        signedAt: o.signed_at ?? o.decided_at ?? new Date().toISOString(),
+        signerName: o.signer_name ?? candidateName ?? "Candidate",
+        signerEmail: candidateEmail,
+        signerIp: o.signer_ip,
+        signerUa: o.signer_ua,
+      } : null,
     });
   };
 
