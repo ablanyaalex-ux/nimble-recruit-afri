@@ -65,7 +65,7 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 export function OffersSection({
   workspaceId, jobId, jobCandidateId, candidateId, canEdit,
   candidateName, candidateEmail, jobTitle, clientName, workspaceName,
-  onOfferAccepted,
+  onOfferAccepted, openCreateSignal,
 }: {
   workspaceId: string;
   jobId: string;
@@ -78,6 +78,7 @@ export function OffersSection({
   clientName?: string | null;
   workspaceName?: string | null;
   onOfferAccepted?: () => void;
+  openCreateSignal?: number;
 }) {
   const { user } = useAuth();
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -88,6 +89,14 @@ export function OffersSection({
   const [reasonInput, setReasonInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openCreateSignal && openCreateSignal > 0 && canEdit) {
+      setEditId(null);
+      setDialogOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCreateSignal]);
 
   const publicUrlFor = (token: string) => `${window.location.origin}/offer/${token}`;
 

@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, isHiringManager, visibleStagesForRole } from "@/lib/permissions";
+import { milestoneForStage } from "@/lib/milestones";
 import { Switch } from "@/components/ui/switch";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer } from "@/components/app/PageHeader";
@@ -117,6 +118,7 @@ export default function JobCandidate() {
   const tabParam = searchParams.get("tab");
   const initialTab = tabParam ?? "summary";
   const [emailOpen, setEmailOpen] = useState(false);
+  const [openOfferSignal, setOpenOfferSignal] = useState(0);
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
@@ -551,6 +553,9 @@ export default function JobCandidate() {
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const isClosedStage = /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
+  const currentStageObj = stages.find((s) => s.key === detail.stage);
+  const isClosingMilestone = currentStageObj ? milestoneForStage(currentStageObj) === "closing" : false;
+  const canGenerateOffer = canEdit && !detail.rejected && isClosingMilestone && !isClosedStage;
   // Once a recruiter saves redactions, the candidate is anonymised — the redacted
   // view applies to everyone (recruiters and HMs) so what you see is what HMs see.
   const showRedactedView = !!detail.anonymized && !!redactedPath;
@@ -591,6 +596,17 @@ export default function JobCandidate() {
                 {!isClosedStage && (
                   <Button size="sm" variant="outline" onClick={() => { setRescheduleInterviewId(null); setScheduleOpen(true); }}>
                     <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
+                  </Button>
+                )}
+                {canGenerateOffer && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSearchParams({ tab: "evaluation" }, { replace: true });
+                      setOpenOfferSignal((n) => n + 1);
+                    }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Generate offer
                   </Button>
                 )}
                 {!isHM && (
@@ -692,7 +708,7 @@ export default function JobCandidate() {
         )}
       </Card>
 
-      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "summary" ? {} : { tab: v }, { replace: true })}>
+      <Tabs value={tabParam ?? "summary"} onValueChange={(v) => setSearchParams(v === "summary" ? {} : { tab: v }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="summary"><FileText className="h-3.5 w-3.5" /> Summary</TabsTrigger>
           <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
@@ -959,6 +975,7 @@ export default function JobCandidate() {
               jobTitle={detail.jobs.title}
               clientName={detail.jobs.clients?.name ?? null}
               workspaceName={detail.jobs.workspaces?.name ?? null}
+              openCreateSignal={openOfferSignal}
               onOfferAccepted={() => {
                 toast.success("🎉 Offer accepted! Candidate moved to Hired.");
                 refresh();
