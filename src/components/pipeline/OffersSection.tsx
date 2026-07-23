@@ -90,6 +90,14 @@ export function OffersSection({
   const [busy, setBusy] = useState(false);
   const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (openCreateSignal && openCreateSignal > 0 && canEdit) {
+      setEditId(null);
+      setDialogOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCreateSignal]);
+
   const publicUrlFor = (token: string) => `${window.location.origin}/offer/${token}`;
 
   const handleDownloadPdf = (o: Offer) => {
