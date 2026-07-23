@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { canEditWorkspace, canMoveStages, CANDIDATE_SOURCES, isHiringManager, visibleStagesForRole } from "@/lib/permissions";
+import { milestoneForStage } from "@/lib/milestones";
 import { Switch } from "@/components/ui/switch";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { PageContainer } from "@/components/app/PageHeader";
