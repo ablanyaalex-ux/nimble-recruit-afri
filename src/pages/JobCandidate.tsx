@@ -553,6 +553,9 @@ export default function JobCandidate() {
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
   const isClosedStage = /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
+  const currentStageObj = stages.find((s) => s.key === detail.stage);
+  const isClosingMilestone = currentStageObj ? milestoneForStage(currentStageObj) === "closing" : false;
+  const canGenerateOffer = canEdit && !detail.rejected && isClosingMilestone && !isClosedStage;
   // Once a recruiter saves redactions, the candidate is anonymised — the redacted
   // view applies to everyone (recruiters and HMs) so what you see is what HMs see.
   const showRedactedView = !!detail.anonymized && !!redactedPath;
