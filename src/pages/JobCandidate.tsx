@@ -708,7 +708,7 @@ export default function JobCandidate() {
         )}
       </Card>
 
-      <Tabs defaultValue={initialTab} onValueChange={(v) => setSearchParams(v === "summary" ? {} : { tab: v }, { replace: true })}>
+      <Tabs value={tabParam ?? "summary"} onValueChange={(v) => setSearchParams(v === "summary" ? {} : { tab: v }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="summary"><FileText className="h-3.5 w-3.5" /> Summary</TabsTrigger>
           <TabsTrigger value="stages"><GitBranch className="h-3.5 w-3.5" /> Stages</TabsTrigger>
