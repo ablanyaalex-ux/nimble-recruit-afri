@@ -975,6 +975,7 @@ export default function JobCandidate() {
               jobTitle={detail.jobs.title}
               clientName={detail.jobs.clients?.name ?? null}
               workspaceName={detail.jobs.workspaces?.name ?? null}
+              openCreateSignal={openOfferSignal}
               onOfferAccepted={() => {
                 toast.success("🎉 Offer accepted! Candidate moved to Hired.");
                 refresh();
