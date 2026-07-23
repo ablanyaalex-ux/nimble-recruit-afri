@@ -598,6 +598,17 @@ export default function JobCandidate() {
                     <CalendarPlus className="h-3.5 w-3.5" /> Schedule interview
                   </Button>
                 )}
+                {canGenerateOffer && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSearchParams({ tab: "evaluation" }, { replace: true });
+                      setOpenOfferSignal((n) => n + 1);
+                    }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Generate offer
+                  </Button>
+                )}
                 {!isHM && (
                   <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)}>
                     <Mail className="h-3.5 w-3.5" /> Send email
