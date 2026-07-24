@@ -219,16 +219,22 @@ export function OffersSection({
     toast.success("Marked as accepted. Candidate moved to Offer Accepted.");
   };
 
+  const composedReason = () => {
+    const detail = reasonInput.trim();
+    if (!reasonCategory) return detail || null;
+    return detail ? `${reasonCategory} — ${detail}` : reasonCategory;
+  };
+
   const markDeclined = async (o: Offer) => {
     setBusy(true);
     const { error } = await supabase.from("offers").update({
       status: "declined",
       decided_at: new Date().toISOString(),
-      decline_reason: reasonInput.trim() || null,
+      decline_reason: composedReason(),
     }).eq("id", o.id);
     setBusy(false);
     setConfirm(null);
-    setReasonInput("");
+    setReasonInput(""); setReasonCategory("");
     if (error) return toast.error(error.message);
     toast.success("Marked as declined.");
   };
@@ -238,11 +244,11 @@ export function OffersSection({
     const { error } = await supabase.from("offers").update({
       status: "withdrawn",
       decided_at: new Date().toISOString(),
-      decline_reason: reasonInput.trim() || null,
+      decline_reason: composedReason(),
     }).eq("id", o.id);
     setBusy(false);
     setConfirm(null);
-    setReasonInput("");
+    setReasonInput(""); setReasonCategory("");
     if (error) return toast.error(error.message);
     toast.success("Offer withdrawn.");
   };
