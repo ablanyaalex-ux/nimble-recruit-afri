@@ -301,32 +301,52 @@ export default function Candidates() {
             {visible.map((c) => {
               const isSel = selected.has(c.id);
               const tags = tagsByCand[c.id] ?? [];
+              const snippets = highlightTerms.length && c.resume_full_text
+                ? extractSnippets(c.resume_full_text, highlightTerms, 2, 70)
+                : [];
               return (
                 <div
                   key={c.id}
-                  className={`grid grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_2rem] items-center gap-3 px-4 py-3 transition-colors ${isSel ? "bg-primary/5" : "hover:bg-muted/30"}`}
+                  className={`grid grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_2rem] items-start gap-3 px-4 py-3 transition-colors ${isSel ? "bg-primary/5" : "hover:bg-muted/30"}`}
                 >
-                  <Checkbox checked={isSel} onCheckedChange={() => toggle(c.id)} aria-label={`Select ${c.full_name}`} />
+                  <Checkbox className="mt-1" checked={isSel} onCheckedChange={() => toggle(c.id)} aria-label={`Select ${c.full_name}`} />
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{c.full_name}</div>
-                    <div className="text-xs text-muted-foreground truncate sm:hidden">{c.headline ?? c.email ?? "—"}</div>
+                    <div className="font-medium truncate">
+                      <HighlightedText text={c.full_name} terms={highlightTerms} />
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate sm:hidden">
+                      <HighlightedText text={c.headline ?? c.email ?? "—"} terms={highlightTerms} />
+                    </div>
+                    {snippets.length > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground space-y-0.5">
+                        {snippets.map((s, i) => (
+                          <div key={i} className="line-clamp-2">
+                            <span className="text-primary/70">CV:</span>{" "}
+                            <HighlightedText text={s} terms={highlightTerms} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="hidden sm:block min-w-0 text-sm text-muted-foreground truncate">
-                    {c.headline ?? c.email ?? "—"}
+                    <HighlightedText text={c.headline ?? c.email ?? "—"} terms={highlightTerms} />
                   </div>
                   <div className="hidden md:flex flex-wrap gap-1 min-w-0">
                     {tags.slice(0, 3).map((t) => (
-                      <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
+                      <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">
+                        <HighlightedText text={t} terms={highlightTerms} />
+                      </Badge>
                     ))}
                     {tags.length > 3 && <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right pt-1">
                     {c.resume_path && <FileText className="h-4 w-4 text-muted-foreground inline" />}
                   </div>
                 </div>
               );
             })}
           </div>
+
         </Card>
       )}
 
