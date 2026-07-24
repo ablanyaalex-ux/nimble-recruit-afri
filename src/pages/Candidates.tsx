@@ -34,6 +34,8 @@ type Candidate = {
   email: string | null;
   headline: string | null;
   resume_path: string | null;
+  resume_full_text: string | null;
+  notes: string | null;
   archived: boolean;
 };
 
