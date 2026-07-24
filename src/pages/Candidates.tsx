@@ -67,7 +67,7 @@ export default function Candidates() {
     setSelected(new Set());
     const { data } = await supabase
       .from("candidates")
-      .select("id, full_name, email, headline, resume_path, archived")
+      .select("id, full_name, email, headline, resume_path, resume_full_text, notes, archived")
       .eq("workspace_id", currentWorkspaceId)
       .order("created_at", { ascending: false })
       .limit(2000);
