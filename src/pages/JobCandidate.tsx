@@ -562,7 +562,7 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
-  const isClosedStage = /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
+  const isClosedStage = hasAcceptedOffer || /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
   const currentStageObj = stages.find((s) => s.key === detail.stage);
   const isClosingMilestone = currentStageObj ? milestoneForStage(currentStageObj) === "closing" : false;
   const canGenerateOffer = canEdit && !detail.rejected && isClosingMilestone && !isClosedStage;
