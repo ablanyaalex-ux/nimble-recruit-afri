@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, CheckCircle2, XCircle, Calendar, Banknote, Briefcase, FileDown, PenTool } from "lucide-react";
 import { toast } from "sonner";
 import { SignatureDialog } from "@/components/offers/SignatureDialog";
@@ -48,7 +49,10 @@ export default function OfferPublic() {
   const [showDecline, setShowDecline] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [reasonCategory, setReasonCategory] = useState("");
   const [celebrate, setCelebrate] = useState(false);
+
+  const DECLINE_REASONS = ["Compensation", "Counter-offer accepted", "Role/scope not right", "Location / relocation", "Timing", "Other"];
 
   const load = async () => {
     if (!token) return;
@@ -81,13 +85,21 @@ export default function OfferPublic() {
 
   const decline = async () => {
     if (!token) return;
+    if (!reasonCategory) { toast.error("Please choose a reason."); return; }
+    if (reasonCategory === "Other" && reason.trim().length < 5) {
+      toast.error("Please tell us a little more (5+ characters).");
+      return;
+    }
+    const detail = reason.trim();
+    const composed = detail ? `${reasonCategory} — ${detail}` : reasonCategory;
     setSubmitting(true);
-    const { error } = await supabase.rpc("respond_offer", { _token: token, _accept: false, _reason: reason || null });
+    const { error } = await supabase.rpc("respond_offer", { _token: token, _accept: false, _reason: composed });
     setSubmitting(false);
     if (error) return toast.error(error.message);
     toast.success("Response submitted.");
     load();
   };
+
 
   const sign = async (payload: { type: "typed" | "drawn"; data: string; signerName: string }): Promise<void> => {
     if (!token) return;
@@ -230,13 +242,31 @@ export default function OfferPublic() {
             </div>
           ) : showDecline ? (
             <div className="space-y-3">
-              <Label className="text-sm">Reason (optional)</Label>
-              <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Help us improve…" />
+              <div className="space-y-1">
+                <Label className="text-sm">Reason for declining <span className="text-destructive">*</span></Label>
+                <Select value={reasonCategory} onValueChange={setReasonCategory}>
+                  <SelectTrigger><SelectValue placeholder="Choose a reason…" /></SelectTrigger>
+                  <SelectContent>
+                    {DECLINE_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">
+                  Anything else? {reasonCategory === "Other" && <span className="text-destructive">*</span>}
+                </Label>
+                <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
+                  placeholder="Optional — helps the recruiter follow up thoughtfully" maxLength={500} />
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" onClick={() => setShowDecline(false)} disabled={submitting}>Back</Button>
-                <Button variant="destructive" onClick={decline} disabled={submitting}>Confirm decline</Button>
+                <Button variant="destructive" onClick={decline}
+                  disabled={submitting || !reasonCategory || (reasonCategory === "Other" && reason.trim().length < 5)}>
+                  Confirm decline
+                </Button>
               </div>
             </div>
+
           ) : (
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button size="lg" className="flex-1 sm:flex-none sm:px-12" onClick={() => setSignOpen(true)} disabled={submitting}>

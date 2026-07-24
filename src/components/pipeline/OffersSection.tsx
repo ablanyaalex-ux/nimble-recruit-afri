@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2, FileDown, Mail } from "lucide-react";
 import { OfferDialog } from "./OfferDialog";
 import { SendEmailDialog } from "./SendEmailDialog";
@@ -87,8 +88,12 @@ export function OffersSection({
   const [editId, setEditId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete" | "changes"; offer: Offer }>(null);
   const [reasonInput, setReasonInput] = useState("");
+  const [reasonCategory, setReasonCategory] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
+
+  const DECLINE_REASONS = ["Compensation", "Counter-offer accepted", "Role/scope not right", "Location / relocation", "Timing", "Other"];
+  const WITHDRAW_REASONS = ["Role paused", "Position filled internally", "Budget change", "Candidate performance", "Business change", "Other"];
 
   useEffect(() => {
     if (openCreateSignal && openCreateSignal > 0 && canEdit) {
@@ -214,16 +219,22 @@ export function OffersSection({
     toast.success("Marked as accepted. Candidate moved to Offer Accepted.");
   };
 
+  const composedReason = () => {
+    const detail = reasonInput.trim();
+    if (!reasonCategory) return detail || null;
+    return detail ? `${reasonCategory} — ${detail}` : reasonCategory;
+  };
+
   const markDeclined = async (o: Offer) => {
     setBusy(true);
     const { error } = await supabase.from("offers").update({
       status: "declined",
       decided_at: new Date().toISOString(),
-      decline_reason: reasonInput.trim() || null,
+      decline_reason: composedReason(),
     }).eq("id", o.id);
     setBusy(false);
     setConfirm(null);
-    setReasonInput("");
+    setReasonInput(""); setReasonCategory("");
     if (error) return toast.error(error.message);
     toast.success("Marked as declined.");
   };
@@ -233,11 +244,11 @@ export function OffersSection({
     const { error } = await supabase.from("offers").update({
       status: "withdrawn",
       decided_at: new Date().toISOString(),
-      decline_reason: reasonInput.trim() || null,
+      decline_reason: composedReason(),
     }).eq("id", o.id);
     setBusy(false);
     setConfirm(null);
-    setReasonInput("");
+    setReasonInput(""); setReasonCategory("");
     if (error) return toast.error(error.message);
     toast.success("Offer withdrawn.");
   };
@@ -446,7 +457,7 @@ export function OffersSection({
         onSaved={refresh}
       />
 
-      <AlertDialog open={!!confirm} onOpenChange={(v) => { if (!v) { setConfirm(null); setReasonInput(""); } }}>
+      <AlertDialog open={!!confirm} onOpenChange={(v) => { if (!v) { setConfirm(null); setReasonInput(""); setReasonCategory(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirm ? confirmTitle[confirm.type] : ""}</AlertDialogTitle>
@@ -454,41 +465,66 @@ export function OffersSection({
           </AlertDialogHeader>
           {confirm && (confirm.type === "decline" || confirm.type === "withdraw" || confirm.type === "changes") && (() => {
             const trimmed = reasonInput.trim();
-            const tooShort = trimmed.length > 0 && trimmed.length < 5;
-            const label = confirm.type === "changes" ? "Feedback for recruiter" : "Reason";
+            const needsCategory = confirm.type === "decline" || confirm.type === "withdraw";
+            const categories = confirm.type === "decline" ? DECLINE_REASONS : WITHDRAW_REASONS;
+            const detailRequired = !needsCategory || reasonCategory === "Other";
+            const tooShort = detailRequired && trimmed.length > 0 && trimmed.length < 5;
+            const label = confirm.type === "changes" ? "Feedback for recruiter" : "Additional detail";
             const placeholder = confirm.type === "decline"
-              ? "Why did the candidate decline?"
+              ? "Anything the recruiter should know (optional unless Other)"
               : confirm.type === "withdraw"
-                ? "Why is the offer being withdrawn?"
+                ? "Anything the audit log should capture (optional unless Other)"
                 : "What needs to change before this can be approved?";
             return (
-              <div className="space-y-1">
-                <Label className="text-xs">
-                  {label} <span className="text-destructive">*</span>
-                </Label>
-                <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
-                  maxLength={500}
-                  aria-invalid={tooShort || trimmed.length === 0}
-                  placeholder={placeholder} />
-                <p className={`text-[11px] ${tooShort ? "text-destructive" : "text-muted-foreground"}`}>
-                  {tooShort ? "Please provide at least 5 characters." : `${trimmed.length}/500 — required for the audit log.`}
-                </p>
+              <div className="space-y-3">
+                {needsCategory && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Reason <span className="text-destructive">*</span></Label>
+                    <Select value={reasonCategory} onValueChange={setReasonCategory}>
+                      <SelectTrigger><SelectValue placeholder="Choose a reason…" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    {label} {detailRequired && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Textarea rows={3} value={reasonInput} onChange={(e) => setReasonInput(e.target.value)}
+                    maxLength={500}
+                    aria-invalid={tooShort || (detailRequired && trimmed.length === 0)}
+                    placeholder={placeholder} />
+                  <p className={`text-[11px] ${tooShort ? "text-destructive" : "text-muted-foreground"}`}>
+                    {tooShort ? "Please provide at least 5 characters." : `${trimmed.length}/500`}
+                  </p>
+                </div>
               </div>
             );
           })()}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={
-                busy ||
-                (!!confirm && (confirm.type === "decline" || confirm.type === "withdraw" || confirm.type === "changes") && reasonInput.trim().length < 5)
-              }
+              disabled={(() => {
+                if (busy || !confirm) return busy;
+                const trimmed = reasonInput.trim();
+                if (confirm.type === "changes") return trimmed.length < 5;
+                if (confirm.type === "decline" || confirm.type === "withdraw") {
+                  if (!reasonCategory) return true;
+                  if (reasonCategory === "Other" && trimmed.length < 5) return true;
+                }
+                return false;
+              })()}
               onClick={(e) => {
                 if (!confirm) return;
-                if ((confirm.type === "decline" || confirm.type === "withdraw" || confirm.type === "changes") && reasonInput.trim().length < 5) {
-                  e.preventDefault();
-                  toast.error("Please provide at least 5 characters.");
-                  return;
+                const trimmed = reasonInput.trim();
+                if (confirm.type === "decline" || confirm.type === "withdraw") {
+                  if (!reasonCategory) { e.preventDefault(); toast.error("Please choose a reason."); return; }
+                  if (reasonCategory === "Other" && trimmed.length < 5) { e.preventDefault(); toast.error("Please provide at least 5 characters."); return; }
+                }
+                if (confirm.type === "changes" && trimmed.length < 5) {
+                  e.preventDefault(); toast.error("Please provide at least 5 characters."); return;
                 }
                 if (confirm.type === "accept") markAccepted(confirm.offer);
                 else if (confirm.type === "decline") markDeclined(confirm.offer);
@@ -502,6 +538,7 @@ export function OffersSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
 
       {emailOffer && candidateName && jobTitle && (
         <SendEmailDialog

@@ -119,6 +119,7 @@ export default function JobCandidate() {
   const initialTab = tabParam ?? "summary";
   const [emailOpen, setEmailOpen] = useState(false);
   const [openOfferSignal, setOpenOfferSignal] = useState(0);
+  const [hasAcceptedOffer, setHasAcceptedOffer] = useState(false);
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
@@ -215,6 +216,15 @@ export default function JobCandidate() {
       const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
       setFeedback(fRes.data.map((f) => ({ ...f, author: byId.get(f.author_id) ?? null })));
     }
+    // Check for accepted offer to lock the pipeline
+    const { data: acc } = await supabase
+      .from("offers")
+      .select("id")
+      .eq("job_candidate_id", jobCandidateId)
+      .eq("status", "accepted")
+      .limit(1);
+    setHasAcceptedOffer((acc ?? []).length > 0);
+
     setLoading(false);
   };
 
@@ -552,7 +562,7 @@ export default function JobCandidate() {
 
   const c = detail.candidates;
   const currentStage = stages.find((s) => s.key === detail.stage)?.label ?? detail.stage;
-  const isClosedStage = /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
+  const isClosedStage = hasAcceptedOffer || /accepted|hired|filled/i.test(detail.stage) || /accepted|hired|filled/i.test(currentStage);
   const currentStageObj = stages.find((s) => s.key === detail.stage);
   const isClosingMilestone = currentStageObj ? milestoneForStage(currentStageObj) === "closing" : false;
   const canGenerateOffer = canEdit && !detail.rejected && isClosingMilestone && !isClosedStage;
@@ -584,13 +594,14 @@ export default function JobCandidate() {
             <Badge variant="secondary">{currentStage}</Badge>
             {detail.anonymized && <Badge variant="outline">Anonymised</Badge>}
             {canMove && (
-              <Select value={detail.stage} onValueChange={moveStage}>
+              <Select value={detail.stage} onValueChange={moveStage} disabled={hasAcceptedOffer}>
                 <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {stages.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
+            {hasAcceptedOffer && <Badge className="bg-emerald-600 text-white">Offer accepted · Locked</Badge>}
             {canMove && !detail.rejected && (
               <>
                 {!isClosedStage && (
