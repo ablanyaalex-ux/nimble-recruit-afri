@@ -49,7 +49,10 @@ export default function OfferPublic() {
   const [showDecline, setShowDecline] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [reasonCategory, setReasonCategory] = useState("");
   const [celebrate, setCelebrate] = useState(false);
+
+  const DECLINE_REASONS = ["Compensation", "Counter-offer accepted", "Role/scope not right", "Location / relocation", "Timing", "Other"];
 
   const load = async () => {
     if (!token) return;
