@@ -227,12 +227,55 @@ export default function Candidates() {
         }
       />
 
-      <Tabs value={view} onValueChange={(v) => setView(v as any)} className="mb-3">
-        <TabsList>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-2xl">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Boolean search: ("React" OR "Vue") AND "TypeScript" NOT "Junior"`}
+            className="pl-9 pr-9 h-10"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Search tips">
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                <p className="font-medium mb-1">Boolean search</p>
+                <p><code>AND</code>, <code>OR</code>, <code>NOT</code> supported.</p>
+                <p>Quote for phrases: <code>"Product Manager"</code></p>
+                <p>Group with parens: <code>("React" OR "Vue") AND "TS"</code></p>
+                <p className="mt-1 text-muted-foreground">Searches name, headline, email, tags, notes and full CV text.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+          <TabsList>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="archived">Archived</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {query.trim() && !loading && (
+        <p className="text-xs text-muted-foreground mb-2">
+          {visible.length} match{visible.length === 1 ? "" : "es"} for <code className="px-1 rounded bg-muted">{query.trim()}</code>
+        </p>
+      )}
+
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
