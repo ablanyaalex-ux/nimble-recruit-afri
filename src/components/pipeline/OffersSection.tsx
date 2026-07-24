@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Award, Send, Pencil, Copy, Check, Sparkles, XCircle, Ban, Trash2, ExternalLink, CheckCircle2, FileDown, Mail } from "lucide-react";
 import { OfferDialog } from "./OfferDialog";
 import { SendEmailDialog } from "./SendEmailDialog";
