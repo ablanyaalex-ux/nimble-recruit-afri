@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Users, FileText, Trash2, Tag as TagIcon, Archive, X } from "lucide-react";
+import { Plus, Users, FileText, Trash2, Tag as TagIcon, Archive, X, Search, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
@@ -21,9 +21,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { BulkRejectDialog } from "@/components/pipeline/BulkRejectDialog";
 import { BulkAddTagDialog } from "@/components/pipeline/BulkAddTagDialog";
+import { parseBoolean, evaluate, positiveTermsFor, extractSnippets } from "@/lib/booleanSearch";
+import { HighlightedText } from "@/components/HighlightedText";
 
 type Candidate = {
   id: string;
