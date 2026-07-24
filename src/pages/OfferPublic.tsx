@@ -85,13 +85,21 @@ export default function OfferPublic() {
 
   const decline = async () => {
     if (!token) return;
+    if (!reasonCategory) { toast.error("Please choose a reason."); return; }
+    if (reasonCategory === "Other" && reason.trim().length < 5) {
+      toast.error("Please tell us a little more (5+ characters).");
+      return;
+    }
+    const detail = reason.trim();
+    const composed = detail ? `${reasonCategory} — ${detail}` : reasonCategory;
     setSubmitting(true);
-    const { error } = await supabase.rpc("respond_offer", { _token: token, _accept: false, _reason: reason || null });
+    const { error } = await supabase.rpc("respond_offer", { _token: token, _accept: false, _reason: composed });
     setSubmitting(false);
     if (error) return toast.error(error.message);
     toast.success("Response submitted.");
     load();
   };
+
 
   const sign = async (payload: { type: "typed" | "drawn"; data: string; signerName: string }): Promise<void> => {
     if (!token) return;
