@@ -119,6 +119,7 @@ export default function JobCandidate() {
   const initialTab = tabParam ?? "summary";
   const [emailOpen, setEmailOpen] = useState(false);
   const [openOfferSignal, setOpenOfferSignal] = useState(0);
+  const [hasAcceptedOffer, setHasAcceptedOffer] = useState(false);
   const canMove = canMoveStages(currentRole);
   const canEdit = canEditWorkspace(currentRole);
   const isHM = isHiringManager(currentRole);
