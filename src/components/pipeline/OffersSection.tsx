@@ -88,8 +88,12 @@ export function OffersSection({
   const [editId, setEditId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | { type: "accept" | "decline" | "withdraw" | "delete" | "changes"; offer: Offer }>(null);
   const [reasonInput, setReasonInput] = useState("");
+  const [reasonCategory, setReasonCategory] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [emailOfferId, setEmailOfferId] = useState<string | null>(null);
+
+  const DECLINE_REASONS = ["Compensation", "Counter-offer accepted", "Role/scope not right", "Location / relocation", "Timing", "Other"];
+  const WITHDRAW_REASONS = ["Role paused", "Position filled internally", "Budget change", "Candidate performance", "Business change", "Other"];
 
   useEffect(() => {
     if (openCreateSignal && openCreateSignal > 0 && canEdit) {
