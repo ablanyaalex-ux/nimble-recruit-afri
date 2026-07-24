@@ -216,6 +216,15 @@ export default function JobCandidate() {
       const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
       setFeedback(fRes.data.map((f) => ({ ...f, author: byId.get(f.author_id) ?? null })));
     }
+    // Check for accepted offer to lock the pipeline
+    const { data: acc } = await supabase
+      .from("offers")
+      .select("id")
+      .eq("job_candidate_id", jobCandidateId)
+      .eq("status", "accepted")
+      .limit(1);
+    setHasAcceptedOffer((acc ?? []).length > 0);
+
     setLoading(false);
   };
 
