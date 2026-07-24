@@ -242,13 +242,31 @@ export default function OfferPublic() {
             </div>
           ) : showDecline ? (
             <div className="space-y-3">
-              <Label className="text-sm">Reason (optional)</Label>
-              <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Help us improve…" />
+              <div className="space-y-1">
+                <Label className="text-sm">Reason for declining <span className="text-destructive">*</span></Label>
+                <Select value={reasonCategory} onValueChange={setReasonCategory}>
+                  <SelectTrigger><SelectValue placeholder="Choose a reason…" /></SelectTrigger>
+                  <SelectContent>
+                    {DECLINE_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">
+                  Anything else? {reasonCategory === "Other" && <span className="text-destructive">*</span>}
+                </Label>
+                <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
+                  placeholder="Optional — helps the recruiter follow up thoughtfully" maxLength={500} />
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" onClick={() => setShowDecline(false)} disabled={submitting}>Back</Button>
-                <Button variant="destructive" onClick={decline} disabled={submitting}>Confirm decline</Button>
+                <Button variant="destructive" onClick={decline}
+                  disabled={submitting || !reasonCategory || (reasonCategory === "Other" && reason.trim().length < 5)}>
+                  Confirm decline
+                </Button>
               </div>
             </div>
+
           ) : (
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button size="lg" className="flex-1 sm:flex-none sm:px-12" onClick={() => setSignOpen(true)} disabled={submitting}>
