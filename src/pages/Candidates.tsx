@@ -92,10 +92,19 @@ export default function Candidates() {
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [currentWorkspaceId]);
 
-  const visible = useMemo(
-    () => candidates.filter((c) => (view === "archived" ? c.archived : !c.archived)),
-    [candidates, view]
-  );
+  const ast = useMemo(() => parseBoolean(query), [query]);
+  const highlightTerms = useMemo(() => positiveTermsFor(query), [query]);
+
+  const visible = useMemo(() => {
+    const base = candidates.filter((c) => (view === "archived" ? c.archived : !c.archived));
+    if (!ast) return base;
+    return base.filter((c) => {
+      const tags = (tagsByCand[c.id] ?? []).join(" ");
+      const hay = [c.full_name, c.email, c.headline, c.notes, c.resume_full_text, tags]
+        .filter(Boolean).join("\n");
+      return evaluate(ast, hay);
+    });
+  }, [candidates, view, ast, tagsByCand]);
 
   // Drop selections that are no longer visible (e.g. after switching tab)
   useEffect(() => {
