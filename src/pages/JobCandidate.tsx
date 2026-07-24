@@ -594,13 +594,14 @@ export default function JobCandidate() {
             <Badge variant="secondary">{currentStage}</Badge>
             {detail.anonymized && <Badge variant="outline">Anonymised</Badge>}
             {canMove && (
-              <Select value={detail.stage} onValueChange={moveStage}>
+              <Select value={detail.stage} onValueChange={moveStage} disabled={hasAcceptedOffer}>
                 <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {stages.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
+            {hasAcceptedOffer && <Badge className="bg-emerald-600 text-white">Offer accepted · Locked</Badge>}
             {canMove && !detail.rejected && (
               <>
                 {!isClosedStage && (
