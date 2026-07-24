@@ -54,6 +54,7 @@ export default function Candidates() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkReject, setBulkReject] = useState(false);
   const [bulkTag, setBulkTag] = useState(false);
+  const [query, setQuery] = useState("");
 
   const [form, setForm] = useState({
     full_name: "", email: "", phone: "", headline: "", location: "", linkedin_url: "", notes: "",
