@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { UpcomingInterviewsWidget } from "@/components/interviews/UpcomingInterviewsWidget";
 
 const allNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true, hideForHM: false },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, end: true, hideForHM: false },
   { title: "Jobs", url: "/app/jobs", icon: Briefcase, hideForHM: false },
   { title: "Candidates", url: "/candidates", icon: Users, hideForHM: true },
   { title: "Clients", url: "/clients", icon: Building2, hideForHM: true },

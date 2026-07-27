@@ -1389,6 +1389,39 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_signups: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          notes: string | null
+          role: string | null
+          team_size: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          role?: string | null
+          team_size?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          role?: string | null
+          team_size?: string | null
+        }
+        Relationships: []
+      }
       workspace_invites: {
         Row: {
           accepted_at: string | null
