@@ -30,6 +30,7 @@ import Marketplace from "./pages/Marketplace";
 import PostJobGuest from "./pages/PostJobGuest";
 import OfferPublic from "./pages/OfferPublic";
 import ScorecardForm from "./pages/ScorecardForm";
+import RootGate from "@/components/app/RootGate";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
