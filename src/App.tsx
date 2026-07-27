@@ -44,6 +44,7 @@ const App = () => (
         <AuthProvider>
           <WorkspaceProvider>
             <Routes>
+              <Route path="/" element={<RootGate />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
@@ -56,7 +57,7 @@ const App = () => (
               <Route path="/post-job" element={<PostJobGuest />} />
               <Route path="/offer/:token" element={<OfferPublic />} />
               <Route element={<AppLayout />}>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/app/jobs" element={<Jobs />} />
                 <Route path="/app/jobs/:id" element={<JobDetail />} />
                 <Route path="/app/jobs/:jobId/candidates/:jobCandidateId" element={<JobCandidate />} />
